@@ -82,6 +82,9 @@
     <button id="presetSave">Speichern …</button>
     <button id="presetDel">Löschen</button>
     <button id="clearAllBtn" title="Alle WAV-Dateien aus den Kanälen entfernen (Presets bleiben erhalten)">Alle Kanäle leeren</button>
+    <button id="presetExport" title="Alle Presets als eine Datei sichern (Backup, Umzug zwischen PC und iPad)">Presets sichern</button>
+    <button id="presetImport" title="Eine gesicherte Preset-Datei wieder einspielen">Presets einspielen</button>
+    <button id="presetShare" class="start" hidden>Datei jetzt teilen</button>
     <span class="small mut" id="presetInfo"></span>
   </div>
 
@@ -1289,6 +1292,101 @@ const GEN = (() => {
     await refreshPresets();
     presetInfo('Gelöscht: ' + name);
   }
+
+  // ---------- Presets sichern / einspielen (eine Datei, Aufbau: "SWPRE001" + Länge + JSON-Kopf + rohe WAV-Daten) ----------
+  const PRE_MAGIC = 'SWPRE001';
+  let pendingShare = null;
+
+  async function exportPresets() {
+    $('presetShare').hidden = true; pendingShare = null;
+    let list;
+    try { list = (await dbDo('readonly', s => s.getAll())) || []; } catch (e) { presetInfo('Lesen der Presets fehlgeschlagen.', true); return; }
+    if (!list.length) { presetInfo('Es gibt noch keine gespeicherten Presets.', true); return; }
+    list.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    const parts = [];
+    const head = {
+      version: 1,
+      presets: list.map(p => ({
+        name: p.name, master: p.master, projBpm: p.projBpm || null,
+        ch: (p.ch || []).map(d => {
+          const len = d.bytes ? d.bytes.byteLength : 0;
+          if (len) parts.push(d.bytes);
+          return { fileName: d.fileName || '', vol: d.vol, mode: d.mode, learn: d.learn || null, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess, len };
+        })
+      }))
+    };
+    const json = new TextEncoder().encode(JSON.stringify(head));
+    const lenBuf = new DataView(new ArrayBuffer(4)); lenBuf.setUint32(0, json.length, true);
+    const blob = new Blob([PRE_MAGIC, lenBuf.buffer, json, ...parts], { type: 'application/octet-stream' });
+    const d = new Date(), pad = n => String(n).padStart(2, '0');
+    const name = 'SoundWhacker_Presets_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.swpresets';
+    const msg = list.length + ' Presets (' + (blob.size / 1048576).toFixed(1) + ' MB)';
+    if (!window.showDirectoryPicker && navigator.share) {
+      const file = { name, bytes: blob, type: 'application/octet-stream' };
+      if (await shareFiles([file])) { presetInfo(msg + ': Teilen-Menü geöffnet – „In Dateien sichern“ wählen.'); return; }
+      // Die Berührung ist nach dem Lesen evtl. abgelaufen: ein zweiter Tipp öffnet das Teilen-Menü sicher
+      pendingShare = file; $('presetShare').hidden = false;
+      presetInfo(msg + ' sind bereit – bitte „Datei jetzt teilen“ tippen.');
+      return;
+    }
+    downloadBlob(blob, name);
+    presetInfo(msg + ' gesichert (siehe Downloads-Ordner).');
+  }
+  $('presetShare').onclick = async () => {
+    if (!pendingShare) return;
+    const file = pendingShare;
+    try {
+      await navigator.share({ files: [new File([file.bytes], file.name, { type: file.type })] });
+      $('presetShare').hidden = true; pendingShare = null;
+      presetInfo('Teilen-Menü geöffnet – „In Dateien sichern“ wählen.');
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      presetInfo('Teilen nicht möglich: ' + ((e && (e.name + ': ' + e.message)) || 'unbekannt'), true);
+    }
+  };
+
+  async function importPresets(file) {
+    try {
+      const buf = await file.arrayBuffer();
+      const magic = new TextDecoder().decode(new Uint8Array(buf, 0, Math.min(8, buf.byteLength)));
+      if (magic !== PRE_MAGIC) { presetInfo('Das ist keine Preset-Datei von diesem Looper.', true); return; }
+      const hl = new DataView(buf).getUint32(8, true);
+      if (12 + hl > buf.byteLength) { presetInfo('Preset-Datei ist beschädigt (unvollständig).', true); return; }
+      const head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 12, hl)));
+      let pos = 12 + hl;
+      const presets = (head.presets || []).map(p => ({
+        name: String(p.name), master: p.master, projBpm: p.projBpm || null,
+        ch: (p.ch || []).map(d => {
+          let bytes = null;
+          if (d.len) {
+            if (pos + d.len > buf.byteLength) throw new Error('Datei abgeschnitten');
+            bytes = buf.slice(pos, pos + d.len); pos += d.len;
+          }
+          return { fileName: d.fileName || '', bytes, vol: d.vol, mode: d.mode, learn: d.learn || null, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess };
+        })
+      })).filter(p => p.name);
+      if (!presets.length) { presetInfo('Die Datei enthält keine Presets.', true); return; }
+      const have = new Set([...$('presetSel').options].map(o => o.value));
+      const clash = presets.filter(p => have.has(p.name));
+      let use = presets;
+      if (clash.length && !(await ask(clash.length + ' von ' + presets.length + ' Presets gibt es schon (' + clash.map(p => p.name).slice(0, 3).join(', ') + (clash.length > 3 ? ' …' : '') + '). Überschreiben?'))) {
+        use = presets.filter(p => !have.has(p.name));
+      }
+      if (!use.length) { presetInfo('Nichts eingespielt.'); return; }
+      await dbDo('readwrite', s => { let r; use.forEach(p => { r = s.put(p); }); return r; });
+      await refreshPresets(use[0].name);
+      presetInfo(use.length + ' Presets eingespielt' + (use.length < presets.length ? ' (' + (presets.length - use.length) + ' übersprungen)' : '') + '.');
+    } catch (e) {
+      presetInfo('Einspielen fehlgeschlagen: ' + ((e && (e.message || e.name)) || 'unbekannt'), true);
+    }
+  }
+  $('presetExport').onclick = exportPresets;
+  $('presetImport').onclick = () => {
+    const fi = document.createElement('input');
+    fi.type = 'file';   // ohne accept (iOS graut sonst Dateien aus)
+    fi.onchange = () => { if (fi.files[0]) importPresets(fi.files[0]); };
+    fi.click();
+  };
 
   // ---------- Eingaben (MIDI + Tastatur) ----------
   function press(c, on) {
