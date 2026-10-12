@@ -1400,7 +1400,7 @@ const GEN = (() => {
     card.className = 'ch';
     card.innerHTML =
       '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '</h2>' +
-      '<div class="row" style="gap:6px"><button class="fileBtn">WAV laden</button><button class="delBtn" title="Datei aus diesem Kanal entfernen">&#128465; Entfernen</button><input type="file" accept="audio/*" hidden></div>' +
+      '<div class="row" style="gap:6px"><button class="fileBtn">WAV laden</button><button class="delBtn" title="Datei aus diesem Kanal entfernen">&#128465; Entfernen</button><input type="file" hidden></div>' +
       '<div class="fname">keine Datei – hierher ziehen</div>' +
       '<div class="row small"><span class="bpmTag mut">Tempo –</span><span style="flex:1"></span><button class="cutBtn" title="Ausschnitt aus einem Song oder Stem taktgenau als Loop schneiden">&#9986; Zuschneiden</button></div>' +
       '<div class="row"><button class="learnBtn">Anlernen</button><button class="clearBtn" title="Zuordnung löschen">&#10005;</button><button class="dlBtn" title="Datei dieses Kanals speichern">&#11015;</button></div>' +
@@ -1854,7 +1854,7 @@ const GEN = (() => {
 
   function openCut(c) {
     const fi = document.createElement('input');
-    fi.type = 'file'; fi.accept = 'audio/*';
+    fi.type = 'file';   // ohne accept: iOS graut WAV-Dateien aus der Dateien-App sonst aus
     fi.onchange = async () => {
       const f = fi.files[0]; if (!f) return;
       ensureAudio();
