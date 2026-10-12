@@ -1599,6 +1599,7 @@ const GEN = (() => {
       }
     }
     if (!window.showDirectoryPicker && !zipOnly && await shareFiles(files)) { genInfo('Teilen-Menü geöffnet – „In Dateien sichern“ wählen.'); return; }
+    if (zipOnly && !window.showDirectoryPicker && await shareFiles([{ name: 'SoundWhacker_Loops.zip', bytes: makeZip(files), type: 'application/zip' }])) { genInfo('Teilen-Menü geöffnet – „In Dateien sichern“ wählen.'); return; }
     try {
       downloadBlob(makeZip(files), 'SoundWhacker_Loops.zip');
       genInfo(why + files.length + ' Dateien als ZIP heruntergeladen (siehe Downloads-Ordner; Rechtsklick → Alle extrahieren).', !!why);
