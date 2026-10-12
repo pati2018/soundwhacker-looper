@@ -128,7 +128,7 @@
     <b>So geht's:</b> WAV-Dateien auf die Kanäle ziehen (mehrere Dateien auf einmal füllen freie Kanäle der Reihe nach) &rarr;
     bei jedem Kanal <b>Anlernen</b> klicken und den passenden SW berühren &rarr; <b>Start</b>.
     Alle Loops laufen dann gemeinsam im Hintergrund; ein Kanal ist nur hörbar, solange sein SW berührt wird.
-    Zum Probehören: <b>Vorhören</b> an jedem Kanal (ein/aus per Klick) oder <b>Alle vorhören</b> (Taste <b>0</b>). Ohne HUB testen: Tasten <b>1</b>–<b>5</b> gedrückt halten.<br>
+    Zum Probehören: <b>Vorhören</b> an jedem Kanal (ein/aus per Klick) oder <b>Alle vorhören</b> (Taste <b>0</b>). Am PC auch per Tastatur: Tasten <b>1</b>–<b>5</b> (Hauptreihe oder Ziffernblock), Verhalten wie beim SW (gedrückt halten oder umschalten, je nach Kanal-Einstellung). MIDI-Geräte über Kabel oder Bluetooth funktionieren weiterhin zusätzlich.<br>
     MIDIberry: Eingang = HUB, Ausgang = <b>loopMIDI Port 1</b>. Der Giada-Modus im HUB wird nicht gebraucht (stört aber auch nicht).
   </div>
 </div>
@@ -1497,7 +1497,7 @@ const GEN = (() => {
     const card = document.createElement('div');
     card.className = 'ch';
     card.innerHTML =
-      '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '</h2>' +
+      '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '<span class="small mut" style="font-weight:400;margin-left:auto" title="Taste auf der PC-Tastatur">Taste ' + (c.idx + 1) + '</span></h2>' +
       '<div class="row" style="gap:6px"><button class="fileBtn">WAV laden</button><button class="delBtn" title="Datei aus diesem Kanal entfernen">&#128465; Entfernen</button><input type="file" hidden></div>' +
       '<div class="fname">keine Datei – hierher ziehen</div>' +
       '<div class="row small"><span class="bpmTag mut">Tempo –</span><span style="flex:1"></span><button class="cutBtn" title="Ausschnitt aus einem Song oder Stem taktgenau als Loop schneiden">&#9986; Zuschneiden</button></div>' +
@@ -1576,22 +1576,33 @@ const GEN = (() => {
   document.addEventListener('dragover', e => e.preventDefault());
   document.addEventListener('drop', e => { e.preventDefault(); distribute([...e.dataTransfer.files], 0); });
 
+  // PC-Tastatur: 1–5 = Kanäle (Hauptreihe oder Ziffernblock), 0 = alle vorhören. MIDI (Kabel/Bluetooth) läuft unabhängig davon weiter.
+  const keyNum = e => { const m = /^(?:Digit|Numpad)([0-9])$/.exec(e.code || ''); return m ? +m[1] : -1; };
+  const typingIn = t => t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' ||
+    (t.tagName === 'INPUT' && !['range', 'checkbox', 'button'].includes(t.type));
+  function releaseKeys() { chans.forEach(c => { if (c.keyHeld) { c.keyHeld = false; press(c, false); } }); }
   document.addEventListener('keydown', e => {
     if (!$('cutModal').hidden) { if (e.key === 'Escape') closeCut(); return; }
-    if (e.repeat || ['SELECT', 'INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-    if (e.key === '0') { togglePreviewAll(); return; }
-    const i = '12345'.indexOf(e.key);
-    if (i < 0) return;
+    if (!$('askModal').hidden) return;
+    if (e.repeat || e.ctrlKey || e.altKey || e.metaKey || typingIn(e.target)) return;
+    const n = keyNum(e);
+    if (n < 0) return;
+    if (n === 0) { togglePreviewAll(); return; }
+    if (n > N) return;
+    e.preventDefault();
+    const c = chans[n - 1];
     ensureAudio(); ctx.resume();
-    chans[i].keyHeld = true;
-    press(chans[i], true);
+    if (!playing && chans.some(x => x.buffer)) start();   // wie „Vorhören“: Taste startet die Wiedergabe von selbst
+    c.keyHeld = true;
+    press(c, true);
   });
   document.addEventListener('keyup', e => {
-    const i = '12345'.indexOf(e.key);
-    if (i < 0 || !chans[i].keyHeld) return;
-    chans[i].keyHeld = false;
-    press(chans[i], false);
+    const n = keyNum(e);
+    if (n < 1 || n > N || !chans[n - 1].keyHeld) return;
+    chans[n - 1].keyHeld = false;
+    press(chans[n - 1], false);
   });
+  window.addEventListener('blur', releaseKeys);   // Fenster verliert den Fokus: keine hängenden Tasten
 
   // iOS/Safari: Audio wird erst nach einer echten Berührung freigegeben – mit der ersten Berührung entsperren
   const unlockAudio = () => {
