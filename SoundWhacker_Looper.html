@@ -171,6 +171,16 @@
   </div>
 </div>
 
+<div class="modal" id="askModal" hidden style="z-index:80;align-items:center">
+  <div class="modalBox" style="width:min(420px,100%)">
+    <div id="askMsg"></div>
+    <input id="askInput" type="text" style="width:100%">
+    <div class="row" style="justify-content:flex-end">
+      <button id="askNo">Abbrechen</button><button id="askYes" class="start">OK</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const GEN = (() => {
   'use strict';
@@ -1197,6 +1207,21 @@ const GEN = (() => {
       tx.onerror = tx.onabort = () => { db.close(); rej(tx.error); };
     });
   }
+  // Eigene Abfragefenster: prompt()/confirm() werden in iPad-Browser-Apps oft stumm unterdrückt
+  function ask(msg, def) {
+    return new Promise(res => {
+      const m = $('askModal'), inp = $('askInput');
+      const text = def !== undefined;
+      $('askMsg').textContent = msg;
+      inp.hidden = !text; inp.value = text ? def : '';
+      m.hidden = false;
+      if (text) { inp.focus(); inp.select(); }
+      const done = v => { m.hidden = true; $('askYes').onclick = $('askNo').onclick = inp.onkeydown = null; res(v); };
+      $('askYes').onclick = () => done(text ? inp.value : true);
+      $('askNo').onclick = () => done(text ? null : false);
+      inp.onkeydown = e => { if (e.key === 'Enter') $('askYes').click(); else if (e.key === 'Escape') $('askNo').click(); };
+    });
+  }
   const presetInfo = (m, err) => { $('presetInfo').textContent = m || ''; $('presetInfo').className = 'small ' + (err ? 'err' : 'mut'); };
 
   async function refreshPresets(select) {
@@ -1209,10 +1234,10 @@ const GEN = (() => {
 
   async function savePreset() {
     if (!chans.some(c => c.buffer)) { presetInfo('Erst WAV-Dateien laden.', true); return; }
-    const name = (prompt('Name des Presets:', $('presetSel').value || '') || '').trim();
+    const name = ((await ask('Name des Presets:', $('presetSel').value || '')) || '').trim();
     if (!name) return;
     const existing = [...$('presetSel').options].some(o => o.value === name);
-    if (existing && !confirm('Preset "' + name + '" überschreiben?')) return;
+    if (existing && !(await ask('Preset "' + name + '" überschreiben?'))) return;
     try {
       await dbDo('readwrite', s => s.put({
         name, master: +$('master').value,
@@ -1222,7 +1247,7 @@ const GEN = (() => {
       await refreshPresets(name);
       try { localStorage.setItem(STORE + '.preset', name); } catch (e) {}
       presetInfo('Gespeichert: ' + name);
-    } catch (e) { presetInfo('Speichern fehlgeschlagen (Speicher voll?).', true); }
+    } catch (e) { presetInfo('Speichern fehlgeschlagen: ' + ((e && (e.name || e.message)) || 'unbekannter Fehler') + ' (Speicher voll oder vom Browser gesperrt?)', true); }
   }
 
   async function loadPreset(name) {
@@ -1257,7 +1282,7 @@ const GEN = (() => {
 
   async function deletePreset() {
     const name = $('presetSel').value;
-    if (!name || !confirm('Preset "' + name + '" löschen?')) return;
+    if (!name || !(await ask('Preset "' + name + '" löschen?'))) return;
     await dbDo('readwrite', s => s.delete(name));
     try { if (localStorage.getItem(STORE + '.preset') === name) localStorage.removeItem(STORE + '.preset'); } catch (e) {}
     await refreshPresets();
@@ -1385,9 +1410,9 @@ const GEN = (() => {
     const q = s => card.querySelector(s);
     c.el = { card, lamp: q('.lamp'), fname: q('.fname'), learnBtn: q('.learnBtn'), assign: q('.assign'), bpmTag: q('.bpmTag') };
     q('.cutBtn').onclick = () => openCut(c);
-    c.el.bpmTag.onclick = () => {
+    c.el.bpmTag.onclick = async () => {
       if (!c.buffer) return;
-      const v = +(prompt('Tempo dieses Loops in BPM:', c.bpm ? +c.bpm.toFixed(2) : '') || 0);
+      const v = +((await ask('Tempo dieses Loops in BPM:', c.bpm ? String(+c.bpm.toFixed(2)) : '')) || 0);
       if (v >= 40 && v <= 240) { c.bpm = v; c.bpmGuess = false; updateBpmTag(c); }
     };
 
