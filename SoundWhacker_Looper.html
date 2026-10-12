@@ -1580,6 +1580,7 @@ const GEN = (() => {
       return { name, bytes: c.bytes };
     });
     if (!files.length) { genInfo('Nichts zu speichern – erst Loops laden oder erzeugen.', true); return; }
+    let why = '';
     if (window.showDirectoryPicker) {
       try {
         const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
@@ -1591,11 +1592,16 @@ const GEN = (() => {
         return;
       } catch (e) {
         if (e && e.name === 'AbortError') return;
+        why = 'Ordner-Speichern nicht möglich (' + ((e && (e.name + ': ' + e.message)) || 'unbekannt') + ') – ';
       }
     }
     if (!window.showDirectoryPicker && await shareFiles(files)) { genInfo('Teilen-Menü geöffnet – „In Dateien sichern“ wählen.'); return; }
-    downloadBlob(makeZip(files), 'SoundWhacker_Loops.zip');
-    genInfo(files.length + ' Dateien als ZIP heruntergeladen (Rechtsklick → Alle extrahieren).');
+    try {
+      downloadBlob(makeZip(files), 'SoundWhacker_Loops.zip');
+      genInfo(why + files.length + ' Dateien als ZIP heruntergeladen (siehe Downloads-Ordner; Rechtsklick → Alle extrahieren).', !!why);
+    } catch (e) {
+      genInfo(why + 'ZIP-Download fehlgeschlagen: ' + ((e && (e.name + ': ' + e.message)) || 'unbekannt'), true);
+    }
   }
 
   // ---------- Loop-Generator ----------
