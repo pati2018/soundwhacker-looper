@@ -1430,8 +1430,9 @@ const GEN = (() => {
 
     c.el.learnBtn.onclick = () => (learnIdx === c.idx ? stopLearn() : startLearn(c.idx));
     q('.clearBtn').onclick = () => { c.learn = null; renderAssign(c); save(); };
-    q('.dlBtn').onclick = () => {
+    q('.dlBtn').onclick = async () => {
       if (!c.bytes) { status('Kanal ' + (c.idx + 1) + ' hat noch keine Datei.', true); return; }
+      if (!window.showDirectoryPicker && await shareFiles([{ name: c.fileName || ('kanal' + (c.idx + 1) + '.wav'), bytes: c.bytes }])) return;
       downloadBlob(new Blob([c.bytes], { type: 'audio/wav' }), c.fileName || ('kanal' + (c.idx + 1) + '.wav'));
     };
 
@@ -1531,7 +1532,20 @@ const GEN = (() => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  }
+  // iPad/iPhone: Teilen-Menü („In Dateien sichern“), weil Downloads per Link dort oft ins Leere laufen.
+  // Gibt true zurück, wenn das Menü geöffnet wurde (auch bei Abbruch), false wenn es nicht verfügbar ist.
+  async function shareFiles(list) {
+    try {
+      if (!navigator.canShare || !navigator.share) return false;
+      const files = list.map(f => new File([f.bytes], f.name, { type: f.type || 'audio/wav' }));
+      if (!navigator.canShare({ files })) return false;
+      await navigator.share({ files });
+      return true;
+    } catch (e) {
+      return !!(e && e.name === 'AbortError');
+    }
   }
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
   function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
@@ -1579,6 +1593,7 @@ const GEN = (() => {
         if (e && e.name === 'AbortError') return;
       }
     }
+    if (!window.showDirectoryPicker && await shareFiles(files)) { genInfo('Teilen-Menü geöffnet – „In Dateien sichern“ wählen.'); return; }
     downloadBlob(makeZip(files), 'SoundWhacker_Loops.zip');
     genInfo(files.length + ' Dateien als ZIP heruntergeladen (Rechtsklick → Alle extrahieren).');
   }
