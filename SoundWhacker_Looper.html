@@ -1060,6 +1060,8 @@ const GEN = (() => {
   // ---------- Audio ----------
   function ensureAudio() {
     if (ctx) return ctx;
+    // iOS: Ton auch bei aktivem Stumm-Schalter und im Hintergrund-Modus der Seite erlauben
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
     ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     master = ctx.createGain();
     master.gain.value = $('master').value / 100;
@@ -1464,6 +1466,18 @@ const GEN = (() => {
     chans[i].keyHeld = false;
     press(chans[i], false);
   });
+
+  // iOS/Safari: Audio wird erst nach einer echten Berührung freigegeben – mit der ersten Berührung entsperren
+  const unlockAudio = () => {
+    try {
+      ensureAudio();
+      ctx.resume();
+      const b = ctx.createBuffer(1, 1, ctx.sampleRate), s = ctx.createBufferSource();
+      s.buffer = b; s.connect(ctx.destination); s.start(0);
+    } catch (e) {}
+    ['touchend', 'pointerup', 'click'].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+  };
+  ['touchend', 'pointerup', 'click'].forEach(ev => document.addEventListener(ev, unlockAudio, true));
 
   $('startBtn').onclick = start;
   $('stopBtn').onclick = stop;
