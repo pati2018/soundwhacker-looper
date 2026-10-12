@@ -81,6 +81,7 @@
     <button id="presetLoad">Laden</button>
     <button id="presetSave">Speichern …</button>
     <button id="presetDel">Löschen</button>
+    <button id="clearAllBtn" title="Alle WAV-Dateien aus den Kanälen entfernen (Presets bleiben erhalten)">Alle Kanäle leeren</button>
     <span class="small mut" id="presetInfo"></span>
   </div>
 
@@ -1400,7 +1401,7 @@ const GEN = (() => {
     card.className = 'ch';
     card.innerHTML =
       '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '</h2>' +
-      '<div><button class="fileBtn">WAV laden</button><input type="file" accept="audio/*" hidden></div>' +
+      '<div class="row" style="gap:6px"><button class="fileBtn">WAV laden</button><button class="delBtn" title="Datei aus diesem Kanal entfernen">&#128465; Entfernen</button><input type="file" accept="audio/*" hidden></div>' +
       '<div class="fname">keine Datei – hierher ziehen</div>' +
       '<div class="row small"><span class="bpmTag mut">Tempo –</span><span style="flex:1"></span><button class="cutBtn" title="Ausschnitt aus einem Song oder Stem taktgenau als Loop schneiden">&#9986; Zuschneiden</button></div>' +
       '<div class="row"><button class="learnBtn">Anlernen</button><button class="clearBtn" title="Zuordnung löschen">&#10005;</button><button class="dlBtn" title="Datei dieses Kanals speichern">&#11015;</button></div>' +
@@ -1419,6 +1420,7 @@ const GEN = (() => {
 
     const fileIn = q('input[type=file]');
     q('.fileBtn').onclick = () => fileIn.click();
+    q('.delBtn').onclick = () => { if (c.buffer) { clearSample(c); status('Kanal ' + (c.idx + 1) + ' geleert.'); } };
     fileIn.onchange = () => { if (fileIn.files[0]) loadFile(c, fileIn.files[0]); fileIn.value = ''; };
 
     card.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); card.classList.add('drag'); });
@@ -1658,6 +1660,13 @@ const GEN = (() => {
     $('genBtn').disabled = false; generating = false;
   }
   $('genBtn').onclick = generate;
+  $('clearAllBtn').onclick = async () => {
+    if (!chans.some(c => c.buffer)) { status('Alle Kanäle sind schon leer.'); return; }
+    if (!(await ask('Alle Dateien aus den Kanälen entfernen? (Gespeicherte Presets bleiben erhalten.)'))) return;
+    chans.forEach(c => { if (c.buffer) clearSample(c); });
+    stop();
+    status('Alle Kanäle geleert.');
+  };
   $('exportBtn').onclick = () => exportFiles(false);
   $('zipBtn').onclick = () => exportFiles(true);
   $('genText').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
