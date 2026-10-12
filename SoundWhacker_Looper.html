@@ -101,6 +101,7 @@
     <div class="row" style="margin-top:12px">
       <button class="big start" id="genBtn">&#127922; Neu erzeugen</button>
       <button class="big" id="exportBtn">&#128190; WAV-Dateien speichern</button>
+      <button class="big" id="zipBtn" title="Alle Kanäle als ZIP in den Downloads-Ordner laden">&#128230; Als ZIP laden</button>
       <span class="small mut" id="genInfo"></span>
     </div>
     <div class="hint" style="margin-top:8px">Jeder Klick auf <b>Neu erzeugen</b> ergibt eine neue Variation im gewählten Stil. Das Textfeld erkennt Stichworte (Stil, Zahl mit &bdquo;bpm&ldquo;, Tonart wie &bdquo;E-Moll&ldquo;, dunkel/hell, sanft/druckvoll); &bdquo;B&ldquo; bedeutet B-Dur/Moll wie im Deutschen (=&nbsp;H&#9837;).</div>
@@ -1571,7 +1572,7 @@ const GEN = (() => {
     end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
     return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
   }
-  async function exportFiles() {
+  async function exportFiles(zipOnly) {
     const used = new Set();
     const files = chans.filter(c => c.bytes).map(c => {
       let name = (c.fileName || ('Kanal' + (c.idx + 1) + '.wav')).replace(/[\\/:*?"<>|]+/g, '_');
@@ -1581,9 +1582,9 @@ const GEN = (() => {
     });
     if (!files.length) { genInfo('Nichts zu speichern – erst Loops laden oder erzeugen.', true); return; }
     let why = '';
-    if (window.showDirectoryPicker) {
+    if (window.showDirectoryPicker && !zipOnly) {
       try {
-        const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+        const dir = await window.showDirectoryPicker({ mode: 'readwrite', id: 'swloops', startIn: 'documents' });
         for (const f of files) {
           const w = await (await dir.getFileHandle(f.name, { create: true })).createWritable();
           await w.write(f.bytes); await w.close();
@@ -1595,7 +1596,7 @@ const GEN = (() => {
         why = 'Ordner-Speichern nicht möglich (' + ((e && (e.name + ': ' + e.message)) || 'unbekannt') + ') – ';
       }
     }
-    if (!window.showDirectoryPicker && await shareFiles(files)) { genInfo('Teilen-Menü geöffnet – „In Dateien sichern“ wählen.'); return; }
+    if (!window.showDirectoryPicker && !zipOnly && await shareFiles(files)) { genInfo('Teilen-Menü geöffnet – „In Dateien sichern“ wählen.'); return; }
     try {
       downloadBlob(makeZip(files), 'SoundWhacker_Loops.zip');
       genInfo(why + files.length + ' Dateien als ZIP heruntergeladen (siehe Downloads-Ordner; Rechtsklick → Alle extrahieren).', !!why);
@@ -1657,7 +1658,8 @@ const GEN = (() => {
     $('genBtn').disabled = false; generating = false;
   }
   $('genBtn').onclick = generate;
-  $('exportBtn').onclick = exportFiles;
+  $('exportBtn').onclick = () => exportFiles(false);
+  $('zipBtn').onclick = () => exportFiles(true);
   $('genText').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
 
   // ---------- Projekt-Tempo ----------
