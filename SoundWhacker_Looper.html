@@ -209,8 +209,8 @@
           <i id="fbRoomM" style="position:absolute;top:0;bottom:0;width:4px;margin-left:-2px;left:0;background:var(--on)"></i>
           <b id="fbRoomT" class="small" style="position:absolute;right:6px;top:0;line-height:18px;font-weight:600"></b></span>
       </div>
-      <div id="fbParts" style="display:grid;grid-template-columns:auto minmax(170px,auto) auto auto minmax(160px,1fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
-      <div class="hint" style="margin-top:8px">Bewegung macht Klang, Stillstand ist Stille: Bewegt sich ein Körperteil schnell genug, erklingt ein Ton. Bei den Händen und beim Kopf bestimmt die <b>Höhe</b> (Hände) bzw. die Stellung links ↔ rechts (Kopf) den Ton, die <b>Geschwindigkeit</b> die Lautstärke. Die Füße spielen tiefe Töne (Grundton und Quinte) wie ein Bass. <b>Empfindlichkeit</b>: wie viel Bewegung nötig ist. <b>Tondichte</b>: wie schnell Töne aufeinander folgen dürfen. Die Höhe wird am eigenen Körper gemessen – das funktioniert auch im Sitzen oder im Rollstuhl (dann Füße ausschalten). Für den ganzen Körper etwa 2–3 m Abstand zur Kamera. <b>Raum-Klavier</b> (eigener Schalter): Wer durch den Raum geht oder fährt, spielt die Tonleiter wie auf einer riesigen Klaviatur am Boden; mit <b>Raum-Bereich anlernen</b> einmal von ganz links nach ganz rechts bewegen.</div>
+      <div id="fbParts" style="display:grid;grid-template-columns:auto minmax(170px,auto) auto auto auto minmax(160px,1fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
+      <div class="hint" style="margin-top:8px">Bewegung macht Klang, Stillstand ist Stille: Bewegt sich ein Körperteil schnell genug, erklingt ein Ton. Bei den Händen und beim Kopf bestimmt die <b>Höhe</b> (Hände) bzw. die Stellung links ↔ rechts (Kopf) den Ton, die <b>Geschwindigkeit</b> die Lautstärke. Die Füße spielen tiefe Töne (Grundton und Quinte) wie ein Bass. <b>Empfindlichkeit</b>: wie viel Bewegung nötig ist. <b>Tondichte</b>: wie schnell Töne aufeinander folgen dürfen. Mit <b>anlernen</b> bewegt das Kind einen Körperteil 6 Sekunden lang so, wie es kann (Hände hoch und runter, Kopf hin und her, Füße stampfen): Danach passen Tonbereich und Empfindlichkeit genau zu diesem Kind – der Regler Empfindlichkeit wirkt dann nur noch als Feinregler. Die Höhe wird am eigenen Körper gemessen – das funktioniert auch im Sitzen oder im Rollstuhl (dann Füße ausschalten). Für den ganzen Körper etwa 2–3 m Abstand zur Kamera. <b>Raum-Klavier</b> (eigener Schalter): Wer durch den Raum geht oder fährt, spielt die Tonleiter wie auf einer riesigen Klaviatur am Boden; mit <b>Raum-Bereich anlernen</b> einmal von ganz links nach ganz rechts bewegen.</div>
     </div>
     <div id="bodyPanel" hidden style="margin-top:12px">
       <div class="row">
@@ -1945,7 +1945,7 @@ const GEN = (() => {
     if (recState.rec) {   // roter Punkt in der Vorschau (nur Anzeige, wird mit aufgenommen – bewusst klein)
       g.fillStyle = '#ff4d4d'; g.beginPath(); g.arc(W - 14 * u, 14 * u, 5 * u, 0, 7); g.fill();
     }
-    if (!$('gesOverlay').checked && !ges.learn && !body.calib && !melCal && !fbCal) return;
+    if (!$('gesOverlay').checked && !ges.learn && !body.calib && !melCal && !fbCal && !fbPartCal) return;
     if (ges.mode !== 'hands') { bodyDraw(g, W, H, u); return; }
     g.save(); g.translate(W, 0); g.scale(-1, 1);
     ges.slots.forEach(S => {
@@ -2175,7 +2175,7 @@ const GEN = (() => {
     g.fillStyle = 'rgba(5,8,14,.65)'; g.fillRect(0, 0, W, 34 * u);
     g.font = '600 ' + Math.round(15 * u) + 'px Segoe UI, Arial, sans-serif';
     let t, col = '#e8edf6';
-    if (ges.mode === 'fullbody') { t = fbHeader(); col = fbCal ? '#ffcc4d' : '#4dff87'; }
+    if (ges.mode === 'fullbody') { t = fbHeader(); col = fbCal || fbPartCal ? '#ffcc4d' : '#4dff87'; }
     else if (ges.mode === 'melody') { t = melHeader(); col = melCal ? '#ffcc4d' : '#4dff87'; }
     else if (body.calib) { t = body.calib.msg; col = '#ffcc4d'; }
     else if (body.cfg.multi && body.held.size) {
@@ -2525,7 +2525,10 @@ const GEN = (() => {
     FB_PARTS.forEach(p => {
       const s = (c && c.parts && c.parts[p.id]) || {}, d = p.def;
       o.parts[p.id] = { on: s.on == null ? d.on : !!s.on, oct: [1, 2, 3, 4, 5, 6].includes(s.oct) ? s.oct : d.oct,
-        n: p.kind === 'bass' ? 1 : (Number.isInteger(s.n) && s.n >= 2 && s.n <= 15 ? s.n : d.n) };
+        n: p.kind === 'bass' ? 1 : (Number.isInteger(s.n) && s.n >= 2 && s.n <= 15 ? s.n : d.n),
+        min: Number.isFinite(s.min) && Number.isFinite(s.max) && s.max > s.min ? s.min : null,
+        max: Number.isFinite(s.min) && Number.isFinite(s.max) && s.max > s.min ? s.max : null,
+        thr: Number.isFinite(s.thr) && s.thr > 0 ? s.thr : null };
     });
     return o;
   }
@@ -2551,7 +2554,9 @@ const GEN = (() => {
     return [...set];
   }
   const fbThr = () => 0.15 + 3 * Math.pow(1 - fb.sens / 100, 1.5);   // Rumpflängen pro Sekunde
-  const fbMinInt = () => 650 - fb.dens * 5.6;                          // ms zwischen zwei Tönen eines Körperteils
+  const fbMinInt = () => 650 - fb.dens * 5.6;
+  const fbPartThr = id => { const c = fb.parts[id]; return c.thr != null ? c.thr * Math.pow(2, (50 - fb.sens) / 50) : fbThr(); };
+  let fbPartCal = null;   // Körperteil anlernen: { id, start, end, min, max, speeds, msg }                          // ms zwischen zwei Tönen eines Körperteils
   const fbVis = p => p && (p.visibility == null || p.visibility > 0.5);
 
   function fbStep(v, asp) {
@@ -2583,19 +2588,31 @@ const GEN = (() => {
       return;
     }
 
-    const thr = fbThr(), minInt = fbMinInt();
+    const minInt = fbMinInt();
+    const cal = fbPartCal;
+    if (cal && now < cal.start) cal.msg = 'Gleich: ' + FB_PARTS.find(x => x.id === cal.id).label.split(' (')[0] + ' bewegen … ' + Math.ceil((cal.start - now) / 1000);
     FB_PARTS.forEach(p => {
-      const c = fb.parts[p.id], S = fbSt[p.id], q = P[p.lm];
-      if (!c.on || !fbVis(q)) { S.prev = null; S.v = 0; return; }
+      const c = fb.parts[p.id], S = fbSt[p.id], q = P[p.lm], learning = cal && cal.id === p.id;
+      if ((!c.on && !learning) || !fbVis(q)) { S.prev = null; S.v = 0; return; }
+      const thr = fbPartThr(p.id);
       if (S.prev) {
         const dt = Math.max(0.016, (now - S.prev.t) / 1000);
         const sp = Math.hypot((q.x - S.prev.x) * asp, q.y - S.prev.y) / T / dt;
         S.v = S.v * 0.5 + sp * 0.5;
       }
       S.prev = { x: q.x, y: q.y, t: now };
+      // Stellungswert: Hände = Höhe (in Rumpflängen über/unter der Schulter), Kopf = links/rechts
+      const pv = p.kind === 'height' ? (shY - q.y) / T : p.kind === 'side' ? (shX - q.x) * asp / T : 0;
+      if (learning && now >= cal.start) {
+        cal.min = Math.min(cal.min, pv); cal.max = Math.max(cal.max, pv);
+        if (S.v > 0) cal.speeds.push(S.v);
+        cal.msg = 'Jetzt ' + p.label.split(' (')[0] + ' bewegen, so wie es geht … ' + Math.ceil((cal.end - now) / 1000);
+        return;
+      }
+      if (cal) return;   // während des Anlernens spielt nichts
       let k = 0;
-      if (p.kind === 'height') { const h = (shY - q.y) / T; k = Math.floor(Math.max(0, Math.min(0.999, (h + 1.0) / 2.2)) * c.n); S.t = (h + 1.0) / 2.2; }
-      else if (p.kind === 'side') { const s = 0.5 + (shX - q.x) * asp / T; k = Math.floor(Math.max(0, Math.min(0.999, s)) * c.n); S.t = s; }
+      const lo = c.min != null ? c.min : (p.kind === 'height' ? -1.0 : -0.5), hi = c.max != null ? c.max : (p.kind === 'height' ? 1.2 : 0.5);
+      if (p.kind !== 'bass') { const t = (pv - lo) / (hi - lo); S.t = t; k = Math.floor(Math.max(0, Math.min(0.999, t)) * c.n); }
       if (S.v > thr && now - S.last >= minInt) {
         S.last = now;
         const gain = Math.max(0.25, Math.min(1, 0.25 + 0.75 * (S.v - thr) / (2 * thr)));
@@ -2604,6 +2621,19 @@ const GEN = (() => {
         S.flash = now;
       }
     });
+
+    if (cal && now >= cal.end) {   // Anlernen auswerten
+      const p = FB_PARTS.find(x => x.id === cal.id), c = fb.parts[p.id];
+      const sp = cal.speeds.slice().sort((a, b) => a - b), top = sp.length ? sp[Math.floor(sp.length * 0.9)] : 0;
+      if (top > 0.05) {
+        c.thr = Math.max(0.08, top * 0.35);   // ein gutes Drittel der typischen schnellen Bewegung des Kindes
+        if (p.kind !== 'bass' && cal.max - cal.min > 0.05) { const span = cal.max - cal.min; c.min = cal.min + span * 0.05; c.max = cal.max - span * 0.05; }
+        melInfo(p.label.split(' (')[0] + ' angelernt.');
+      } else melInfo('Keine Bewegung von „' + p.label.split(' (')[0] + '“ erkannt – bitte noch einmal.', true);
+      fbPartCal = null; fbSave(); fbUi();
+      return;
+    }
+    if (cal) return;
 
     if (fb.room.on) {   // Raum-Klavier: Position (gespiegelt wie die Vorschau) -> Stufe; neue Stufe spielt
       const S = fbSt.room, tx = 1 - shX, n = fb.room.n;
@@ -2631,6 +2661,7 @@ const GEN = (() => {
   }
   function fbHeader() {
     if (fbCal) return fbCal.msg;
+    if (fbPartCal) return fbPartCal.msg || 'Gleich geht es los …';
     if (!body.poseLm) return 'kein Körper erkannt – ca. 2–3 m Abstand';
     const now = performance.now();
     const act = FB_PARTS.filter(p => fb.parts[p.id].on && fbSt[p.id].note != null && now - fbSt[p.id].flash < 600).map(p => p.label.split(' (')[0] + ' ' + melName(fbSt[p.id].note));
@@ -2657,7 +2688,7 @@ const GEN = (() => {
   (function fbBuildUi() {
     $('fbRoomN').innerHTML = Array.from({ length: 14 }, (_, i) => '<option>' + (i + 2) + '</option>').join('');
     const box = $('fbParts');
-    box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><b class="small mut">Bewegung (Strich = Schwelle)</b>';
+    box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><b class="small mut">an das Kind anpassen</b><b class="small mut">Bewegung (Strich = Schwelle)</b>';
     FB_PARTS.forEach(p => {
       box.insertAdjacentHTML('beforeend',
         '<input type="checkbox" id="fpOn_' + p.id + '">' +
@@ -2665,6 +2696,7 @@ const GEN = (() => {
         '<select id="fpO_' + p.id + '">' + (p.kind === 'bass' ? '<option value="1">sehr tief</option><option value="2">tief</option><option value="3">mittel</option>'
           : '<option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option>') + '</select>' +
         (p.kind === 'bass' ? '<span class="small mut">Bass</span>' : '<select id="fpN_' + p.id + '">' + Array.from({ length: 14 }, (_, i) => '<option>' + (i + 2) + '</option>').join('') + '</select>') +
+        '<span class="row" style="gap:6px;flex-wrap:nowrap"><button id="fpC_' + p.id + '">anlernen</button><button id="fpX_' + p.id + '" title="Angelerntes zurücksetzen" hidden>&#10005;</button><span id="fpI_' + p.id + '" class="small mut"></span></span>' +
         '<span style="position:relative;height:18px;background:var(--card2);border:1px solid var(--line);border-radius:9px;overflow:hidden;display:block">' +
         '<b id="fpB_' + p.id + '" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc)"></b>' +
         '<i id="fpM_' + p.id + '" style="position:absolute;top:0;bottom:0;width:2px;background:var(--warn)"></i>' +
@@ -2672,6 +2704,14 @@ const GEN = (() => {
       $('fpOn_' + p.id).onchange = () => { fb.parts[p.id].on = $('fpOn_' + p.id).checked; fbSave(); fbUi(); melPrepare(); };
       $('fpO_' + p.id).onchange = () => { fb.parts[p.id].oct = +$('fpO_' + p.id).value; fbSave(); melPrepare(); };
       if (p.kind !== 'bass') $('fpN_' + p.id).onchange = () => { fb.parts[p.id].n = +$('fpN_' + p.id).value; fbSave(); melPrepare(); };
+      $('fpC_' + p.id).onclick = async () => {
+        if (fbPartCal && fbPartCal.id === p.id) { fbPartCal = null; fbUi(); return; }
+        if (!ges.on) { await gesStart(); if (!ges.on) return; }
+        const now = performance.now();
+        fbPartCal = { id: p.id, start: now + 2000, end: now + 8000, min: Infinity, max: -Infinity, speeds: [], msg: '' };
+        fbUi();
+      };
+      $('fpX_' + p.id).onclick = () => { const c = fb.parts[p.id]; c.min = c.max = c.thr = null; fbSave(); fbUi(); };
     });
     $('fbSens').oninput = () => { fb.sens = +$('fbSens').value; fbUi(); };
     $('fbSens').onchange = fbSave;
@@ -2692,23 +2732,29 @@ const GEN = (() => {
     $('fbSens').value = fb.sens; $('fbDens').value = fb.dens;
     $('fbRoomOn').checked = fb.room.on; $('fbRoomOct').value = fb.room.oct; $('fbRoomN').value = fb.room.n;
     $('fbRoomCal').classList.toggle('learning', !!fbCal); $('fbRoomCal').textContent = fbCal ? 'Abbrechen' : 'Raum-Bereich anlernen';
-    const thrPct = Math.min(99, fbThr() / 4 * 100);
+
     FB_PARTS.forEach(p => {
       const c = fb.parts[p.id];
       $('fpOn_' + p.id).checked = c.on; $('fpO_' + p.id).value = c.oct;
       if (p.kind !== 'bass') $('fpN_' + p.id).value = c.n;
       $('fpL_' + p.id).style.opacity = c.on ? 1 : 0.5;
-      $('fpM_' + p.id).style.left = thrPct + '%';
+      $('fpM_' + p.id).style.left = Math.min(99, fbPartThr(p.id) / 4 * 100) + '%';
+      const learned = c.thr != null, now = fbPartCal && fbPartCal.id === p.id;
+      $('fpC_' + p.id).textContent = now ? 'Abbrechen' : 'anlernen';
+      $('fpC_' + p.id).classList.toggle('learning', !!now);
+      $('fpC_' + p.id).disabled = !!fbPartCal && !now;
+      $('fpX_' + p.id).hidden = !learned;
+      $('fpI_' + p.id).textContent = learned ? '✓' : '';
     });
   }
   fbUi();
   setInterval(() => {   // Live-Anzeige
     if (ges.mode !== 'fullbody' || !ges.on) return;
-    const thr = fbThr(), now = performance.now();
+    const now = performance.now();
     FB_PARTS.forEach(p => {
       const S = fbSt[p.id], b = $('fpB_' + p.id);
       b.style.width = Math.min(100, S.v / 4 * 100) + '%';
-      b.style.background = now - S.flash < 300 ? 'var(--on)' : (S.v > thr ? 'var(--warn)' : 'var(--acc)');
+      b.style.background = now - S.flash < 300 ? 'var(--on)' : (S.v > fbPartThr(p.id) ? 'var(--warn)' : 'var(--acc)');
       $('fpT_' + p.id).textContent = fb.parts[p.id].on && S.note != null ? melName(S.note) : '';
     });
     $('fbRoomM').style.left = (fbSt.room.t * 100) + '%';
@@ -2726,7 +2772,7 @@ const GEN = (() => {
     $('melOnly').hidden = ges.mode !== 'melody';
     $('fbPanel').hidden = ges.mode !== 'fullbody';
     $('profRow').hidden = ges.mode === 'hands';
-    melStopAll(); melCal = null; melUi(); fbStopAll(); fbCal = null; fbUi();
+    melStopAll(); melCal = null; melUi(); fbStopAll(); fbCal = null; fbPartCal = null; fbUi();
     if (ges.mode === 'melody' || ges.mode === 'fullbody') { melFillPresets(); setTimeout(melPrepare, 0); }
     bodyCalibUi();
     try { localStorage.setItem(STORE + '.gesMode', ges.mode); } catch (e) {}
@@ -2829,7 +2875,7 @@ const GEN = (() => {
     gesReleaseAll();
     bodyReleaseAll(); body.cand = null; if (body.calib) { body.calib = null; bodyCalibUi(); }
     melStopAll(); if (melCal) { melCal = null; melUi(); }
-    fbStopAll(); if (fbCal) { fbCal = null; fbUi(); }
+    fbStopAll(); if (fbCal || fbPartCal) { fbCal = null; fbPartCal = null; fbUi(); }
     if (ges.stream) { ges.stream.getTracks().forEach(t => t.stop()); ges.stream = null; }
     $('gesVideo').srcObject = null;
     $('gesCv').hidden = true; ges.slots.forEach(S => { S.hand = null; });
