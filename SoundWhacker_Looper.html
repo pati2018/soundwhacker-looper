@@ -149,7 +149,7 @@
     </div>
     <div class="row" style="margin-top:10px;align-items:flex-start">
       <canvas id="gesCv" width="320" height="240" style="width:320px;max-width:100%;border-radius:10px;border:1px solid var(--line);background:var(--card2)" hidden></canvas>
-      <div class="hint" style="flex:1 1 220px">Halte eine Hand (links oder rechts) gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
+      <div class="hint" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine Hand (links oder rechts) gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
     </div>
     <video id="gesVideo" playsinline muted style="display:none"></video>
   </details>
@@ -1085,8 +1085,10 @@ const GEN = (() => {
 
   const chans = Array.from({ length: N }, (_, i) => ({
     idx: i, buffer: null, fileName: '', source: null, gain: null,
-    vol: 0.9, mode: 'hold', learn: null, key: null, open: false, keyHeld: false, el: {}
+    vol: 0.9, mode: 'hold', learn: null, key: null, gesture: null, open: false, keyHeld: false, el: {}
   }));
+  // Angelernte Geste = 20 Handform-Merkmale (normierte Abstände), siehe gesFeat()
+  const validGes = g => Array.isArray(g) && g.length === 20 && g.every(Number.isFinite);
 
   const $ = id => document.getElementById(id);
   const status = (msg, err) => { $('status').textContent = msg || ''; $('status').className = 'small ' + (err ? 'err' : 'mut'); };
@@ -1096,7 +1098,7 @@ const GEN = (() => {
     try {
       localStorage.setItem(STORE, JSON.stringify({
         midiIn: $('midiSel').value, master: +$('master').value,
-        ch: chans.map(c => ({ vol: c.vol, mode: c.mode, learn: c.learn, key: c.key }))
+        ch: chans.map(c => ({ vol: c.vol, mode: c.mode, learn: c.learn, key: c.key, gesture: c.gesture }))
       }));
     } catch (e) {}
   }
@@ -1111,6 +1113,7 @@ const GEN = (() => {
         if (d.mode === 'hold' || d.mode === 'toggle') chans[i].mode = d.mode;
         if (d.learn && typeof d.learn.ch === 'number' && typeof d.learn.note === 'number') chans[i].learn = d.learn;
         if (d.key && typeof d.key.code === 'string') chans[i].key = { code: d.key.code, label: String(d.key.label || d.key.code) };
+        if (validGes(d.gesture)) chans[i].gesture = d.gesture;
       });
       return s;
     } catch (e) { return null; }
@@ -1291,7 +1294,7 @@ const GEN = (() => {
       await dbDo('readwrite', s => s.put({
         name, master: +$('master').value,
         projBpm,
-        ch: chans.map(c => ({ fileName: c.fileName, bytes: c.bytes || null, vol: c.vol, mode: c.mode, learn: c.learn, key: c.key, bpm: c.bpm || null, bpmGuess: !!c.bpmGuess }))
+        ch: chans.map(c => ({ fileName: c.fileName, bytes: c.bytes || null, vol: c.vol, mode: c.mode, learn: c.learn, key: c.key, gesture: c.gesture, bpm: c.bpm || null, bpmGuess: !!c.bpmGuess }))
       }));
       await refreshPresets(name);
       try { localStorage.setItem(STORE + '.preset', name); } catch (e) {}
@@ -1317,6 +1320,7 @@ const GEN = (() => {
         c.mode = d.mode === 'toggle' ? 'toggle' : 'hold';
         c.learn = d.learn || null;
         c.key = d.key && typeof d.key.code === 'string' ? d.key : null;
+        c.gesture = validGes(d.gesture) ? d.gesture : null;
         c.el.vol.value = Math.round(c.vol * 100);
         c.el.modeSel.value = c.mode;
         setOpen(c, false);
@@ -1357,7 +1361,7 @@ const GEN = (() => {
         ch: (p.ch || []).map(d => {
           const len = d.bytes ? d.bytes.byteLength : 0;
           if (len) parts.push(d.bytes);
-          return { fileName: d.fileName || '', vol: d.vol, mode: d.mode, learn: d.learn || null, key: d.key || null, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess, len };
+          return { fileName: d.fileName || '', vol: d.vol, mode: d.mode, learn: d.learn || null, key: d.key || null, gesture: d.gesture || null, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess, len };
         })
       }))
     };
@@ -1408,7 +1412,7 @@ const GEN = (() => {
             if (pos + d.len > buf.byteLength) throw new Error('Datei abgeschnitten');
             bytes = buf.slice(pos, pos + d.len); pos += d.len;
           }
-          return { fileName: d.fileName || '', bytes, vol: d.vol, mode: d.mode, learn: d.learn || null, key: d.key || null, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess };
+          return { fileName: d.fileName || '', bytes, vol: d.vol, mode: d.mode, learn: d.learn || null, key: d.key || null, gesture: validGes(d.gesture) ? d.gesture : null, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess };
         })
       })).filter(p => p.name);
       if (!presets.length) { presetInfo('Die Datei enthält keine Presets.', true); return; }
@@ -1539,6 +1543,8 @@ const GEN = (() => {
     c.el.keyTag.textContent = 'Taste ' + (c.key ? c.key.label + ' / ' : '') + (c.idx + 1);
     c.el.keyShow.textContent = c.key ? 'Taste: ' + c.key.label + ' (und ' + (c.idx + 1) + ')' : '';
     c.el.keyClr.hidden = !c.key;
+    const gr = $('gesRowInfo' + c.idx);
+    if (gr) { gr.textContent = c.gesture ? 'eigene Geste ✓ (und ' + (c.idx + 1) + ' Finger)' : (c.idx + 1) + ' Finger'; $('gesRowClr' + c.idx).hidden = !c.gesture; }
   }
 
   // ---------- Tasten anlernen (PC-Tastatur, zusätzlich zu den Ziffern 1–5) ----------
@@ -1701,7 +1707,7 @@ const GEN = (() => {
 
   // ---------- Gesten-Steuerung (Kamera, Google MediaPipe Hand Landmarker; Fingerzählung aus „handklang“) ----------
   const MP_BASE = 'https://pati2018.github.io/handklang/';
-  const ges = { on: false, lm: null, stream: null, lastVT: -1, cand: -2, k: 0, cur: -1, count: -1, hand: null, missing: 0 };
+  const ges = { on: false, lm: null, stream: null, lastVT: -1, cand: -2, k: 0, cur: -1, hand: null, how: '', learn: null };
   const gesInfo = (m, err) => { $('gesInfo').textContent = m || ''; $('gesInfo').className = 'small ' + (err ? 'err' : 'mut'); };
   const gdist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   function countFingers(lm) {
@@ -1710,10 +1716,29 @@ const GEN = (() => {
     const thumb = gdist(lm[4], lm[5]) > palm * 0.62 && gdist(lm[4], lm[0]) > gdist(lm[3], lm[0]);
     return thumb + ext(8, 6) + ext(12, 10) + ext(16, 14) + ext(20, 18);
   }
-  // Gezeigte Fingerzahl übernehmen: alter Kanal aus, neuer an (Verhalten je Kanal wie beim SW)
-  function gesApply(n) {
-    const target = n >= 1 && n <= N ? n - 1 : -1;
-    // Gleiche Fingerzahl: nichts tun – außer der Kanal wurde inzwischen gestoppt (dann wieder einschalten wie eine Taste)
+  // Handform-Merkmale für angelernte Gesten: 20 Abstände (Fingerspitzen, Daumen, Handgelenk), geteilt durch die Handflächengröße.
+  // Dadurch egal: Abstand zur Kamera, Drehung in der Bildebene, linke oder rechte Hand.
+  const GPAIRS = [[4, 0], [8, 0], [12, 0], [16, 0], [20, 0], [4, 8], [4, 12], [4, 16], [4, 20], [8, 12], [8, 16], [8, 20], [12, 16], [12, 20], [16, 20], [4, 2], [8, 5], [12, 9], [16, 13], [20, 17]];
+  const GES_TH = 0.22;   // maximale Abweichung (RMS) für „erkannt“: gleiche Geste gemessen ≤ 0,13, verschiedene Gesten ≥ 0,5
+  function gesFeat(lm, asp) {
+    const d = (a, b) => Math.hypot((lm[a].x - lm[b].x) * asp, lm[a].y - lm[b].y);
+    const palm = d(0, 9) || 1e-6;
+    return GPAIRS.map(([a, b]) => d(a, b) / palm);
+  }
+  function gesMatch(f) {
+    let best = -1, bd = Infinity;
+    chans.forEach((c, i) => {
+      if (!c.gesture) return;
+      let s = 0;
+      for (let k = 0; k < f.length; k++) s += (f[k] - c.gesture[k]) ** 2;
+      const dd = Math.sqrt(s / f.length);
+      if (dd < bd) { bd = dd; best = i; }
+    });
+    return { idx: bd < GES_TH ? best : -1, d: bd };
+  }
+  // Erkanntes Ziel übernehmen: alter Kanal aus, neuer an (Verhalten je Kanal wie beim SW). target = Kanal-Index oder -1
+  function gesApply(target) {
+    // Gleiches Ziel: nichts tun – außer der Kanal wurde inzwischen gestoppt (dann wieder einschalten wie eine Taste)
     if (target === ges.cur && (target < 0 || chans[target].open || chans[target].mode === 'toggle')) return;
     if (ges.cur >= 0 && chans[ges.cur].gesHeld) { chans[ges.cur].gesHeld = false; press(chans[ges.cur], false); }
     ges.cur = target;
@@ -1722,34 +1747,81 @@ const GEN = (() => {
     chans[target].gesHeld = true;
     press(chans[target], true);
   }
+
+  // Anlernen: kurz vorbereiten, dann 15 Bilder mit Hand mitteln
+  function gesLearnStep(f) {
+    const L = ges.learn, c = chans[L.idx], now = performance.now();
+    if (now < L.until) { L.msg = 'Geste für Kanal ' + (L.idx + 1) + ' zeigen … ' + Math.ceil((L.until - now) / 1000); return; }
+    if (!f) { L.msg = 'Hand nicht erkannt – Geste deutlich zeigen'; return; }
+    L.buf.push(f);
+    L.msg = 'Lerne Kanal ' + (L.idx + 1) + ' … ' + Math.round(L.buf.length / 15 * 100) + ' %';
+    if (L.buf.length < 15) return;
+    c.gesture = f.map((_, k) => Math.round(L.buf.reduce((s, x) => s + x[k], 0) / L.buf.length * 1000) / 1000);
+    ges.learn = null;
+    renderAssign(c); save(); gesLearnUi();
+    gesInfo('Geste für Kanal ' + (c.idx + 1) + ' gespeichert.');
+  }
+  async function gesLearnStart(i) {
+    if (ges.learn) return;
+    if (!ges.on) { await gesStart(); if (!ges.on) return; }
+    gesApply(-1);
+    ges.learn = { idx: i, until: performance.now() + 2500, buf: [], msg: '' };
+    gesLearnUi();
+  }
+  function gesLearnUi() {
+    chans.forEach((c, i) => { const b = $('gesRowBtn' + i); if (b) { b.classList.toggle('learning', !!ges.learn && ges.learn.idx === i); b.disabled = !!ges.learn && ges.learn.idx !== i; } });
+  }
+  (function buildGesLearnList() {
+    const box = $('gesLearnList');
+    chans.forEach((c, i) => {
+      box.insertAdjacentHTML('beforeend', '<div class="row" style="gap:8px"><b style="min-width:64px;color:var(--fg)">Kanal ' + (i + 1) + '</b>' +
+        '<button id="gesRowBtn' + i + '">Geste anlernen</button><button id="gesRowClr' + i + '" title="Angelernte Geste löschen" hidden>&#10005;</button>' +
+        '<span id="gesRowInfo' + i + '"></span></div>');
+      $('gesRowBtn' + i).onclick = () => (ges.learn && ges.learn.idx === i ? (ges.learn = null, gesLearnUi(), gesInfo('Anlernen abgebrochen.')) : gesLearnStart(i));
+      $('gesRowClr' + i).onclick = () => { chans[i].gesture = null; renderAssign(chans[i]); save(); };
+    });   // Anzeige füllt renderAssign(), sobald die Kanäle gebaut sind
+  })();
+
   function gesDraw() {
     const cv = $('gesCv'), g = cv.getContext('2d'), v = $('gesVideo'), W = cv.width, H = cv.height;
     g.save(); g.translate(W, 0); g.scale(-1, 1);              // gespiegelt wie ein Spiegel
     if (v.readyState >= 2) g.drawImage(v, 0, 0, W, H);
     if (ges.hand) {
-      g.fillStyle = '#4dff87';
+      g.fillStyle = ges.learn ? '#ffcc4d' : '#4dff87';
       ges.hand.forEach(p => { g.beginPath(); g.arc(p.x * W, p.y * H, 3, 0, 7); g.fill(); });
     }
     g.restore();
     g.fillStyle = 'rgba(5,8,14,.65)'; g.fillRect(0, 0, W, 34);
-    g.fillStyle = '#e8edf6'; g.font = '600 18px Segoe UI, Arial, sans-serif';
-    g.fillText(ges.cur >= 0 ? 'Kanal ' + (ges.cur + 1) + (chans[ges.cur].fileName ? ' · ' + chans[ges.cur].fileName.replace(/^\d+_|\.wav$/gi, '').slice(0, 22) : '') : (ges.hand ? 'Faust · stumm' : 'keine Hand'), 10, 23);
+    g.fillStyle = ges.learn ? '#ffcc4d' : '#e8edf6'; g.font = '600 17px Segoe UI, Arial, sans-serif';
+    let t;
+    if (ges.learn) t = ges.learn.msg;
+    else if (ges.cur >= 0) t = 'Kanal ' + (ges.cur + 1) + (ges.how ? ' · ' + ges.how : '');
+    else t = ges.hand ? 'Faust · stumm' : 'keine Hand';
+    g.fillText(t, 10, 23);
   }
   function gesLoop() {
     if (!ges.on) return;
     const v = $('gesVideo');
     if (ges.lm && v.readyState >= 2 && v.currentTime !== ges.lastVT) {
       ges.lastVT = v.currentTime;
-      let n = -1;
+      let target = -1, f = null, how = '';
       try {
         const res = ges.lm.detectForVideo(v, performance.now());
-        const lms = res.landmarks || [];
-        ges.hand = lms[0] || null;
-        n = ges.hand ? countFingers(ges.hand) : -1;
+        ges.hand = (res.landmarks || [])[0] || null;
       } catch (e) { ges.hand = null; }
-      // Erst übernehmen, wenn der Wert 3 Bilder hintereinander gleich ist (keine Hand: 6 Bilder)
-      if (n === ges.cand) ges.k++; else { ges.cand = n; ges.k = 1; }
-      if (ges.k >= (n < 0 ? 6 : 3)) gesApply(n);
+      if (ges.hand) {
+        f = gesFeat(ges.hand, (v.videoWidth || 4) / (v.videoHeight || 3));
+        const m = gesMatch(f);
+        if (m.idx >= 0) { target = m.idx; how = 'eigene Geste (' + Math.round(Math.max(0, 1 - m.d / GES_TH) * 100) + ' %)'; }
+        else { const n = countFingers(ges.hand); target = n >= 1 && n <= N ? n - 1 : -1; how = n + ' Finger'; }
+      }
+      if (ges.learn) gesLearnStep(f);
+      else {
+        // Erst übernehmen, wenn das Ziel 3 Bilder hintereinander gleich ist (keine Hand: 6 Bilder)
+        const key = ges.hand ? target : 'none';
+        if (key === ges.cand) ges.k++; else { ges.cand = key; ges.k = 1; }
+        if (ges.k >= (ges.hand ? 3 : 6)) { if (target !== ges.cur) ges.how = how; gesApply(target); }
+      }
     }
     gesDraw();
     requestAnimationFrame(gesLoop);
@@ -1788,6 +1860,7 @@ const GEN = (() => {
   }
   function gesStop(keepMsg) {
     ges.on = false;
+    if (ges.learn) { ges.learn = null; gesLearnUi(); }
     gesApply(-1);
     if (ges.stream) { ges.stream.getTracks().forEach(t => t.stop()); ges.stream = null; }
     $('gesVideo').srcObject = null;
