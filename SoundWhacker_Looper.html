@@ -146,10 +146,12 @@
     <div class="row" style="margin-top:12px">
       <button class="big" id="gesBtn">&#128247; Kamera starten</button>
       <span class="small mut" id="gesInfo">aus</span>
+      <span style="flex:1"></span>
+      <label class="small mut" title="Ausschalten, wenn die Fingerzahlen deine eigenen Gesten stören"><input type="checkbox" id="gesFingers" checked> Fingerzahl 1–5 als Standard-Gesten</label>
     </div>
     <div class="row" style="margin-top:10px;align-items:flex-start">
       <canvas id="gesCv" width="320" height="240" style="width:320px;max-width:100%;border-radius:10px;border:1px solid var(--line);background:var(--card2)" hidden></canvas>
-      <div class="hint" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine Hand (links oder rechts) gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
+      <div class="hint" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine Hand (links oder rechts) gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stören die Fingerzahlen, schalte oben <b>Fingerzahl 1–5</b> aus – dann zählen nur deine eigenen Gesten. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
     </div>
     <video id="gesVideo" playsinline muted style="display:none"></video>
   </details>
@@ -1544,7 +1546,11 @@ const GEN = (() => {
     c.el.keyShow.textContent = c.key ? 'Taste: ' + c.key.label + ' (und ' + (c.idx + 1) + ')' : '';
     c.el.keyClr.hidden = !c.key;
     const gr = $('gesRowInfo' + c.idx);
-    if (gr) { gr.textContent = c.gesture ? 'eigene Geste ✓ (und ' + (c.idx + 1) + ' Finger)' : (c.idx + 1) + ' Finger'; $('gesRowClr' + c.idx).hidden = !c.gesture; }
+    if (gr) {
+      const fing = !$('gesFingers') || $('gesFingers').checked;
+      gr.textContent = c.gesture ? 'eigene Geste ✓' + (fing ? ' (und ' + (c.idx + 1) + ' Finger)' : '') : (fing ? (c.idx + 1) + ' Finger' : '– keine Geste –');
+      $('gesRowClr' + c.idx).hidden = !c.gesture;
+    }
   }
 
   // ---------- Tasten anlernen (PC-Tastatur, zusätzlich zu den Ziffern 1–5) ----------
@@ -1796,7 +1802,7 @@ const GEN = (() => {
     let t;
     if (ges.learn) t = ges.learn.msg;
     else if (ges.cur >= 0) t = 'Kanal ' + (ges.cur + 1) + (ges.how ? ' · ' + ges.how : '');
-    else t = ges.hand ? 'Faust · stumm' : 'keine Hand';
+    else t = ges.hand ? ($('gesFingers').checked ? 'Faust · stumm' : 'keine bekannte Geste · stumm') : 'keine Hand';
     g.fillText(t, 10, 23);
   }
   function gesLoop() {
@@ -1813,7 +1819,7 @@ const GEN = (() => {
         f = gesFeat(ges.hand, (v.videoWidth || 4) / (v.videoHeight || 3));
         const m = gesMatch(f);
         if (m.idx >= 0) { target = m.idx; how = 'eigene Geste (' + Math.round(Math.max(0, 1 - m.d / GES_TH) * 100) + ' %)'; }
-        else { const n = countFingers(ges.hand); target = n >= 1 && n <= N ? n - 1 : -1; how = n + ' Finger'; }
+        else if ($('gesFingers').checked) { const n = countFingers(ges.hand); target = n >= 1 && n <= N ? n - 1 : -1; how = n + ' Finger'; }
       }
       if (ges.learn) gesLearnStep(f);
       else {
@@ -1869,6 +1875,12 @@ const GEN = (() => {
     if (!keepMsg) gesInfo('aus');
   }
   $('gesBtn').onclick = () => (ges.on ? gesStop() : gesStart());
+  // Standard-Gesten (Fingerzahl) ein/aus, wird gemerkt
+  try { if (localStorage.getItem(STORE + '.gesFingers') === '0') $('gesFingers').checked = false; } catch (e) {}
+  $('gesFingers').onchange = () => {
+    try { localStorage.setItem(STORE + '.gesFingers', $('gesFingers').checked ? '1' : '0'); } catch (e) {}
+    chans.forEach(c => { if (c.el.assign) renderAssign(c); });
+  };
 
   // iOS/Safari: Audio wird erst nach einer echten Berührung freigegeben – mit der ersten Berührung entsperren
   const unlockAudio = () => {
