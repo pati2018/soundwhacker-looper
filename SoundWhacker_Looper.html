@@ -146,12 +146,10 @@
     <div class="row" style="margin-top:12px">
       <button class="big" id="gesBtn">&#128247; Kamera starten</button>
       <span class="small mut" id="gesInfo">aus</span>
-      <span style="flex:1"></span>
-      <label class="small mut" title="Ausschalten, wenn die Fingerzahlen deine eigenen Gesten stören"><input type="checkbox" id="gesFingers" checked> Fingerzahl 1–5 als Standard-Gesten</label>
     </div>
     <div class="row" style="margin-top:10px;align-items:flex-start">
       <canvas id="gesCv" width="320" height="240" style="width:320px;max-width:100%;border-radius:10px;border:1px solid var(--line);background:var(--card2)" hidden></canvas>
-      <div class="hint" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine Hand (links oder rechts) gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stören die Fingerzahlen, schalte oben <b>Fingerzahl 1–5</b> aus – dann zählen nur deine eigenen Gesten. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
+      <div class="hint" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine Hand (links oder rechts) gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stört eine Fingerzahl, nimm in der Zeile das Häkchen bei <b>n Finger</b> weg – dann löst sie nichts mehr aus. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
     </div>
     <video id="gesVideo" playsinline muted style="display:none"></video>
   </details>
@@ -1087,7 +1085,7 @@ const GEN = (() => {
 
   const chans = Array.from({ length: N }, (_, i) => ({
     idx: i, buffer: null, fileName: '', source: null, gain: null,
-    vol: 0.9, mode: 'hold', learn: null, key: null, gesture: null, open: false, keyHeld: false, el: {}
+    vol: 0.9, mode: 'hold', learn: null, key: null, gesture: null, fingerOn: true, open: false, keyHeld: false, el: {}
   }));
   // Angelernte Geste = 20 Handform-Merkmale (normierte Abstände), siehe gesFeat()
   const validGes = g => Array.isArray(g) && g.length === 20 && g.every(Number.isFinite);
@@ -1100,7 +1098,7 @@ const GEN = (() => {
     try {
       localStorage.setItem(STORE, JSON.stringify({
         midiIn: $('midiSel').value, master: +$('master').value,
-        ch: chans.map(c => ({ vol: c.vol, mode: c.mode, learn: c.learn, key: c.key, gesture: c.gesture }))
+        ch: chans.map(c => ({ vol: c.vol, mode: c.mode, learn: c.learn, key: c.key, gesture: c.gesture, fingerOn: c.fingerOn }))
       }));
     } catch (e) {}
   }
@@ -1116,6 +1114,7 @@ const GEN = (() => {
         if (d.learn && typeof d.learn.ch === 'number' && typeof d.learn.note === 'number') chans[i].learn = d.learn;
         if (d.key && typeof d.key.code === 'string') chans[i].key = { code: d.key.code, label: String(d.key.label || d.key.code) };
         if (validGes(d.gesture)) chans[i].gesture = d.gesture;
+        if (d.fingerOn === false) chans[i].fingerOn = false;
       });
       return s;
     } catch (e) { return null; }
@@ -1296,7 +1295,7 @@ const GEN = (() => {
       await dbDo('readwrite', s => s.put({
         name, master: +$('master').value,
         projBpm,
-        ch: chans.map(c => ({ fileName: c.fileName, bytes: c.bytes || null, vol: c.vol, mode: c.mode, learn: c.learn, key: c.key, gesture: c.gesture, bpm: c.bpm || null, bpmGuess: !!c.bpmGuess }))
+        ch: chans.map(c => ({ fileName: c.fileName, bytes: c.bytes || null, vol: c.vol, mode: c.mode, learn: c.learn, key: c.key, gesture: c.gesture, fingerOn: c.fingerOn, bpm: c.bpm || null, bpmGuess: !!c.bpmGuess }))
       }));
       await refreshPresets(name);
       try { localStorage.setItem(STORE + '.preset', name); } catch (e) {}
@@ -1323,6 +1322,7 @@ const GEN = (() => {
         c.learn = d.learn || null;
         c.key = d.key && typeof d.key.code === 'string' ? d.key : null;
         c.gesture = validGes(d.gesture) ? d.gesture : null;
+        c.fingerOn = d.fingerOn !== false;
         c.el.vol.value = Math.round(c.vol * 100);
         c.el.modeSel.value = c.mode;
         setOpen(c, false);
@@ -1363,7 +1363,7 @@ const GEN = (() => {
         ch: (p.ch || []).map(d => {
           const len = d.bytes ? d.bytes.byteLength : 0;
           if (len) parts.push(d.bytes);
-          return { fileName: d.fileName || '', vol: d.vol, mode: d.mode, learn: d.learn || null, key: d.key || null, gesture: d.gesture || null, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess, len };
+          return { fileName: d.fileName || '', vol: d.vol, mode: d.mode, learn: d.learn || null, key: d.key || null, gesture: d.gesture || null, fingerOn: d.fingerOn !== false, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess, len };
         })
       }))
     };
@@ -1414,7 +1414,7 @@ const GEN = (() => {
             if (pos + d.len > buf.byteLength) throw new Error('Datei abgeschnitten');
             bytes = buf.slice(pos, pos + d.len); pos += d.len;
           }
-          return { fileName: d.fileName || '', bytes, vol: d.vol, mode: d.mode, learn: d.learn || null, key: d.key || null, gesture: validGes(d.gesture) ? d.gesture : null, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess };
+          return { fileName: d.fileName || '', bytes, vol: d.vol, mode: d.mode, learn: d.learn || null, key: d.key || null, gesture: validGes(d.gesture) ? d.gesture : null, fingerOn: d.fingerOn !== false, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess };
         })
       })).filter(p => p.name);
       if (!presets.length) { presetInfo('Die Datei enthält keine Presets.', true); return; }
@@ -1547,9 +1547,9 @@ const GEN = (() => {
     c.el.keyClr.hidden = !c.key;
     const gr = $('gesRowInfo' + c.idx);
     if (gr) {
-      const fing = !$('gesFingers') || $('gesFingers').checked;
-      gr.textContent = c.gesture ? 'eigene Geste ✓' + (fing ? ' (und ' + (c.idx + 1) + ' Finger)' : '') : (fing ? (c.idx + 1) + ' Finger' : '– keine Geste –');
+      gr.textContent = c.gesture ? 'eigene Geste ✓' : (c.fingerOn ? '' : '– keine Geste –');
       $('gesRowClr' + c.idx).hidden = !c.gesture;
+      $('gesRowFing' + c.idx).checked = c.fingerOn;
     }
   }
 
@@ -1781,10 +1781,12 @@ const GEN = (() => {
     const box = $('gesLearnList');
     chans.forEach((c, i) => {
       box.insertAdjacentHTML('beforeend', '<div class="row" style="gap:8px"><b style="min-width:64px;color:var(--fg)">Kanal ' + (i + 1) + '</b>' +
+        '<label class="small" style="min-width:78px" title="Standard-Geste: ' + (i + 1) + ' Finger schaltet diesen Kanal"><input type="checkbox" id="gesRowFing' + i + '" checked> ' + (i + 1) + ' Finger</label>' +
         '<button id="gesRowBtn' + i + '">Geste anlernen</button><button id="gesRowClr' + i + '" title="Angelernte Geste löschen" hidden>&#10005;</button>' +
         '<span id="gesRowInfo' + i + '"></span></div>');
       $('gesRowBtn' + i).onclick = () => (ges.learn && ges.learn.idx === i ? (ges.learn = null, gesLearnUi(), gesInfo('Anlernen abgebrochen.')) : gesLearnStart(i));
       $('gesRowClr' + i).onclick = () => { chans[i].gesture = null; renderAssign(chans[i]); save(); };
+      $('gesRowFing' + i).onchange = () => { chans[i].fingerOn = $('gesRowFing' + i).checked; renderAssign(chans[i]); save(); };
     });   // Anzeige füllt renderAssign(), sobald die Kanäle gebaut sind
   })();
 
@@ -1802,7 +1804,7 @@ const GEN = (() => {
     let t;
     if (ges.learn) t = ges.learn.msg;
     else if (ges.cur >= 0) t = 'Kanal ' + (ges.cur + 1) + (ges.how ? ' · ' + ges.how : '');
-    else t = ges.hand ? ($('gesFingers').checked ? 'Faust · stumm' : 'keine bekannte Geste · stumm') : 'keine Hand';
+    else t = ges.hand ? 'keine Geste · stumm' : 'keine Hand';
     g.fillText(t, 10, 23);
   }
   function gesLoop() {
@@ -1819,7 +1821,7 @@ const GEN = (() => {
         f = gesFeat(ges.hand, (v.videoWidth || 4) / (v.videoHeight || 3));
         const m = gesMatch(f);
         if (m.idx >= 0) { target = m.idx; how = 'eigene Geste (' + Math.round(Math.max(0, 1 - m.d / GES_TH) * 100) + ' %)'; }
-        else if ($('gesFingers').checked) { const n = countFingers(ges.hand); target = n >= 1 && n <= N ? n - 1 : -1; how = n + ' Finger'; }
+        else { const n = countFingers(ges.hand); target = n >= 1 && n <= N && chans[n - 1].fingerOn ? n - 1 : -1; how = n + ' Finger'; }
       }
       if (ges.learn) gesLearnStep(f);
       else {
@@ -1875,12 +1877,6 @@ const GEN = (() => {
     if (!keepMsg) gesInfo('aus');
   }
   $('gesBtn').onclick = () => (ges.on ? gesStop() : gesStart());
-  // Standard-Gesten (Fingerzahl) ein/aus, wird gemerkt
-  try { if (localStorage.getItem(STORE + '.gesFingers') === '0') $('gesFingers').checked = false; } catch (e) {}
-  $('gesFingers').onchange = () => {
-    try { localStorage.setItem(STORE + '.gesFingers', $('gesFingers').checked ? '1' : '0'); } catch (e) {}
-    chans.forEach(c => { if (c.el.assign) renderAssign(c); });
-  };
 
   // iOS/Safari: Audio wird erst nach einer echten Berührung freigegeben – mit der ersten Berührung entsperren
   const unlockAudio = () => {
