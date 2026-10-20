@@ -110,6 +110,36 @@
     <div class="hint" style="margin-top:8px">Jeder Klick auf <b>Neu erzeugen</b> ergibt eine neue Variation im gewählten Stil. Das Textfeld erkennt Stichworte (Stil, Zahl mit &bdquo;bpm&ldquo;, Tonart wie &bdquo;E-Moll&ldquo;, dunkel/hell, sanft/druckvoll); &bdquo;B&ldquo; bedeutet B-Dur/Moll wie im Deutschen (=&nbsp;H&#9837;).</div>
   </details>
 
+  <details class="bar" id="sfBox">
+    <summary style="cursor:pointer"><b>SoundFont-Arpeggio</b> <span class="small mut">&ndash; fünf Loops: dasselbe Arpeggio über fünf Akkorde, zum Begleiten</span></summary>
+    <div class="row" style="margin-top:12px">
+      <span class="small mut">SoundFont</span>
+      <button id="sfFileBtn">&#128193; SoundFont laden (.sf2)</button>
+      <span class="small" id="sfName">keine geladen</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut">Instrument <select id="sfPreset" style="min-width:220px" disabled><option>– erst SoundFont laden –</option></select></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut">Tempo <input id="sfBpm" type="number" min="40" max="220" step="1" style="width:72px" value="100"> BPM</label>
+      <label class="small mut">Länge <select id="sfBars"><option value="1">1 Takt</option><option value="2" selected>2 Takte</option></select></label>
+      <label class="small mut">Muster <select id="sfPattern"><option value="up">aufwärts</option><option value="down">abwärts</option><option value="updown" selected>auf und ab</option></select></label>
+      <label class="small mut">Notenwert <select id="sfRate"><option value="2">Achtel</option><option value="4" selected>Sechzehntel</option></select></label>
+      <label class="small mut">Oktaven <select id="sfOct"><option>1</option><option selected>2</option><option>3</option></select></label>
+      <label class="small mut">Lage <select id="sfReg"><option value="36">tief</option><option value="48" selected>mittel</option><option value="60">hoch</option></select></label>
+    </div>
+    <div class="row" style="margin-top:12px"><b class="small">Akkorde</b>
+      <span class="small mut">vorbelegen aus Tonart</span> <select id="sfKey"></select> <select id="sfKeyMode"><option value="major">Dur</option><option value="minor">Moll</option></select>
+      <button id="sfFill">Vorbelegen</button>
+    </div>
+    <div class="row" id="sfChords" style="margin-top:8px;gap:8px 16px"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="big start" id="sfGenBtn" disabled>&#127929; 5 Arpeggio-Loops erzeugen</button>
+      <span class="small mut" id="sfInfo"></span>
+    </div>
+    <div class="hint" style="margin-top:8px">Die SoundFont bleibt in diesem Browser gespeichert, du musst sie nur einmal laden. Alle fünf Loops nutzen dasselbe Instrument und Muster, Kanal 1–5 bekommt jeweils den eingestellten Akkord. Mit den Kanal-Tasten (1–5 oder angelernte Tasten), SWs oder MIDI schaltest du dann zwischen den Akkorden um.</div>
+  </details>
+
   <div id="status" class="small mut" style="margin:-4px 0 12px"></div>
 
   <div class="grid" id="channels"></div>
@@ -1818,6 +1848,229 @@ const GEN = (() => {
   };
   $('exportBtn').onclick = exportFiles;
   $('genText').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
+
+  // ---------- SoundFont-Arpeggio (SpessaSynth, Apache-2.0, wird erst bei Bedarf geladen) ----------
+  const SF_LIB = 'https://cdn.jsdelivr.net/npm/spessasynth_core@4.3.22/+esm';   // jsDelivr löst die Abhängigkeit (stb-vorbis) mit auf
+  const SF_DB = 'swlooper-soundfont', SF_ST = 'sf';
+  const SF_SET = STORE + '.sf';
+  let sfLibMod = null, sfBank = null, sfFileName = '', sfBusy = false;
+  const sfInfo = (m, err) => { $('sfInfo').textContent = m || ''; $('sfInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  const NOTE_DE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
+  const sfChords = [{ pc: 0, m: 'major' }, { pc: 5, m: 'major' }, { pc: 7, m: 'major' }, { pc: 9, m: 'minor' }, { pc: 2, m: 'minor' }];
+  const chordName = c => NOTE_DE[c.pc] + (c.m === 'minor' ? 'm' : '');
+
+  function sfDb(mode, fn) {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(SF_DB, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(SF_ST);
+      r.onerror = () => rej(r.error);
+      r.onsuccess = () => {
+        const db = r.result, tx = db.transaction(SF_ST, mode), req = fn(tx.objectStore(SF_ST));
+        tx.oncomplete = () => { db.close(); res(req && req.result); };
+        tx.onerror = tx.onabort = () => { db.close(); rej(tx.error); };
+      };
+    });
+  }
+  async function sfLib() {
+    if (!sfLibMod) sfLibMod = await import(SF_LIB);
+    return sfLibMod;
+  }
+
+  // Einstellungen merken (ohne SoundFont-Daten)
+  function sfSave() {
+    try {
+      localStorage.setItem(SF_SET, JSON.stringify({
+        preset: $('sfPreset').value, bpm: +$('sfBpm').value, bars: $('sfBars').value, pattern: $('sfPattern').value,
+        rate: $('sfRate').value, oct: $('sfOct').value, reg: $('sfReg').value, key: $('sfKey').value, keyMode: $('sfKeyMode').value,
+        chords: sfChords
+      }));
+    } catch (e) {}
+  }
+  function sfLoadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SF_SET) || 'null');
+      if (!s) return null;
+      ['sfBpm', 'sfBars', 'sfPattern', 'sfRate', 'sfOct', 'sfReg', 'sfKey', 'sfKeyMode'].forEach(id => {
+        const k = { sfBpm: 'bpm', sfBars: 'bars', sfPattern: 'pattern', sfRate: 'rate', sfOct: 'oct', sfReg: 'reg', sfKey: 'key', sfKeyMode: 'keyMode' }[id];
+        if (s[k] != null) $(id).value = s[k];
+      });
+      (s.chords || []).forEach((c, i) => { if (sfChords[i] && c && c.pc >= 0 && c.pc < 12) sfChords[i] = { pc: c.pc | 0, m: c.m === 'minor' ? 'minor' : 'major' }; });
+      return s;
+    } catch (e) { return null; }
+  }
+
+  function renderSfChords() {
+    const box = $('sfChords');
+    box.innerHTML = '';
+    sfChords.forEach((c, i) => {
+      const wrap = document.createElement('label');
+      wrap.className = 'small mut';
+      wrap.innerHTML = 'Kanal ' + (i + 1) + ' <select class="sfPc"></select> <select class="sfM"><option value="major">Dur</option><option value="minor">Moll</option></select>';
+      const pc = wrap.querySelector('.sfPc'), m = wrap.querySelector('.sfM');
+      NOTE_DE.forEach((n, k) => { const o = document.createElement('option'); o.value = k; o.textContent = n; pc.appendChild(o); });
+      pc.value = c.pc; m.value = c.m;
+      pc.onchange = m.onchange = () => { sfChords[i] = { pc: +pc.value, m: m.value }; sfSave(); };
+      box.appendChild(wrap);
+    });
+  }
+  NOTE_DE.forEach((n, k) => { const o = document.createElement('option'); o.value = k; o.textContent = n; $('sfKey').appendChild(o); });
+  // Fünf leitereigene Akkorde: Dur I IV V vi ii (C F G Am Dm), Moll i iv v VI VII (Am Dm Em F G)
+  $('sfFill').onclick = () => {
+    const k = +$('sfKey').value;
+    const set = $('sfKeyMode').value === 'major'
+      ? [[0, 'major'], [5, 'major'], [7, 'major'], [9, 'minor'], [2, 'minor']]
+      : [[0, 'minor'], [5, 'minor'], [7, 'minor'], [8, 'major'], [10, 'major']];
+    set.forEach(([iv, m], i) => { sfChords[i] = { pc: (k + iv) % 12, m }; });
+    renderSfChords(); sfSave();
+  };
+  ['sfBpm', 'sfBars', 'sfPattern', 'sfRate', 'sfOct', 'sfReg', 'sfKey', 'sfKeyMode', 'sfPreset'].forEach(id => $(id).addEventListener('change', sfSave));
+
+  async function sfUse(bytes, name) {
+    const lib = await sfLib();
+    const bank = lib.SoundBankLoader.fromArrayBuffer(bytes);
+    const list = bank.presets.filter(p => !p.isGMGSDrum && !p.isDrum)
+      .sort((a, b) => a.bankMSB - b.bankMSB || a.program - b.program || a.bankLSB - b.bankLSB);
+    if (!list.length) throw new Error('keine Instrumente gefunden');
+    sfBank = bank; sfFileName = name;
+    const sel = $('sfPreset'), want = (sfLoadSettings() || {}).preset;
+    sel.innerHTML = '';
+    list.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.bankMSB + ':' + p.bankLSB + ':' + p.program;
+      o.textContent = (p.bankMSB || p.bankLSB ? p.bankMSB + '/' : '') + (p.program + 1) + ' ' + p.name.trim();
+      sel.appendChild(o);
+    });
+    if (want && [...sel.options].some(o => o.value === want)) sel.value = want;
+    sel.disabled = false; $('sfGenBtn').disabled = false;
+    $('sfName').textContent = name + ' (' + (bytes.byteLength / 1048576).toFixed(1) + ' MB, ' + list.length + ' Instrumente)';
+  }
+
+  async function sfLoadFile(file) {
+    if (sfBusy) return;
+    sfBusy = true;
+    try {
+      sfInfo('Lade SoundFont …');
+      const bytes = await file.arrayBuffer();
+      await sfUse(bytes.slice(0), file.name);
+      try { await sfDb('readwrite', s => s.put({ name: file.name, bytes }, 'main')); sfInfo('SoundFont geladen und gespeichert.'); }
+      catch (e) { sfInfo('SoundFont geladen, aber nicht dauerhaft gespeichert (Browser-Speicher voll oder gesperrt).', true); }
+    } catch (e) {
+      sfInfo('SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e) + '. Ist das eine .sf2-Datei, und besteht eine Internetverbindung?', true);
+    }
+    sfBusy = false;
+  }
+  $('sfFileBtn').onclick = () => {
+    const fi = document.createElement('input');
+    fi.type = 'file';   // ohne accept (iOS graut sonst Dateien aus)
+    fi.onchange = () => { if (fi.files[0]) sfLoadFile(fi.files[0]); };
+    fi.click();
+  };
+
+  // Gespeicherte SoundFont erst laden, wenn der Bereich geöffnet wird (spart Speicher und Ladezeit)
+  let sfRestored = false;
+  async function sfRestore() {
+    if (sfRestored || sfBank) return;
+    sfRestored = true;
+    try {
+      const rec = await sfDb('readonly', s => s.get('main'));
+      if (!rec || !rec.bytes) return;
+      sfInfo('Lade gespeicherte SoundFont …');
+      await sfUse(rec.bytes, rec.name || 'SoundFont');
+      sfInfo('');
+    } catch (e) { sfInfo('Gespeicherte SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e), true); }
+  }
+  $('sfBox').addEventListener('toggle', () => { if ($('sfBox').open) { sfRestore(); try { localStorage.setItem(SF_SET + '.open', '1'); } catch (e) {} } else { try { localStorage.removeItem(SF_SET + '.open'); } catch (e) {} } });
+
+  // Arpeggio-Töne eines Akkords: Grundton, Terz, Quinte über n Oktaven + oberster Grundton
+  function arpNotes(ch, reg, octs, pattern) {
+    const root = reg + ((ch.pc + 6) % 12) - 6;           // Grundton nah an der gewählten Lage
+    const tri = [0, ch.m === 'minor' ? 3 : 4, 7];
+    const up = [];
+    for (let o = 0; o < octs; o++) tri.forEach(t => up.push(root + 12 * o + t));
+    up.push(root + 12 * octs);
+    if (pattern === 'down') return up.slice().reverse();
+    if (pattern === 'updown') return up.concat(up.slice(1, -1).reverse());
+    return up;
+  }
+
+  async function sfRenderLoop(lib, patch, ch, o, sr) {
+    const synth = new lib.SpessaSynthProcessor(sr, { eventsEnabled: false });
+    synth.soundBankManager.addSoundBank(sfBank, 'main');
+    await synth.processorInitialized;
+    synth.controllerChange(0, 0, patch.msb);
+    synth.controllerChange(0, 32, patch.lsb);
+    synth.programChange(0, patch.program);
+    const loopLen = Math.round(o.bars * 4 * 60 / o.bpm * sr);
+    const steps = o.bars * 4 * o.rate, stepLen = loopLen / steps;
+    const notes = arpNotes(ch, o.reg, o.oct, o.pattern);
+    // Zwei Durchläufe rendern und den zweiten nehmen: dann ist das Ausklingen des Vorgängers schon drin (nahtloser Loop)
+    const ev = [];
+    for (let k = 0; k < 2 * steps; k++) {
+      // Jeder Loop-Durchlauf beginnt wieder auf dem Grundton, damit beide Durchläufe gleich sind
+      const t = Math.round(k * stepLen), n = notes[(k % steps) % notes.length];
+      const accent = k % (o.rate * 4) === 0 ? 100 : (k % o.rate === 0 ? 86 : 74);
+      ev.push({ t, on: true, n, v: accent });
+      ev.push({ t: Math.round(t + stepLen * 0.92), on: false, n });
+    }
+    ev.sort((a, b) => a.t - b.t || (a.on ? 1 : -1));
+    const total = 2 * loopLen, L = new Float32Array(total), R = new Float32Array(total);
+    let pos = 0, e = 0, blocks = 0;
+    while (pos < total) {
+      while (e < ev.length && ev[e].t <= pos) {
+        const x = ev[e++];
+        if (x.on) synth.noteOn(0, x.n, x.v); else synth.noteOff(0, x.n);
+      }
+      const next = e < ev.length ? ev[e].t : total;
+      const n = Math.max(1, Math.min(128, next - pos, total - pos));
+      synth.process(L, R, pos, n);
+      pos += n;
+      if (++blocks % 2000 === 0) await new Promise(r => setTimeout(r, 0));   // Oberfläche bleibt bedienbar
+    }
+    // Kein destroySynthProcessor(): das würde die gemeinsam genutzte SoundFont mit freigeben
+    synth.stopAllChannels(true);
+    return { L: L.slice(loopLen), R: R.slice(loopLen) };
+  }
+
+  async function sfGenerate() {
+    if (sfBusy || !sfBank) return;
+    sfBusy = true; $('sfGenBtn').disabled = true;
+    try {
+      ensureAudio();
+      await ctx.resume();
+      stop();
+      const lib = await sfLib();
+      const bpm = Math.max(40, Math.min(220, +$('sfBpm').value || 100));
+      $('sfBpm').value = bpm;
+      const [msb, lsb, program] = $('sfPreset').value.split(':').map(Number);
+      const o = { bpm, bars: +$('sfBars').value, rate: +$('sfRate').value, oct: +$('sfOct').value, reg: +$('sfReg').value, pattern: $('sfPattern').value };
+      const sr = ctx.sampleRate, out = [];
+      for (let i = 0; i < 5; i++) {
+        sfInfo('Erzeuge Loop ' + (i + 1) + ' von 5 (' + chordName(sfChords[i]) + ') …');
+        out.push(await sfRenderLoop(lib, { msb, lsb, program }, sfChords[i], o, sr));
+      }
+      // Gemeinsame Lautstärke: lautester Loop auf -1 dBFS, Verhältnis zwischen den Loops bleibt gleich
+      let peak = 0;
+      out.forEach(x => { for (let k = 0; k < x.L.length; k++) peak = Math.max(peak, Math.abs(x.L[k]), Math.abs(x.R[k])); });
+      if (peak < 1e-5) throw new Error('Das Instrument hat keinen Ton erzeugt. Bitte ein anderes wählen.');
+      const g = 0.891 / peak;
+      const inst = $('sfPreset').selectedOptions[0].textContent.replace(/^[\d/]+\s*/, '').replace(/[^A-Za-z0-9]+/g, '');
+      for (let i = 0; i < 5; i++) {
+        const x = out[i];
+        for (let k = 0; k < x.L.length; k++) { x.L[k] *= g; x.R[k] *= g; }
+        await setSample(chans[i], GEN.encodeWav(x.L, x.R, sr), (i + 1) + '_Arp_' + chordName(sfChords[i]) + '_' + inst + '_' + bpm + 'bpm.wav', bpm);
+      }
+      setProjBpm(bpm);
+      sfSave();
+      sfInfo('Fertig: ' + sfChords.map(chordName).join(' · ') + ', ' + bpm + ' BPM. Jetzt Start drücken oder Kanal-Tasten benutzen.');
+    } catch (e) {
+      sfInfo('Erzeugen fehlgeschlagen: ' + ((e && e.message) || e), true);
+    }
+    $('sfGenBtn').disabled = !sfBank; sfBusy = false;
+  }
+  $('sfGenBtn').onclick = sfGenerate;
+  sfLoadSettings();
+  renderSfChords();
+  try { if (localStorage.getItem(SF_SET + '.open') === '1') $('sfBox').open = true; } catch (e) {}
 
   // ---------- Projekt-Tempo ----------
   let projBpm = null;
