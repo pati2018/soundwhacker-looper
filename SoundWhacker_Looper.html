@@ -145,7 +145,7 @@
     <summary style="cursor:pointer"><b>Kamera-Steuerung</b> <span class="small mut">&ndash; Finger, Kopf, Gesicht oder Arme schalten Kanal 1 bis 5; dazu Hintergrund und Video-Aufnahme</span></summary>
     <div class="row" style="margin-top:12px">
       <button class="big" id="gesBtn">&#128247; Kamera starten</button>
-      <label class="small mut">Erkennung <select id="gesMode"><option value="hands">Hände</option><option value="body">Kopf, Gesicht &amp; Arme</option></select></label>
+      <label class="small mut">Erkennung <select id="gesMode"><option value="hands">Hände</option><option value="body">Kopf, Gesicht &amp; Arme → Kanäle</option><option value="melody">Melodie: Kopf, Mund &amp; Arme spielen Töne</option></select></label>
       <span class="small mut" id="gesInfo">aus</span>
     </div>
     <div class="row" style="margin-top:10px">
@@ -173,6 +173,25 @@
       <canvas id="gesCv" width="320" height="240" style="width:480px;max-width:100%;border-radius:10px;border:1px solid var(--line);background:var(--card2)" hidden></canvas>
       <div class="hint" id="handPanel" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine oder beide Hände gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. <b>Beide Hände</b> sind gleichberechtigt: jede schaltet ihren eigenen Kanal, so hörst du bis zu zwei Kanäle gleichzeitig (Punkte im Bild: blau = linke, grün = rechte Hand). Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stört eine Fingerzahl, nimm in der Zeile das Häkchen bei <b>n Finger</b> weg – dann löst sie nichts mehr aus. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
     </div>
+    <div id="profRow" class="row" hidden style="margin-top:12px">
+      <label class="small mut">Profil <select id="bodyProf" style="min-width:150px"><option value="">– Profil wählen –</option></select></label>
+      <button id="bodyProfLoad">Laden</button><button id="bodyProfSave">Speichern …</button><button id="bodyProfDel">Löschen</button>
+      <span class="small mut">speichert Ruhe-Position, Auslöser und Melodie-Einstellungen pro Kind</span>
+    </div>
+    <div id="melPanel" hidden style="margin-top:12px">
+      <div class="row">
+        <label class="small mut">Instrument <select id="melPreset" style="min-width:200px" disabled><option>– erst SoundFont laden –</option></select></label>
+        <label class="small mut">Tonart <select id="melKey"></select></label>
+        <label class="small mut">Skala <select id="melScale"></select></label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="small mut">Lautstärke <input type="range" id="melVol" min="0" max="100" value="80" style="width:120px"></label>
+        <label class="small"><input type="checkbox" id="melQuant"> im Takt (Achtel, wenn Loops laufen)</label>
+        <span class="small mut" id="melInfo"></span>
+      </div>
+      <div id="melCtrl" style="display:grid;grid-template-columns:auto minmax(170px,auto) auto auto auto minmax(140px,1fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
+      <div class="hint" style="margin-top:8px">Jede Stellung ist ein Ton der Skala: Bewegt sich das Kind in eine neue Stellung, erklingt deren Ton. Kopf drehen: links tief, rechts hoch. Kopf, Arme: unten tief, oben hoch. Mund: zu tief, weit offen hoch. Mit <b>Bereich anlernen</b> bewegt das Kind Kopf, Mund oder Arm einmal so weit es kann (4 Sekunden) – die Töne werden dann genau auf diesen Bereich verteilt, auch wenn er klein ist. <b>Töne</b> = wie viele Stufen der Skala, <b>Lage</b> = tiefster Ton. Die SoundFont wird im Bereich „SoundFont-Arpeggio“ geladen, der Hall-Regler dort gilt auch hier. Die Töne werden nach jeder Änderung von Instrument, Tonart oder Skala kurz vorbereitet.</div>
+    </div>
     <div id="bodyPanel" hidden style="margin-top:12px">
       <div class="row">
         <button id="bodyCalib">&#127919; Ruhe-Position anlernen</button>
@@ -181,9 +200,6 @@
       <div class="row" style="margin-top:8px">
         <label class="small"><input type="checkbox" id="bodyMulti"> mehrere Auslöser gleichzeitig</label>
         <label class="small mut">Haltezeit <input type="range" id="bodyHold" min="0" max="1500" step="50" value="400" style="width:140px"> <span id="bodyHoldVal" style="display:inline-block;min-width:4em">400 ms</span></label>
-        <span style="flex:1"></span>
-        <label class="small mut">Profil <select id="bodyProf" style="min-width:150px"><option value="">– Profil wählen –</option></select></label>
-        <button id="bodyProfLoad">Laden</button><button id="bodyProfSave">Speichern …</button><button id="bodyProfDel">Löschen</button>
       </div>
       <div id="bodyTrig" style="display:grid;grid-template-columns:minmax(150px,auto) auto minmax(110px,1fr) minmax(120px,2fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
       <div class="hint" style="margin-top:8px">Das Kind sitzt entspannt vor der Kamera, dann <b>Ruhe-Position anlernen</b>. Jeder Auslöser misst ab dieser Haltung. Ordne jedem Auslöser einen Kanal zu (oder „–“ für aus). Der Regler <b>Schwelle</b> legt fest, wie deutlich die Bewegung sein muss: weiter links = schon kleine Bewegungen lösen aus. Der Balken zeigt live den aktuellen Wert, der Strich die Schwelle. Normalerweise zählt nur ein Auslöser (der deutlichste). Mit <b>mehrere Auslöser gleichzeitig</b> wirkt jeder Auslöser für sich, z.&nbsp;B. Kopf links (Kanal 1) und Mund auf (Kanal 2) zusammen. Ein Kanal klingt, solange seine Bewegung gehalten wird. Die <b>Haltezeit</b> verhindert, dass kurze, unwillkürliche Bewegungen etwas auslösen. Für die Arme muss der Oberkörper mit Schultern und Händen im Bild sein. „Links“ und „rechts“ sind aus Sicht des Kindes gemeint.</div>
@@ -1909,8 +1925,8 @@ const GEN = (() => {
     if (recState.rec) {   // roter Punkt in der Vorschau (nur Anzeige, wird mit aufgenommen – bewusst klein)
       g.fillStyle = '#ff4d4d'; g.beginPath(); g.arc(W - 14 * u, 14 * u, 5 * u, 0, 7); g.fill();
     }
-    if (!$('gesOverlay').checked && !ges.learn && !body.calib) return;
-    if (ges.mode === 'body') { bodyDraw(g, W, H, u); return; }
+    if (!$('gesOverlay').checked && !ges.learn && !body.calib && !melCal) return;
+    if (ges.mode !== 'hands') { bodyDraw(g, W, H, u); return; }
     g.save(); g.translate(W, 0); g.scale(-1, 1);
     ges.slots.forEach(S => {
       if (!S.hand) return;
@@ -2038,15 +2054,18 @@ const GEN = (() => {
   }
   const bodyTh = t => body.cfg.trig[t.id].th / 100 * t.max;
 
-  function bodyStep(v, asp) {
-    const now = performance.now();
+  function bodyDetect(v, asp, now) {
     let fr = null, pr = null;
     try { if (body.face) fr = body.face.detectForVideo(v, now); } catch (e) {}
     try { if (body.pose) pr = body.pose.detectForVideo(v, now + 0.001); } catch (e) {}
     body.faceLm = fr && fr.faceLandmarks && fr.faceLandmarks[0] || null;
     const shapes = fr && fr.faceBlendshapes && fr.faceBlendshapes[0] ? fr.faceBlendshapes[0].categories : null;
     body.poseLm = pr && pr.landmarks && pr.landmarks[0] || null;
-    const r = body.raw = bodyMeasure(body.faceLm, body.faceLm ? shapes : null, body.poseLm, asp);
+    return (body.raw = bodyMeasure(body.faceLm, body.faceLm ? shapes : null, body.poseLm, asp));
+  }
+  function bodyStep(v, asp) {
+    const now = performance.now();
+    const r = bodyDetect(v, asp, now);
 
     if (body.calib) {   // Ruhe-Position: kurz warten, dann 20 Bilder mitteln
       const C = body.calib;
@@ -2135,7 +2154,8 @@ const GEN = (() => {
     g.fillStyle = 'rgba(5,8,14,.65)'; g.fillRect(0, 0, W, 34 * u);
     g.font = '600 ' + Math.round(15 * u) + 'px Segoe UI, Arial, sans-serif';
     let t, col = '#e8edf6';
-    if (body.calib) { t = body.calib.msg; col = '#ffcc4d'; }
+    if (ges.mode === 'melody') { t = melHeader(); col = melCal ? '#ffcc4d' : '#4dff87'; }
+    else if (body.calib) { t = body.calib.msg; col = '#ffcc4d'; }
     else if (body.cfg.multi && body.held.size) {
       t = BODY_TRIG.filter(x => body.ms[x.id] && body.ms[x.id].on).map(x => (body.cfg.trig[x.id].ch + 1) + ' ' + x.label).join(' + '); col = '#4dff87';
     }
@@ -2212,7 +2232,7 @@ const GEN = (() => {
     if (!name) return;
     const p = bodyProfiles();
     if (p[name] && !(await ask('Profil "' + name + '" überschreiben?'))) return;
-    p[name] = JSON.parse(JSON.stringify(body.cfg));
+    p[name] = JSON.parse(JSON.stringify(Object.assign({}, body.cfg, { mel })));
     try { localStorage.setItem(BODY_PROF, JSON.stringify(p)); } catch (e) { gesInfo('Profil konnte nicht gespeichert werden.', true); return; }
     bodyProfList(name); gesInfo('Profil gespeichert: ' + name);
   };
@@ -2221,6 +2241,7 @@ const GEN = (() => {
     if (!name || !p[name]) return;
     bodyReleaseAll();
     body.cfg = bodyCfgClean(p[name]); bodySave(); bodyUi();
+    if (p[name].mel) { mel = melClean(p[name].mel); melSave(); MEL_CTRL.forEach(m => { melSt[m.id].idx = -1; }); melUi(); if (ges.mode === 'melody') melPrepare(); }
     gesInfo('Profil geladen: ' + name);
   };
   $('bodyProfDel').onclick = async () => {
@@ -2233,20 +2254,253 @@ const GEN = (() => {
   bodyProfList(); bodyUi();
 
   // Modus-Umschaltung Hände / Kopf, Gesicht & Arme
+  // ---------- Modus „Melodie“: Kopf, Mund und Arme spielen Töne einer Skala (Instrument aus der SoundFont) ----------
+  const MEL_SCALES = {
+    dur: { label: 'Dur-Tonleiter', st: [0, 2, 4, 5, 7, 9, 11] },
+    moll: { label: 'Moll-Tonleiter', st: [0, 2, 3, 5, 7, 8, 10] },
+    durpenta: { label: 'Dur-Pentatonik', st: [0, 2, 4, 7, 9] },
+    mollpenta: { label: 'Moll-Pentatonik', st: [0, 3, 5, 7, 10] },
+    blues: { label: 'Blues', st: [0, 3, 5, 6, 7, 10] },
+    arabisch: { label: 'Arabisch (Hijaz)', st: [0, 1, 4, 5, 7, 8, 10] }
+  };
+  const MEL_NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
+  // raw(): aus den gemessenen Werten eine Größe, die „tief → hoch“ wächst
+  const MEL_CTRL = [
+    { id: 'yaw', label: 'Kopf drehen (links tief, rechts hoch)', raw: r => r.yaw == null ? null : -r.yaw, def: { on: true, oct: 4, n: 8, min: -0.12, max: 0.12 } },
+    { id: 'pitch', label: 'Kopf runter / hoch', raw: r => r.pitch == null ? null : -r.pitch, def: { on: true, oct: 4, n: 6, min: -0.75, max: -0.4 } },
+    { id: 'mund', label: 'Mund zu / auf', raw: r => r.jaw == null ? null : r.jaw, def: { on: true, oct: 3, n: 5, min: 0.03, max: 0.6 } },
+    { id: 'armL', label: 'Linker Arm senken / heben', raw: r => r.armLU == null ? null : r.armLU, def: { on: true, oct: 5, n: 8, min: -1.2, max: 0.8 } },
+    { id: 'armR', label: 'Rechter Arm senken / heben', raw: r => r.armRU == null ? null : r.armRU, def: { on: true, oct: 5, n: 8, min: -1.2, max: 0.8 } }
+  ];
+  const MEL_KEY = STORE + '.mel';
+  function melClean(c) {
+    const o = { preset: c && typeof c.preset === 'string' ? c.preset : '0:0:0', key: c && c.key >= 0 && c.key < 12 ? c.key | 0 : 9,
+      scale: c && MEL_SCALES[c.scale] ? c.scale : 'mollpenta', vol: c && Number.isFinite(c.vol) ? c.vol : 80, quant: !!(c && c.quant), ctrl: {} };
+    MEL_CTRL.forEach(m => {
+      const s = (c && c.ctrl && c.ctrl[m.id]) || {}, d = m.def;
+      o.ctrl[m.id] = { on: s.on == null ? d.on : !!s.on, oct: [2, 3, 4, 5, 6].includes(s.oct) ? s.oct : d.oct,
+        n: Number.isInteger(s.n) && s.n >= 2 && s.n <= 15 ? s.n : d.n,
+        min: Number.isFinite(s.min) ? s.min : d.min, max: Number.isFinite(s.max) && s.max > (Number.isFinite(s.min) ? s.min : d.min) ? s.max : d.max };
+    });
+    return o;
+  }
+  let mel = melClean(null);
+  try { const c = JSON.parse(localStorage.getItem(MEL_KEY) || 'null'); if (c) mel = melClean(c); } catch (e) {}
+  const melSave = () => { try { localStorage.setItem(MEL_KEY, JSON.stringify(mel)); } catch (e) {} };
+  const melInfo = (m, err) => { $('melInfo').textContent = m || ''; $('melInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  const melSt = {};   // Laufzeit je Steuerung: idx, cand, k, t, note, voice
+  MEL_CTRL.forEach(m => { melSt[m.id] = { idx: -1, cand: -1, k: 0, t: 0, note: null, voice: null }; });
+  let melCal = null, melOut = null;
+  const melCache = new Map();   // "preset|hall|midi" -> AudioBuffer
+  let melBusy = false, melAgain = false;
+
+  function melMidi(m, k) {
+    const st = MEL_SCALES[mel.scale].st, c = mel.ctrl[m.id];
+    return 12 * (c.oct + 1) + mel.key + 12 * Math.floor(k / st.length) + st[k % st.length];
+  }
+  const melName = midi => MEL_NOTE[midi % 12] + (Math.floor(midi / 12) - 1);
+  const melCacheKey = midi => mel.preset + '|' + $('sfRev').value + '|' + midi;
+  function melNeeded() {
+    const set = new Set();
+    MEL_CTRL.forEach(m => { if (mel.ctrl[m.id].on) for (let k = 0; k < mel.ctrl[m.id].n; k++) set.add(melMidi(m, k)); });
+    return [...set];
+  }
+
+  // Einzelne Töne einmal mit dem Instrument rendern (danach Abspielen ohne Verzögerung)
+  async function melPrepare() {
+    if (melBusy) { melAgain = true; return; }
+    if (!sfBank) {
+      if (typeof sfRestore === 'function') await sfRestore();
+      if (!sfBank) { melInfo('Erst im Bereich „SoundFont-Arpeggio“ eine SoundFont laden.', true); return; }
+    }
+    melBusy = true;
+    try {
+      const lib = await sfLib();
+      ensureAudio();
+      const [msb, lsb, program] = (mel.preset || '0:0:0').split(':').map(Number);
+      const todo = melNeeded().filter(n => !melCache.has(melCacheKey(n)));
+      const sr = ctx.sampleRate, rev = +$('sfRev').value / 100;
+      for (let i = 0; i < todo.length; i++) {
+        melInfo('Bereite Töne vor … ' + (i + 1) + ' / ' + todo.length);
+        const midi = todo[i];
+        const synth = new lib.SpessaSynthProcessor(sr, { eventsEnabled: false });
+        synth.soundBankManager.addSoundBank(sfBank, 'main');
+        await synth.processorInitialized;
+        synth.controllerChange(0, 0, msb); synth.controllerChange(0, 32, lsb); synth.programChange(0, program);
+        synth.controllerChange(0, 91, Math.round(rev * 127)); synth.controllerChange(0, 93, 0);
+        const len = Math.round(sr * 2.8), off = Math.round(sr * 1.6), L = new Float32Array(len), R = new Float32Array(len);
+        synth.noteOn(0, midi, 100);
+        for (let pos = 0; pos < len;) {
+          if (pos === off) synth.noteOff(0, midi);
+          const n = Math.min(128, len - pos, pos < off ? off - pos : len);
+          synth.process(L, R, pos, n); pos += n;
+        }
+        synth.stopAllChannels(true);
+        for (let k = 0; k < 256; k++) { const g = k / 256; L[len - 256 + k] *= 1 - g; R[len - 256 + k] *= 1 - g; }   // weiches Ende
+        let pk = 0; for (let k = 0; k < len; k++) pk = Math.max(pk, Math.abs(L[k]), Math.abs(R[k]));
+        if (pk > 1e-5) { const gn = 0.7 / pk; for (let k = 0; k < len; k++) { L[k] *= gn; R[k] *= gn; } }   // alle Töne gleich laut, gut hörbar neben den Loops
+        const b = ctx.createBuffer(2, len, sr); b.copyToChannel(L, 0); b.copyToChannel(R, 1);
+        melCache.set(melCacheKey(midi), b);
+        if (i % 3 === 2) await new Promise(r => setTimeout(r, 0));
+      }
+      melInfo(todo.length ? 'Töne bereit.' : '');
+    } catch (e) { melInfo('Töne konnten nicht vorbereitet werden: ' + ((e && e.message) || e), true); }
+    melBusy = false;
+    if (melAgain) { melAgain = false; melPrepare(); }
+  }
+
+  function melPlay(m, midi) {
+    const buf = melCache.get(melCacheKey(midi));
+    if (!buf) return;
+    ensureAudio();
+    if (!melOut) { melOut = ctx.createGain(); melOut.connect(master); }
+    melOut.gain.value = mel.vol / 100;
+    let when = ctx.currentTime;
+    if (mel.quant && playing && projBpm) {   // auf die nächste Achtel im Tempo der Loops
+      const step = 60 / projBpm / 2, t = Math.max(0, when - startTime);
+      when = startTime + Math.ceil(t / step - 1e-6) * step;
+    }
+    const S = melSt[m.id];
+    if (S.voice) { const v = S.voice; v.g.gain.setTargetAtTime(0, when, 0.08); try { v.src.stop(when + 0.6); } catch (e) {} }   // vorherigen Ton derselben Steuerung ausblenden
+    const src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = buf; src.connect(g); g.connect(melOut);
+    src.start(when);
+    S.voice = { src, g }; S.note = midi;
+    src.onended = () => { if (S.voice && S.voice.src === src) S.voice = null; };
+  }
+  function melStopAll() {
+    MEL_CTRL.forEach(m => { const S = melSt[m.id]; if (S.voice) { try { S.voice.g.gain.setTargetAtTime(0, ctx.currentTime, 0.05); S.voice.src.stop(ctx.currentTime + 0.3); } catch (e) {} S.voice = null; } S.idx = -1; S.note = null; });
+  }
+
+  // Pro Kamerabild: Stellung -> Stufe der Skala; neue Stufe (2 Bilder stabil) spielt ihren Ton
+  function melStep(r) {
+    const now = performance.now();
+    if (melCal) {
+      const m = MEL_CTRL.find(x => x.id === melCal.id), x = m.raw(r);
+      if (now < melCal.start) { melCal.msg = 'Gleich: ' + m.label.split(' (')[0] + ' – ' + Math.ceil((melCal.start - now) / 1000); return; }
+      if (x != null) { melCal.min = Math.min(melCal.min, x); melCal.max = Math.max(melCal.max, x); }
+      melCal.msg = 'Jetzt so weit wie möglich bewegen … ' + Math.ceil((melCal.end - now) / 1000);
+      if (now >= melCal.end) {
+        const c = mel.ctrl[m.id], span = melCal.max - melCal.min;
+        if (Number.isFinite(span) && span > 1e-3) {
+          c.min = melCal.min + span * 0.05; c.max = melCal.max - span * 0.05;   // Ränder etwas nach innen: Endstellungen sicher erreichbar
+          melInfo('Bereich für „' + m.label.split(' (')[0] + '“ gespeichert.');
+        } else melInfo('Keine Bewegung erkannt – bitte noch einmal.', true);
+        melCal = null; melSave(); melUi();
+      }
+      return;
+    }
+    MEL_CTRL.forEach(m => {
+      const c = mel.ctrl[m.id], S = melSt[m.id];
+      if (!c.on) return;
+      const x = m.raw(r);
+      if (x == null) return;
+      const t = Math.max(0, Math.min(1, (x - c.min) / (c.max - c.min)));
+      S.t = t;
+      const pos = t * c.n;
+      let nIdx = Math.min(c.n - 1, Math.floor(pos));
+      if (S.idx >= 0 && pos > S.idx - 0.2 && pos < S.idx + 1.2) nIdx = S.idx;   // kleine Zone um die Grenze: kein Flattern
+      if (nIdx === S.idx) { S.cand = -1; S.k = 0; return; }
+      if (nIdx === S.cand) S.k++; else { S.cand = nIdx; S.k = 1; }
+      if (S.k >= 2) {
+        const first = S.idx < 0;
+        S.idx = nIdx; S.cand = -1; S.k = 0;
+        const midi = melMidi(m, nIdx);
+        if (first) S.note = midi; else melPlay(m, midi);   // erste Erkennung nur merken, nicht spielen
+      }
+    });
+  }
+  function melHeader() {
+    if (melCal) return melCal.msg;
+    const parts = MEL_CTRL.filter(m => mel.ctrl[m.id].on && melSt[m.id].note != null).map(m => m.label.split(' ')[0] + (m.id === 'armL' ? ' L' : m.id === 'armR' ? ' R' : m.id === 'pitch' ? ' ↕' : '') + ' ' + melName(melSt[m.id].note));
+    return parts.length ? parts.join(' · ') : (body.faceLm || body.poseLm ? 'bereit' : 'kein Gesicht erkannt');
+  }
+
+  // Oberfläche
+  function melFillPresets() {
+    const src = $('sfPreset'), dst = $('melPreset');
+    if (!src || src.disabled) return;
+    dst.innerHTML = src.innerHTML; dst.disabled = false;
+    if ([...dst.options].some(o => o.value === mel.preset)) dst.value = mel.preset; else mel.preset = dst.value;
+  }
+  (function melBuildUi() {
+    MEL_NOTE.forEach((n, i) => { const o = document.createElement('option'); o.value = i; o.textContent = n; $('melKey').appendChild(o); });
+    Object.entries(MEL_SCALES).forEach(([id, s]) => { const o = document.createElement('option'); o.value = id; o.textContent = s.label; $('melScale').appendChild(o); });
+    const box = $('melCtrl');
+    box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><span></span><b class="small mut">aktuell</b>';
+    MEL_CTRL.forEach(m => {
+      box.insertAdjacentHTML('beforeend',
+        '<input type="checkbox" id="mcOn_' + m.id + '" title="ein/aus">' +
+        '<span id="mcL_' + m.id + '">' + m.label + '</span>' +
+        '<select id="mcO_' + m.id + '"><option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option></select>' +
+        '<select id="mcN_' + m.id + '">' + Array.from({ length: 14 }, (_, i) => '<option>' + (i + 2) + '</option>').join('') + '</select>' +
+        '<button id="mcC_' + m.id + '">Bereich anlernen</button>' +
+        '<span style="position:relative;height:18px;background:var(--card2);border:1px solid var(--line);border-radius:9px;overflow:hidden;display:block">' +
+        '<i id="mcM_' + m.id + '" style="position:absolute;top:0;bottom:0;width:4px;margin-left:-2px;left:0;background:var(--on)"></i>' +
+        '<b id="mcT_' + m.id + '" class="small" style="position:absolute;right:6px;top:0;line-height:18px;font-weight:600"></b></span>');
+      $('mcOn_' + m.id).onchange = () => { mel.ctrl[m.id].on = $('mcOn_' + m.id).checked; melSave(); melUi(); melPrepare(); };
+      $('mcO_' + m.id).onchange = () => { mel.ctrl[m.id].oct = +$('mcO_' + m.id).value; melSt[m.id].idx = -1; melSave(); melPrepare(); };
+      $('mcN_' + m.id).onchange = () => { mel.ctrl[m.id].n = +$('mcN_' + m.id).value; melSt[m.id].idx = -1; melSave(); melPrepare(); };
+      $('mcC_' + m.id).onclick = async () => {
+        if (melCal && melCal.id === m.id) { melCal = null; melUi(); return; }
+        if (!ges.on) { await gesStart(); if (!ges.on) return; }
+        const now = performance.now();
+        melCal = { id: m.id, start: now + 1500, end: now + 5500, min: Infinity, max: -Infinity, msg: '' };
+        melUi();
+      };
+    });
+    $('melKey').onchange = () => { mel.key = +$('melKey').value; MEL_CTRL.forEach(m => { melSt[m.id].idx = -1; }); melSave(); melPrepare(); };
+    $('melScale').onchange = () => { mel.scale = $('melScale').value; MEL_CTRL.forEach(m => { melSt[m.id].idx = -1; }); melSave(); melPrepare(); };
+    $('melPreset').onchange = () => { mel.preset = $('melPreset').value; melSave(); melPrepare(); };
+    $('melVol').oninput = () => { mel.vol = +$('melVol').value; if (melOut) melOut.gain.setTargetAtTime(mel.vol / 100, ctx.currentTime, 0.03); };
+    $('melVol').onchange = melSave;
+    $('melQuant').onchange = () => { mel.quant = $('melQuant').checked; melSave(); };
+  })();
+  function melUi() {
+    $('melKey').value = mel.key; $('melScale').value = mel.scale; $('melVol').value = mel.vol; $('melQuant').checked = mel.quant;
+    if (!$('melPreset').disabled && [...$('melPreset').options].some(o => o.value === mel.preset)) $('melPreset').value = mel.preset;
+    MEL_CTRL.forEach(m => {
+      const c = mel.ctrl[m.id];
+      $('mcOn_' + m.id).checked = c.on; $('mcO_' + m.id).value = c.oct; $('mcN_' + m.id).value = c.n;
+      $('mcL_' + m.id).style.opacity = c.on ? 1 : 0.5;
+      const b = $('mcC_' + m.id);
+      b.classList.toggle('learning', !!melCal && melCal.id === m.id);
+      b.textContent = melCal && melCal.id === m.id ? 'Abbrechen' : 'Bereich anlernen';
+    });
+  }
+  melUi();
+  setInterval(() => {   // Live-Anzeige der Stellung und des Tons
+    if (ges.mode !== 'melody' || !ges.on) return;
+    MEL_CTRL.forEach(m => {
+      const S = melSt[m.id];
+      $('mcM_' + m.id).style.left = (S.t * 100) + '%';
+      $('mcT_' + m.id).textContent = mel.ctrl[m.id].on && S.note != null ? melName(S.note) : '';
+    });
+  }, 100);
+  $('sfRev').addEventListener('change', () => { if (ges.mode === 'melody') melPrepare(); });
+
   function gesSetMode(m) {
-    ges.mode = m === 'body' ? 'body' : 'hands';
+    ges.mode = m === 'body' || m === 'melody' ? m : 'hands';
     $('gesMode').value = ges.mode;
     gesReleaseAll(); bodyReleaseAll(); body.cand = null; body.calib = null;
     if (ges.learn) { ges.learn = null; gesLearnUi(); }
     $('handPanel').hidden = ges.mode !== 'hands';
     $('bodyPanel').hidden = ges.mode !== 'body';
+    $('melPanel').hidden = ges.mode !== 'melody';
+    $('profRow').hidden = ges.mode === 'hands';
+    melStopAll(); melCal = null; melUi();
+    if (ges.mode === 'melody') { melFillPresets(); setTimeout(melPrepare, 0); }
     bodyCalibUi();
     try { localStorage.setItem(STORE + '.gesMode', ges.mode); } catch (e) {}
     if (ges.on) gesEnsureModels();
   }
   async function gesEnsureModels() {
     if (!ges.vision) return;
-    if (ges.mode === 'body') { await bodyEnsure(); return; }
+    if (ges.mode !== 'hands') {
+      await bodyEnsure();
+      if (ges.mode === 'melody' && (body.face || body.pose)) { gesInfo('läuft – Kopf, Mund und Arme spielen Töne'); melPrepare(); }
+      return;
+    }
     if (!ges.lm) {
       gesInfo('Handerkennung wird geladen …');
       const opts = d => ({ baseOptions: { modelAssetPath: MP_BASE + 'models/hand_landmarker.task', delegate: d }, runningMode: 'VIDEO', numHands: 2,
@@ -2261,11 +2515,12 @@ const GEN = (() => {
   function gesLoop() {
     if (!ges.on) return;
     const v = $('gesVideo');
-    if (v.readyState >= 2 && v.currentTime !== ges.lastVT && (ges.mode === 'body' ? (body.face || body.pose) : ges.lm)) {
+    if (v.readyState >= 2 && v.currentTime !== ges.lastVT && (ges.mode !== 'hands' ? (body.face || body.pose) : ges.lm)) {
       ges.lastVT = v.currentTime;
-      if (ges.mode === 'body') {
+      if (ges.mode !== 'hands') {
         if (BG.mode !== 'none' && BG.seg) { try { bgSegment(v); } catch (e) {} }
-        bodyStep(v, (v.videoWidth || 4) / (v.videoHeight || 3));
+        const asp = (v.videoWidth || 4) / (v.videoHeight || 3);
+        if (ges.mode === 'melody') melStep(bodyDetect(v, asp, performance.now())); else bodyStep(v, asp);
       } else {
       let lms = [], hd = [];
       try {
@@ -2332,6 +2587,7 @@ const GEN = (() => {
     if (recState.rec) recStop();
     gesReleaseAll();
     bodyReleaseAll(); body.cand = null; if (body.calib) { body.calib = null; bodyCalibUi(); }
+    melStopAll(); if (melCal) { melCal = null; melUi(); }
     if (ges.stream) { ges.stream.getTracks().forEach(t => t.stop()); ges.stream = null; }
     $('gesVideo').srcObject = null;
     $('gesCv').hidden = true; ges.slots.forEach(S => { S.hand = null; });
@@ -2339,7 +2595,7 @@ const GEN = (() => {
     if (!keepMsg) gesInfo('aus');
   }
   $('gesBtn').onclick = () => (ges.on ? gesStop() : gesStart());
-  try { if (localStorage.getItem(STORE + '.gesMode') === 'body') gesSetMode('body'); } catch (e) {}
+  try { const gm = localStorage.getItem(STORE + '.gesMode'); if (gm === 'body' || gm === 'melody') gesSetMode(gm); } catch (e) {}
 
   // ---------- Hintergrund wählen (Foto bleibt im Browser gespeichert) ----------
   async function bgLoadImage(blob, persist) {
@@ -2756,6 +3012,7 @@ const GEN = (() => {
     });
     if (want && [...sel.options].some(o => o.value === want)) sel.value = want;
     sel.disabled = false; $('sfGenBtn').disabled = false;
+    melFillPresets();
     $('sfName').textContent = name + ' (' + (bytes.byteLength / 1048576).toFixed(1) + ' MB, ' + list.length + ' Instrumente)';
   }
 
