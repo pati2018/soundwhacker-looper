@@ -119,6 +119,7 @@
     </div>
     <div class="row" style="margin-top:10px">
       <label class="small mut">Instrument <select id="sfPreset" style="min-width:220px" disabled><option>– erst SoundFont laden –</option></select></label>
+      <label class="small mut">Hall: trocken <input type="range" id="sfRev" min="0" max="100" value="30" style="width:140px"> viel <span id="sfRevVal" style="display:inline-block;min-width:3.2em">30 %</span></label>
     </div>
     <div class="row" style="margin-top:10px">
       <label class="small mut">Tempo <input id="sfBpm" type="number" min="40" max="220" step="1" style="width:72px" value="100"> BPM</label>
@@ -1880,7 +1881,7 @@ const GEN = (() => {
   function sfSave() {
     try {
       localStorage.setItem(SF_SET, JSON.stringify({
-        preset: $('sfPreset').value, bpm: +$('sfBpm').value, bars: $('sfBars').value, pattern: $('sfPattern').value,
+        preset: $('sfPreset').value, rev: +$('sfRev').value, bpm: +$('sfBpm').value, bars: $('sfBars').value, pattern: $('sfPattern').value,
         rate: $('sfRate').value, oct: $('sfOct').value, reg: $('sfReg').value, key: $('sfKey').value, keyMode: $('sfKeyMode').value,
         chords: sfChords
       }));
@@ -1894,6 +1895,8 @@ const GEN = (() => {
         const k = { sfBpm: 'bpm', sfBars: 'bars', sfPattern: 'pattern', sfRate: 'rate', sfOct: 'oct', sfReg: 'reg', sfKey: 'key', sfKeyMode: 'keyMode' }[id];
         if (s[k] != null) $(id).value = s[k];
       });
+      if (typeof s.rev === 'number') $('sfRev').value = s.rev;
+      $('sfRevVal').textContent = $('sfRev').value + ' %';
       (s.chords || []).forEach((c, i) => { if (sfChords[i] && c && c.pc >= 0 && c.pc < 12) sfChords[i] = { pc: c.pc | 0, m: c.m === 'minor' ? 'minor' : 'major' }; });
       return s;
     } catch (e) { return null; }
@@ -1923,7 +1926,8 @@ const GEN = (() => {
     set.forEach(([iv, m], i) => { sfChords[i] = { pc: (k + iv) % 12, m }; });
     renderSfChords(); sfSave();
   };
-  ['sfBpm', 'sfBars', 'sfPattern', 'sfRate', 'sfOct', 'sfReg', 'sfKey', 'sfKeyMode', 'sfPreset'].forEach(id => $(id).addEventListener('change', sfSave));
+  ['sfBpm', 'sfBars', 'sfPattern', 'sfRate', 'sfOct', 'sfReg', 'sfKey', 'sfKeyMode', 'sfPreset', 'sfRev'].forEach(id => $(id).addEventListener('change', sfSave));
+  $('sfRev').addEventListener('input', () => { $('sfRevVal').textContent = $('sfRev').value + ' %'; });
 
   async function sfUse(bytes, name) {
     const lib = await sfLib();
@@ -2000,6 +2004,8 @@ const GEN = (() => {
     synth.controllerChange(0, 0, patch.msb);
     synth.controllerChange(0, 32, patch.lsb);
     synth.programChange(0, patch.program);
+    synth.controllerChange(0, 91, Math.round(o.rev * 127));   // Hall-Anteil (Reverb Send)
+    synth.controllerChange(0, 93, 0);                         // kein Chorus
     const loopLen = Math.round(o.bars * 4 * 60 / o.bpm * sr);
     const steps = o.bars * 4 * o.rate, stepLen = loopLen / steps;
     const notes = arpNotes(ch, o.reg, o.oct, o.pattern);
@@ -2042,7 +2048,7 @@ const GEN = (() => {
       const bpm = Math.max(40, Math.min(220, +$('sfBpm').value || 100));
       $('sfBpm').value = bpm;
       const [msb, lsb, program] = $('sfPreset').value.split(':').map(Number);
-      const o = { bpm, bars: +$('sfBars').value, rate: +$('sfRate').value, oct: +$('sfOct').value, reg: +$('sfReg').value, pattern: $('sfPattern').value };
+      const o = { bpm, bars: +$('sfBars').value, rate: +$('sfRate').value, oct: +$('sfOct').value, reg: +$('sfReg').value, pattern: $('sfPattern').value, rev: +$('sfRev').value / 100 };
       const sr = ctx.sampleRate, out = [];
       for (let i = 0; i < 5; i++) {
         sfInfo('Erzeuge Loop ' + (i + 1) + ' von 5 (' + chordName(sfChords[i]) + ') …');
