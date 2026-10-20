@@ -142,14 +142,14 @@
   </details>
 
   <details class="bar" id="gesBox">
-    <summary style="cursor:pointer"><b>Gesten-Steuerung</b> <span class="small mut">&ndash; 1 bis 5 Finger in die Kamera zeigen schaltet Kanal 1 bis 5</span></summary>
+    <summary style="cursor:pointer"><b>Gesten-Steuerung</b> <span class="small mut">&ndash; 1 bis 5 Finger in die Kamera zeigen schaltet Kanal 1 bis 5, mit beiden Händen zwei Kanäle zugleich</span></summary>
     <div class="row" style="margin-top:12px">
       <button class="big" id="gesBtn">&#128247; Kamera starten</button>
       <span class="small mut" id="gesInfo">aus</span>
     </div>
     <div class="row" style="margin-top:10px;align-items:flex-start">
       <canvas id="gesCv" width="320" height="240" style="width:320px;max-width:100%;border-radius:10px;border:1px solid var(--line);background:var(--card2)" hidden></canvas>
-      <div class="hint" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine Hand (links oder rechts) gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stört eine Fingerzahl, nimm in der Zeile das Häkchen bei <b>n Finger</b> weg – dann löst sie nichts mehr aus. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
+      <div class="hint" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine oder beide Hände gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. <b>Beide Hände</b> sind gleichberechtigt: jede schaltet ihren eigenen Kanal, so hörst du bis zu zwei Kanäle gleichzeitig (Punkte im Bild: blau = linke, grün = rechte Hand). Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stört eine Fingerzahl, nimm in der Zeile das Häkchen bei <b>n Finger</b> weg – dann löst sie nichts mehr aus. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
     </div>
     <video id="gesVideo" playsinline muted style="display:none"></video>
   </details>
@@ -1713,7 +1713,9 @@ const GEN = (() => {
 
   // ---------- Gesten-Steuerung (Kamera, Google MediaPipe Hand Landmarker; Fingerzählung aus „handklang“) ----------
   const MP_BASE = 'https://pati2018.github.io/handklang/';
-  const ges = { on: false, lm: null, stream: null, lastVT: -1, cand: -2, k: 0, cur: -1, hand: null, how: '', learn: null };
+  // Zwei Hände, gleichberechtigt: jede Hand („Slot“) schaltet unabhängig einen Kanal
+  const ges = { on: false, lm: null, stream: null, lastVT: -1, learn: null,
+    slots: [{ name: 'Links', color: '#4ea3ff' }, { name: 'Rechts', color: '#4dff87' }].map(x => Object.assign(x, { hand: null, cand: 'x', k: 0, cur: -1, how: '' })) };
   const gesInfo = (m, err) => { $('gesInfo').textContent = m || ''; $('gesInfo').className = 'small ' + (err ? 'err' : 'mut'); };
   const gdist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   function countFingers(lm) {
@@ -1742,17 +1744,21 @@ const GEN = (() => {
     });
     return { idx: bd < GES_TH ? best : -1, d: bd };
   }
-  // Erkanntes Ziel übernehmen: alter Kanal aus, neuer an (Verhalten je Kanal wie beim SW). target = Kanal-Index oder -1
-  function gesApply(target) {
+  // Erkanntes Ziel einer Hand übernehmen: ihr alter Kanal aus (falls die andere Hand ihn nicht hält), neuer an.
+  // Verhalten je Kanal wie beim SW. target = Kanal-Index oder -1
+  function gesApply(slot, target) {
+    const S = ges.slots[slot], O = ges.slots[1 - slot];
     // Gleiches Ziel: nichts tun – außer der Kanal wurde inzwischen gestoppt (dann wieder einschalten wie eine Taste)
-    if (target === ges.cur && (target < 0 || chans[target].open || chans[target].mode === 'toggle')) return;
-    if (ges.cur >= 0 && chans[ges.cur].gesHeld) { chans[ges.cur].gesHeld = false; press(chans[ges.cur], false); }
-    ges.cur = target;
+    if (target === S.cur && (target < 0 || chans[target].open || chans[target].mode === 'toggle')) return;
+    const old = S.cur;
+    S.cur = target;
+    if (old >= 0 && old !== target && O.cur !== old) press(chans[old], false);
     if (target < 0) return;
+    if (O.cur === target && chans[target].open) return;      // hält die andere Hand schon
     if (!playing && chans.some(x => x.buffer)) start();
-    chans[target].gesHeld = true;
     press(chans[target], true);
   }
+  const gesReleaseAll = () => { gesApply(0, -1); gesApply(1, -1); };
 
   // Anlernen: kurz vorbereiten, dann 15 Bilder mit Hand mitteln
   function gesLearnStep(f) {
@@ -1770,7 +1776,7 @@ const GEN = (() => {
   async function gesLearnStart(i) {
     if (ges.learn) return;
     if (!ges.on) { await gesStart(); if (!ges.on) return; }
-    gesApply(-1);
+    gesReleaseAll();
     ges.learn = { idx: i, until: performance.now() + 2500, buf: [], msg: '' };
     gesLearnUi();
   }
@@ -1794,41 +1800,56 @@ const GEN = (() => {
     const cv = $('gesCv'), g = cv.getContext('2d'), v = $('gesVideo'), W = cv.width, H = cv.height;
     g.save(); g.translate(W, 0); g.scale(-1, 1);              // gespiegelt wie ein Spiegel
     if (v.readyState >= 2) g.drawImage(v, 0, 0, W, H);
-    if (ges.hand) {
-      g.fillStyle = ges.learn ? '#ffcc4d' : '#4dff87';
-      ges.hand.forEach(p => { g.beginPath(); g.arc(p.x * W, p.y * H, 3, 0, 7); g.fill(); });
-    }
+    ges.slots.forEach(S => {
+      if (!S.hand) return;
+      g.fillStyle = ges.learn ? '#ffcc4d' : S.color;
+      S.hand.forEach(p => { g.beginPath(); g.arc(p.x * W, p.y * H, 3, 0, 7); g.fill(); });
+    });
     g.restore();
     g.fillStyle = 'rgba(5,8,14,.65)'; g.fillRect(0, 0, W, 34);
-    g.fillStyle = ges.learn ? '#ffcc4d' : '#e8edf6'; g.font = '600 17px Segoe UI, Arial, sans-serif';
-    let t;
-    if (ges.learn) t = ges.learn.msg;
-    else if (ges.cur >= 0) t = 'Kanal ' + (ges.cur + 1) + (ges.how ? ' · ' + ges.how : '');
-    else t = ges.hand ? 'keine Geste · stumm' : 'keine Hand';
-    g.fillText(t, 10, 23);
+    g.font = '600 15px Segoe UI, Arial, sans-serif';
+    if (ges.learn) { g.fillStyle = '#ffcc4d'; g.fillText(ges.learn.msg, 10, 22); return; }
+    if (!ges.slots.some(S => S.hand)) { g.fillStyle = '#e8edf6'; g.fillText('keine Hand', 10, 22); return; }
+    let x = 10;
+    ges.slots.forEach(S => {
+      if (!S.hand) return;
+      const t = S.name + ': ' + (S.cur >= 0 ? 'Kanal ' + (S.cur + 1) : 'stumm') + '   ';
+      g.fillStyle = S.color; g.fillText(t, x, 22); x += g.measureText(t).width;
+    });
+  }
+  function gesTarget(hand, asp) {
+    const f = gesFeat(hand, asp), m = gesMatch(f);
+    if (m.idx >= 0) return { f, target: m.idx, how: 'eigene Geste' };
+    const n = countFingers(hand);
+    return { f, target: n >= 1 && n <= N && chans[n - 1].fingerOn ? n - 1 : -1, how: n + ' Finger' };
   }
   function gesLoop() {
     if (!ges.on) return;
     const v = $('gesVideo');
     if (ges.lm && v.readyState >= 2 && v.currentTime !== ges.lastVT) {
       ges.lastVT = v.currentTime;
-      let target = -1, f = null, how = '';
+      let lms = [], hd = [];
       try {
         const res = ges.lm.detectForVideo(v, performance.now());
-        ges.hand = (res.landmarks || [])[0] || null;
-      } catch (e) { ges.hand = null; }
-      if (ges.hand) {
-        f = gesFeat(ges.hand, (v.videoWidth || 4) / (v.videoHeight || 3));
-        const m = gesMatch(f);
-        if (m.idx >= 0) { target = m.idx; how = 'eigene Geste (' + Math.round(Math.max(0, 1 - m.d / GES_TH) * 100) + ' %)'; }
-        else { const n = countFingers(ges.hand); target = n >= 1 && n <= N && chans[n - 1].fingerOn ? n - 1 : -1; how = n + ' Finger'; }
-      }
-      if (ges.learn) gesLearnStep(f);
-      else {
-        // Erst übernehmen, wenn das Ziel 3 Bilder hintereinander gleich ist (keine Hand: 6 Bilder)
-        const key = ges.hand ? target : 'none';
-        if (key === ges.cand) ges.k++; else { ges.cand = key; ges.k = 1; }
-        if (ges.k >= (ges.hand ? 3 : 6)) { if (target !== ges.cur) ges.how = how; gesApply(target); }
+        lms = res.landmarks || []; hd = res.handedness || res.handednesses || [];
+      } catch (e) {}
+      // Hände den Slots zuordnen. MediaPipe geht von gespiegeltem Bild aus: „Right“ = deine linke Hand.
+      ges.slots.forEach(S => { S.hand = null; });
+      let idx = lms.map((lm, i) => ((hd[i] && hd[i][0] && hd[i][0].categoryName) === 'Right' ? 0 : 1));
+      if (lms.length === 2 && idx[0] === idx[1]) idx = lms[0][0].x > lms[1][0].x ? [0, 1] : [1, 0];   // beide gleich erkannt: nach Lage im Bild
+      lms.forEach((lm, i) => { ges.slots[idx[i]].hand = lm; });
+      const asp = (v.videoWidth || 4) / (v.videoHeight || 3);
+      if (ges.learn) {
+        const H = ges.slots.find(S => S.hand);
+        gesLearnStep(H ? gesFeat(H.hand, asp) : null);
+      } else {
+        ges.slots.forEach((S, si) => {
+          const r = S.hand ? gesTarget(S.hand, asp) : { target: -1, how: '' };
+          // Erst übernehmen, wenn das Ziel 3 Bilder hintereinander gleich ist (Hand weg: 6 Bilder)
+          const key = S.hand ? r.target : 'none';
+          if (key === S.cand) S.k++; else { S.cand = key; S.k = 1; }
+          if (S.k >= (S.hand ? 3 : 6)) { S.how = r.how; gesApply(si, r.target); }
+        });
       }
     }
     gesDraw();
@@ -1850,12 +1871,12 @@ const GEN = (() => {
         gesInfo('Handerkennung wird geladen (einmalig ca. 17 MB) …');
         const vision = await import(MP_BASE + 'vendor/mediapipe/vision_bundle.mjs');
         const fs = await vision.FilesetResolver.forVisionTasks(MP_BASE + 'vendor/mediapipe/wasm');
-        const opts = d => ({ baseOptions: { modelAssetPath: MP_BASE + 'models/hand_landmarker.task', delegate: d }, runningMode: 'VIDEO', numHands: 1,
+        const opts = d => ({ baseOptions: { modelAssetPath: MP_BASE + 'models/hand_landmarker.task', delegate: d }, runningMode: 'VIDEO', numHands: 2,
           minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
         try { ges.lm = await vision.HandLandmarker.createFromOptions(fs, opts('GPU')); }
         catch (e) { ges.lm = await vision.HandLandmarker.createFromOptions(fs, opts('CPU')); }
       }
-      ges.on = true; ges.cand = -2; ges.k = 0;
+      ges.on = true; ges.slots.forEach(S => { S.cand = 'x'; S.k = 0; });
       $('gesBtn').innerHTML = '&#9632; Kamera aus'; $('gesBtn').classList.add('learning');
       gesInfo('läuft – zeig 1 bis 5 Finger');
       requestAnimationFrame(gesLoop);
@@ -1869,10 +1890,10 @@ const GEN = (() => {
   function gesStop(keepMsg) {
     ges.on = false;
     if (ges.learn) { ges.learn = null; gesLearnUi(); }
-    gesApply(-1);
+    gesReleaseAll();
     if (ges.stream) { ges.stream.getTracks().forEach(t => t.stop()); ges.stream = null; }
     $('gesVideo').srcObject = null;
-    $('gesCv').hidden = true; ges.hand = null;
+    $('gesCv').hidden = true; ges.slots.forEach(S => { S.hand = null; });
     $('gesBtn').innerHTML = '&#128247; Kamera starten'; $('gesBtn').classList.remove('learning');
     if (!keepMsg) gesInfo('aus');
   }
