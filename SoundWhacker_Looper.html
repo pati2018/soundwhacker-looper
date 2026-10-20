@@ -1243,7 +1243,7 @@ const GEN = (() => {
     chans.forEach(stopSource);
     playing = false;
     previewAll = false;
-    chans.forEach(c => setOpen(c, false));
+    chans.forEach(c => { setOpen(c, false); if (c.holders) c.holders.clear(); });
     updateAllBtn();
     $('clock').textContent = 'gestoppt';
   }
@@ -1515,10 +1515,16 @@ const GEN = (() => {
   };
 
   // ---------- Eingaben (MIDI + Tastatur) ----------
-  function press(c, on) {
+  // src = wer drückt (Taste, MIDI, linke/rechte Hand, Kopf/Körper). Im Modus „gedrückt halten“ bleibt ein Kanal hörbar,
+  // solange irgendeine Quelle ihn hält – Tasten, MIDI und Gesten stören sich so nicht gegenseitig.
+  function press(c, on, src) {
     if (previewAll) return;
-    if (c.mode === 'hold') setOpen(c, on);
-    else if (on) setOpen(c, !c.open);
+    const h = c.holders || (c.holders = new Set());
+    src = src || 'x';
+    if (c.mode === 'hold') {
+      if (on) { h.add(src); if (!c.open) setOpen(c, true); }
+      else { h.delete(src); if (!h.size && c.open) setOpen(c, false); }
+    } else if (on) setOpen(c, !c.open);
   }
 
   function onMidi(e) {
@@ -1538,7 +1544,7 @@ const GEN = (() => {
       save();
       return;
     }
-    chans.forEach(c => { if (c.learn && c.learn.ch === ch && c.learn.note === d1) press(c, on); });
+    chans.forEach(c => { if (c.learn && c.learn.ch === ch && c.learn.note === d1) press(c, on, 'midi'); });
   }
 
   const logLines = [];
@@ -1760,9 +1766,9 @@ const GEN = (() => {
     return m && +m[1] <= N ? +m[1] - 1 : -1;
   };
   const isZeroKey = e => e.code === 'Digit0' || e.code === 'Numpad0';
-  const typingIn = t => t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' ||
+  const typingIn = t => t.tagName === 'TEXTAREA' ||
     (t.tagName === 'INPUT' && !['range', 'checkbox', 'button'].includes(t.type));
-  function releaseKeys() { chans.forEach(c => { if (c.keyHeld) { c.keyHeld = false; press(c, false); } }); }
+  function releaseKeys() { chans.forEach(c => { if (c.keyHeld) { c.keyHeld = false; press(c, false, 'key'); } }); }
   document.addEventListener('keydown', e => {
     if (!$('cutModal').hidden) { if (e.key === 'Escape') closeCut(); return; }
     if (!$('askModal').hidden) return;
@@ -1775,13 +1781,13 @@ const GEN = (() => {
     ensureAudio(); ctx.resume();
     if (!playing && chans.some(x => x.buffer)) start();   // wie „Vorhören“: Taste startet die Wiedergabe von selbst
     c.keyHeld = true;
-    press(c, true);
+    press(c, true, 'key');
   });
   document.addEventListener('keyup', e => {
     const i = keyChan(e);
     if (i < 0 || !chans[i].keyHeld) return;
     chans[i].keyHeld = false;
-    press(chans[i], false);
+    press(chans[i], false, 'key');
   });
   window.addEventListener('blur', releaseKeys);   // Fenster verliert den Fokus: keine hängenden Tasten
 
@@ -1826,11 +1832,11 @@ const GEN = (() => {
     if (target === S.cur && (target < 0 || chans[target].open || chans[target].mode === 'toggle')) return;
     const old = S.cur;
     S.cur = target;
-    if (old >= 0 && old !== target && O.cur !== old) press(chans[old], false);
+    if (old >= 0 && old !== target) press(chans[old], false, 'ges' + slot);
     if (target < 0) return;
-    if (O.cur === target && chans[target].open) return;      // hält die andere Hand schon
+    if (chans[target].mode === 'toggle' && O.cur === target && chans[target].open) return;   // Umschalten: nicht doppelt auslösen
     if (!playing && chans.some(x => x.buffer)) start();
-    press(chans[target], true);
+    press(chans[target], true, 'ges' + slot);
   }
   const gesReleaseAll = () => { gesApply(0, -1); gesApply(1, -1); };
 
@@ -2140,12 +2146,12 @@ const GEN = (() => {
     bodySyncHeld(new Set(BODY_TRIG.filter(t => body.ms[t.id] && body.ms[t.id].on).map(t => body.cfg.trig[t.id].ch).filter(ch => ch >= 0)));
   }
   function bodySyncHeld(want) {
-    body.held.forEach(ch => { if (!want.has(ch)) { body.held.delete(ch); press(chans[ch], false); } });
+    body.held.forEach(ch => { if (!want.has(ch)) { body.held.delete(ch); press(chans[ch], false, 'body'); } });
     want.forEach(ch => {
       // neu – oder nach „Stopp“ wieder einschalten wie eine gehaltene Taste
       if (!body.held.has(ch) || (!chans[ch].open && chans[ch].mode !== 'toggle')) {
         if (!playing && chans.some(x => x.buffer)) start();
-        press(chans[ch], true); body.held.add(ch);
+        press(chans[ch], true, 'body'); body.held.add(ch);
       }
     });
   }
@@ -2799,6 +2805,13 @@ const GEN = (() => {
 
   function gesLoop() {
     if (!ges.on) return;
+    try { gesTick(); }
+    catch (e) {   // nie stehen bleiben – Fehler einmal melden, dann weiterlaufen
+      if (!ges.loopErr) { ges.loopErr = true; console.error(e); gesInfo('Hinweis: kurzer Fehler in der Erkennung (' + ((e && e.message) || e) + ') – läuft weiter.', true); }
+    }
+    requestAnimationFrame(gesLoop);
+  }
+  function gesTick() {
     const v = $('gesVideo');
     if (v.readyState >= 2 && v.currentTime !== ges.lastVT && (ges.mode !== 'hands' ? (body.face || body.pose) : ges.lm)) {
       ges.lastVT = v.currentTime;
@@ -2836,7 +2849,6 @@ const GEN = (() => {
       }   // Ende Hände-Modus
     }
     gesDraw();
-    requestAnimationFrame(gesLoop);
   }
   async function gesStart() {
     ensureAudio(); ctx.resume();
