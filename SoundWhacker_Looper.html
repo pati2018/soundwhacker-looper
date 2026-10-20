@@ -142,9 +142,10 @@
   </details>
 
   <details class="bar" id="gesBox">
-    <summary style="cursor:pointer"><b>Gesten-Steuerung</b> <span class="small mut">&ndash; 1 bis 5 Finger in die Kamera zeigen schaltet Kanal 1 bis 5, mit beiden Händen zwei Kanäle zugleich</span></summary>
+    <summary style="cursor:pointer"><b>Kamera-Steuerung</b> <span class="small mut">&ndash; Finger, Kopf, Gesicht oder Arme schalten Kanal 1 bis 5; dazu Hintergrund und Video-Aufnahme</span></summary>
     <div class="row" style="margin-top:12px">
       <button class="big" id="gesBtn">&#128247; Kamera starten</button>
+      <label class="small mut">Erkennung <select id="gesMode"><option value="hands">Hände</option><option value="body">Kopf, Gesicht &amp; Arme</option></select></label>
       <span class="small mut" id="gesInfo">aus</span>
     </div>
     <div class="row" style="margin-top:10px">
@@ -170,7 +171,21 @@
     <div id="takes" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px"></div>
     <div class="row" style="margin-top:10px;align-items:flex-start">
       <canvas id="gesCv" width="320" height="240" style="width:480px;max-width:100%;border-radius:10px;border:1px solid var(--line);background:var(--card2)" hidden></canvas>
-      <div class="hint" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine oder beide Hände gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. <b>Beide Hände</b> sind gleichberechtigt: jede schaltet ihren eigenen Kanal, so hörst du bis zu zwei Kanäle gleichzeitig (Punkte im Bild: blau = linke, grün = rechte Hand). Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stört eine Fingerzahl, nimm in der Zeile das Häkchen bei <b>n Finger</b> weg – dann löst sie nichts mehr aus. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
+      <div class="hint" id="handPanel" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine oder beide Hände gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. <b>Beide Hände</b> sind gleichberechtigt: jede schaltet ihren eigenen Kanal, so hörst du bis zu zwei Kanäle gleichzeitig (Punkte im Bild: blau = linke, grün = rechte Hand). Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stört eine Fingerzahl, nimm in der Zeile das Häkchen bei <b>n Finger</b> weg – dann löst sie nichts mehr aus. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
+    </div>
+    <div id="bodyPanel" hidden style="margin-top:12px">
+      <div class="row">
+        <button id="bodyCalib">&#127919; Ruhe-Position anlernen</button>
+        <span class="small mut" id="bodyCalibInfo">noch nicht angelernt – Bewegungen werden von einer Standard-Haltung aus gemessen</span>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="small mut">Haltezeit <input type="range" id="bodyHold" min="0" max="1500" step="50" value="400" style="width:140px"> <span id="bodyHoldVal" style="display:inline-block;min-width:4em">400 ms</span></label>
+        <span style="flex:1"></span>
+        <label class="small mut">Profil <select id="bodyProf" style="min-width:150px"><option value="">– Profil wählen –</option></select></label>
+        <button id="bodyProfLoad">Laden</button><button id="bodyProfSave">Speichern …</button><button id="bodyProfDel">Löschen</button>
+      </div>
+      <div id="bodyTrig" style="display:grid;grid-template-columns:minmax(150px,auto) auto minmax(110px,1fr) minmax(120px,2fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
+      <div class="hint" style="margin-top:8px">Das Kind sitzt entspannt vor der Kamera, dann <b>Ruhe-Position anlernen</b>. Jeder Auslöser misst ab dieser Haltung. Ordne jedem Auslöser einen Kanal zu (oder „–“ für aus). Der Regler <b>Schwelle</b> legt fest, wie deutlich die Bewegung sein muss: weiter links = schon kleine Bewegungen lösen aus. Der Balken zeigt live den aktuellen Wert, der Strich die Schwelle. Es zählt immer nur ein Auslöser, der Kanal klingt, solange die Bewegung gehalten wird. Die <b>Haltezeit</b> verhindert, dass kurze, unwillkürliche Bewegungen etwas auslösen. Für die Arme muss der Oberkörper mit Schultern und Händen im Bild sein. „Links“ und „rechts“ sind aus Sicht des Kindes gemeint.</div>
     </div>
     <video id="gesVideo" playsinline muted style="display:none"></video>
   </details>
@@ -1736,7 +1751,7 @@ const GEN = (() => {
   // ---------- Gesten-Steuerung (Kamera, Google MediaPipe Hand Landmarker; Fingerzählung aus „handklang“) ----------
   const MP_BASE = 'https://pati2018.github.io/handklang/';
   // Zwei Hände, gleichberechtigt: jede Hand („Slot“) schaltet unabhängig einen Kanal
-  const ges = { on: false, lm: null, stream: null, lastVT: -1, learn: null,
+  const ges = { on: false, mode: 'hands', lm: null, stream: null, lastVT: -1, learn: null,
     slots: [{ name: 'Links', color: '#4ea3ff' }, { name: 'Rechts', color: '#4dff87' }].map(x => Object.assign(x, { hand: null, cand: 'x', k: 0, cur: -1, how: '' })) };
   const gesInfo = (m, err) => { $('gesInfo').textContent = m || ''; $('gesInfo').className = 'small ' + (err ? 'err' : 'mut'); };
   const gdist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -1893,7 +1908,8 @@ const GEN = (() => {
     if (recState.rec) {   // roter Punkt in der Vorschau (nur Anzeige, wird mit aufgenommen – bewusst klein)
       g.fillStyle = '#ff4d4d'; g.beginPath(); g.arc(W - 14 * u, 14 * u, 5 * u, 0, 7); g.fill();
     }
-    if (!$('gesOverlay').checked && !ges.learn) return;
+    if (!$('gesOverlay').checked && !ges.learn && !body.calib) return;
+    if (ges.mode === 'body') { bodyDraw(g, W, H, u); return; }
     g.save(); g.translate(W, 0); g.scale(-1, 1);
     ges.slots.forEach(S => {
       if (!S.hand) return;
@@ -1918,11 +1934,305 @@ const GEN = (() => {
     const n = countFingers(hand);
     return { f, target: n >= 1 && n <= N && chans[n - 1].fingerOn ? n - 1 : -1, how: n + ' Finger' };
   }
+  // ---------- Modus „Kopf, Gesicht & Arme“ (MediaPipe Face Landmarker + Pose Landmarker, Modelle liegen in ./models) ----------
+  // Gedacht für Kinder, die Kopf und Gesicht gezielt bewegen können (z. B. im Rollstuhl). Immer nur ein Auslöser, Kanal klingt solange gehalten.
+  const BODY_TRIG = [
+    { id: 'kopfL', label: 'Kopf nach links', max: 0.35, th: 25, ch: 0 },
+    { id: 'kopfR', label: 'Kopf nach rechts', max: 0.35, th: 25, ch: 1 },
+    { id: 'kopfH', label: 'Kopf nach oben', max: 0.35, th: 25, ch: 2 },
+    { id: 'kopfU', label: 'Kopf nach unten', max: 0.35, th: 25, ch: 3 },
+    { id: 'neigL', label: 'Kopf zur linken Schulter', max: 30, th: 40, ch: -1 },
+    { id: 'neigR', label: 'Kopf zur rechten Schulter', max: 30, th: 40, ch: -1 },
+    { id: 'mund', label: 'Mund auf', max: 1, th: 35, ch: 4 },
+    { id: 'laecheln', label: 'Lächeln', max: 1, th: 30, ch: -1 },
+    { id: 'brauen', label: 'Augenbrauen hoch', max: 1, th: 45, ch: -1 },
+    { id: 'augen', label: 'Augen zu', max: 1, th: 70, ch: -1 },
+    { id: 'armLH', label: 'Linker Arm hoch', max: 1.5, th: 25, ch: -1 },
+    { id: 'armRH', label: 'Rechter Arm hoch', max: 1.5, th: 25, ch: -1 },
+    { id: 'armLS', label: 'Linker Arm zur Seite', max: 1.5, th: 45, ch: -1 },
+    { id: 'armRS', label: 'Rechter Arm zur Seite', max: 1.5, th: 45, ch: -1 },
+    { id: 'arme', label: 'Beide Arme hoch', max: 1.5, th: 25, ch: -1 }
+  ];
+  const BODY_NEUTRAL0 = { yaw: 0, pitch: 0.55, roll: 0, jaw: 0, smile: 0, brow: 0, blink: 0, armLU: 0, armRU: 0, armLS: 0, armRS: 0 };
+  const body = {
+    face: null, pose: null, loading: false, faceLm: null, poseLm: null, raw: null, vals: {},
+    active: null, cand: null, candSince: 0, relSince: 0, calib: null,
+    cfg: { neutral: Object.assign({}, BODY_NEUTRAL0), calibrated: false, hold: 400, trig: {} }
+  };
+  BODY_TRIG.forEach(t => { body.cfg.trig[t.id] = { ch: t.ch, th: t.th }; });
+  const BODY_KEY = STORE + '.body', BODY_PROF = STORE + '.bodyProfiles';
+  function bodyCfgClean(c) {
+    const out = { neutral: Object.assign({}, BODY_NEUTRAL0), calibrated: !!(c && c.calibrated), hold: 400, trig: {} };
+    if (c && c.neutral) Object.keys(BODY_NEUTRAL0).forEach(k => { if (Number.isFinite(c.neutral[k])) out.neutral[k] = c.neutral[k]; });
+    if (c && Number.isFinite(c.hold)) out.hold = Math.max(0, Math.min(1500, c.hold));
+    BODY_TRIG.forEach(t => {
+      const s = c && c.trig && c.trig[t.id];
+      out.trig[t.id] = { ch: s && Number.isInteger(s.ch) && s.ch >= -1 && s.ch < N ? s.ch : t.ch, th: s && Number.isFinite(s.th) ? Math.max(5, Math.min(100, s.th)) : t.th };
+    });
+    return out;
+  }
+  function bodySave() { try { localStorage.setItem(BODY_KEY, JSON.stringify(body.cfg)); } catch (e) {} }
+  try { const c = JSON.parse(localStorage.getItem(BODY_KEY) || 'null'); if (c) body.cfg = bodyCfgClean(c); } catch (e) {}
+
+  async function bodyEnsure() {
+    if ((body.face && body.pose) || body.loading || !ges.vision) return;
+    body.loading = true;
+    gesInfo('Gesichts- und Körpererkennung wird geladen …');
+    const base = new URL('models/', location.href).href;
+    const mk = async (Task, file, extra) => {
+      const opts = d => Object.assign({ baseOptions: { modelAssetPath: base + file, delegate: d }, runningMode: 'VIDEO' }, extra);
+      try { return await Task.createFromOptions(ges.fs, opts('GPU')); } catch (e) { return await Task.createFromOptions(ges.fs, opts('CPU')); }
+    };
+    try {
+      if (!body.face) body.face = await mk(ges.vision.FaceLandmarker, 'face_landmarker.task', { numFaces: 1, outputFaceBlendshapes: true });
+      if (!body.pose) body.pose = await mk(ges.vision.PoseLandmarker, 'pose_landmarker_lite.task', { numPoses: 1 });
+      gesInfo('läuft – Kopf, Gesicht und Arme werden erkannt');
+    } catch (e) { gesInfo('Gesichts-/Körpererkennung konnte nicht geladen werden: ' + ((e && e.message) || e), true); }
+    body.loading = false;
+  }
+
+  // Rohwerte messen. Kamera ungespiegelt: die linke Seite des Kindes ist im Bild rechts (größeres x).
+  function bodyMeasure(face, shapes, pose, asp) {
+    const r = {};
+    if (face) {
+      const e1 = face[33], e2 = face[263];
+      const ang = Math.atan2(e2.y - e1.y, (e2.x - e1.x) * asp);
+      r.roll = ang * 180 / Math.PI;                                                          // + = Kopf zur linken Schulter
+      // Punkte in die Gesichtsebene drehen (Neigung herausrechnen), damit Neigen nicht als Drehen/Nicken zählt
+      const cs = Math.cos(-ang), sn = Math.sin(-ang);
+      const P = i => { const x = face[i].x * asp, y = face[i].y; return { x: x * cs - y * sn, y: x * sn + y * cs }; };
+      const nose = P(1), c1 = P(234), c2 = P(454), a1 = P(33), a2 = P(263), m1 = P(13), m2 = P(14);
+      const eyeY = (a1.y + a2.y) / 2, mouthY = (m1.y + m2.y) / 2;
+      if (Math.abs(c2.x - c1.x) > 1e-4) r.yaw = (nose.x - c1.x) / (c2.x - c1.x) - 0.5;      // + = Kopf nach links (aus Sicht des Kindes)
+      if (Math.abs(mouthY - eyeY) > 1e-4) r.pitch = (nose.y - eyeY) / (mouthY - eyeY);       // größer = Kopf nach unten
+    }
+    if (shapes) {
+      const s = {}; shapes.forEach(c => { s[c.categoryName] = c.score; });
+      r.jaw = s.jawOpen || 0;
+      r.smile = ((s.mouthSmileLeft || 0) + (s.mouthSmileRight || 0)) / 2;
+      r.brow = s.browInnerUp || 0;
+      r.blink = ((s.eyeBlinkLeft || 0) + (s.eyeBlinkRight || 0)) / 2;
+    }
+    if (pose) {
+      const ok = p => p && (p.visibility == null || p.visibility > 0.5);
+      const sL = pose[11], sR = pose[12], wL = pose[15], wR = pose[16];
+      if (ok(sL) && ok(sR)) {
+        const sw = Math.hypot((sR.x - sL.x) * asp, sR.y - sL.y) || 1e-6;
+        if (ok(wL)) { r.armLU = (sL.y - wL.y) / sw; r.armLS = (wL.x - sL.x) * asp / sw; }
+        if (ok(wR)) { r.armRU = (sR.y - wR.y) / sw; r.armRS = (sR.x - wR.x) * asp / sw; }
+      }
+    }
+    return r;
+  }
+  function bodyValues(r) {
+    const n = body.cfg.neutral, v = {}, pos = (a, b) => (a == null ? 0 : Math.max(0, a - b));
+    v.kopfL = pos(r.yaw, n.yaw); v.kopfR = r.yaw == null ? 0 : Math.max(0, n.yaw - r.yaw);
+    v.kopfU = pos(r.pitch, n.pitch); v.kopfH = r.pitch == null ? 0 : Math.max(0, n.pitch - r.pitch);
+    v.neigL = pos(r.roll, n.roll); v.neigR = r.roll == null ? 0 : Math.max(0, n.roll - r.roll);
+    v.mund = pos(r.jaw, n.jaw); v.laecheln = pos(r.smile, n.smile); v.brauen = pos(r.brow, n.brow); v.augen = pos(r.blink, n.blink);
+    v.armLH = pos(r.armLU, n.armLU); v.armRH = pos(r.armRU, n.armRU);
+    v.armLS = pos(r.armLS, n.armLS); v.armRS = pos(r.armRS, n.armRS);
+    v.arme = Math.min(v.armLH, v.armRH);
+    return v;
+  }
+  const bodyTh = t => body.cfg.trig[t.id].th / 100 * t.max;
+
+  function bodyStep(v, asp) {
+    const now = performance.now();
+    let fr = null, pr = null;
+    try { if (body.face) fr = body.face.detectForVideo(v, now); } catch (e) {}
+    try { if (body.pose) pr = body.pose.detectForVideo(v, now + 0.001); } catch (e) {}
+    body.faceLm = fr && fr.faceLandmarks && fr.faceLandmarks[0] || null;
+    const shapes = fr && fr.faceBlendshapes && fr.faceBlendshapes[0] ? fr.faceBlendshapes[0].categories : null;
+    body.poseLm = pr && pr.landmarks && pr.landmarks[0] || null;
+    const r = body.raw = bodyMeasure(body.faceLm, body.faceLm ? shapes : null, body.poseLm, asp);
+
+    if (body.calib) {   // Ruhe-Position: kurz warten, dann 20 Bilder mitteln
+      const C = body.calib;
+      if (now < C.until) { C.msg = 'Ruhig halten … ' + Math.ceil((C.until - now) / 1000); return; }
+      if (r.yaw == null && r.armLU == null) { C.msg = 'Kein Gesicht erkannt – bitte in die Kamera schauen'; return; }
+      C.buf.push(r); C.msg = 'Lerne Ruhe-Position … ' + Math.round(C.buf.length / 20 * 100) + ' %';
+      if (C.buf.length < 20) return;
+      const n = Object.assign({}, BODY_NEUTRAL0);
+      Object.keys(n).forEach(k => { const xs = C.buf.map(b => b[k]).filter(Number.isFinite); if (xs.length >= 10) n[k] = xs.reduce((a, b) => a + b, 0) / xs.length; });
+      body.cfg.neutral = n; body.cfg.calibrated = true; body.calib = null;
+      bodySave(); bodyCalibUi();
+      gesInfo('Ruhe-Position gespeichert.');
+      return;
+    }
+
+    const vals = body.vals = bodyValues(r);
+    // Stärksten Auslöser über seiner Schwelle wählen (Beide Arme hat Vorrang vor einem Arm)
+    let best = null, bestRatio = 1;
+    BODY_TRIG.forEach(t => {
+      const c = body.cfg.trig[t.id];
+      if (c.ch < 0) return;
+      const ratio = vals[t.id] / Math.max(1e-6, bodyTh(t)) * (t.id === 'arme' ? 1.5 : 1);
+      if (ratio >= bestRatio) { bestRatio = ratio; best = t.id; }
+    });
+    const hold = body.cfg.hold;
+    if (best && best !== body.active) {
+      if (body.cand !== best) { body.cand = best; body.candSince = now; }
+      if (now - body.candSince >= hold) bodyActivate(best);
+    } else if (!best) body.cand = null;
+    if (body.active) {   // Loslassen erst, wenn der Wert 150 ms unter 80 % der Schwelle liegt (kein Flackern)
+      const t = BODY_TRIG.find(x => x.id === body.active);
+      if (body.cfg.trig[t.id].ch < 0 || vals[t.id] < bodyTh(t) * 0.8) {
+        if (!body.relSince) body.relSince = now;
+        else if (now - body.relSince >= 150) bodyActivate(null);
+      } else body.relSince = 0;
+    }
+  }
+  function bodyActivate(id) {
+    body.active = id; body.relSince = 0;
+    if (id) body.cand = null;
+    gesApply(0, id ? body.cfg.trig[id].ch : -1);
+  }
+
+  function bodyDraw(g, W, H, u) {
+    g.save(); g.translate(W, 0); g.scale(-1, 1);
+    if (body.faceLm) {
+      g.fillStyle = '#ffcc4d';
+      [1, 33, 263, 13, 14, 61, 291, 234, 454, 10, 152].forEach(i => { const p = body.faceLm[i]; g.beginPath(); g.arc(p.x * W, p.y * H, 3 * u, 0, 7); g.fill(); });
+    }
+    if (body.poseLm) {
+      const P = body.poseLm;
+      g.strokeStyle = '#4ea3ff'; g.lineWidth = 3 * u;
+      [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16]].forEach(([a, b]) => {
+        if ((P[a].visibility || 1) < 0.5 || (P[b].visibility || 1) < 0.5) return;
+        g.beginPath(); g.moveTo(P[a].x * W, P[a].y * H); g.lineTo(P[b].x * W, P[b].y * H); g.stroke();
+      });
+    }
+    g.restore();
+    g.fillStyle = 'rgba(5,8,14,.65)'; g.fillRect(0, 0, W, 34 * u);
+    g.font = '600 ' + Math.round(15 * u) + 'px Segoe UI, Arial, sans-serif';
+    let t, col = '#e8edf6';
+    if (body.calib) { t = body.calib.msg; col = '#ffcc4d'; }
+    else if (body.active) { const tr = BODY_TRIG.find(x => x.id === body.active); t = 'Kanal ' + (body.cfg.trig[tr.id].ch + 1) + ' · ' + tr.label; col = '#4dff87'; }
+    else t = body.faceLm || body.poseLm ? 'Ruhe · stumm' : 'kein Gesicht erkannt';
+    g.fillStyle = col; g.fillText(t || '', 10 * u, 22 * u);
+  }
+
+  // Oberfläche: Auslöser-Tabelle mit Kanal, Schwelle und Live-Balken
+  (function bodyBuildUi() {
+    const box = $('bodyTrig');
+    box.innerHTML = '<b class="small mut">Auslöser</b><b class="small mut">Kanal</b><b class="small mut">Schwelle</b><b class="small mut">aktuell</b>';
+    BODY_TRIG.forEach(t => {
+      box.insertAdjacentHTML('beforeend',
+        '<span id="btL_' + t.id + '">' + t.label + '</span>' +
+        '<select id="btC_' + t.id + '"><option value="-1">–</option>' + chans.map((c, i) => '<option value="' + i + '">' + (i + 1) + '</option>').join('') + '</select>' +
+        '<input type="range" id="btT_' + t.id + '" min="5" max="100" step="1">' +
+        '<span style="position:relative;height:14px;background:var(--card2);border:1px solid var(--line);border-radius:7px;overflow:hidden;display:block">' +
+        '<b id="btB_' + t.id + '" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc)"></b>' +
+        '<i id="btM_' + t.id + '" style="position:absolute;top:0;bottom:0;width:2px;background:var(--warn)"></i></span>');
+      $('btC_' + t.id).onchange = () => { body.cfg.trig[t.id].ch = +$('btC_' + t.id).value; if (body.active === t.id) bodyActivate(null); bodySave(); bodyUi(); };
+      $('btT_' + t.id).oninput = () => { body.cfg.trig[t.id].th = +$('btT_' + t.id).value; bodyUi(); };
+      $('btT_' + t.id).onchange = bodySave;
+    });
+    $('bodyHold').oninput = () => { body.cfg.hold = +$('bodyHold').value; $('bodyHoldVal').textContent = body.cfg.hold + ' ms'; };
+    $('bodyHold').onchange = bodySave;
+    $('bodyCalib').onclick = async () => {
+      if (body.calib) { body.calib = null; bodyCalibUi(); return; }
+      if (ges.mode !== 'body') return;
+      if (!ges.on) { await gesStart(); if (!ges.on) return; }
+      bodyActivate(null);
+      body.calib = { until: performance.now() + 2000, buf: [], msg: '' };
+      bodyCalibUi();
+    };
+  })();
+  function bodyCalibUi() {
+    $('bodyCalib').classList.toggle('learning', !!body.calib);
+    $('bodyCalib').innerHTML = body.calib ? 'Abbrechen' : '&#127919; Ruhe-Position anlernen';
+    $('bodyCalibInfo').textContent = body.calib ? 'Kind entspannt und ruhig in die Kamera schauen lassen …'
+      : body.cfg.calibrated ? 'angelernt ✓ – bei neuer Sitzposition einfach neu anlernen' : 'noch nicht angelernt – Bewegungen werden von einer Standard-Haltung aus gemessen';
+  }
+  function bodyUi() {   // Einstellungen in die Bedienelemente schreiben
+    BODY_TRIG.forEach(t => {
+      const c = body.cfg.trig[t.id];
+      $('btC_' + t.id).value = c.ch; $('btT_' + t.id).value = c.th;
+      $('btM_' + t.id).style.left = Math.min(99, c.th) + '%';
+      $('btL_' + t.id).style.opacity = c.ch < 0 ? 0.55 : 1;
+    });
+    $('bodyHold').value = body.cfg.hold; $('bodyHoldVal').textContent = body.cfg.hold + ' ms';
+    bodyCalibUi();
+  }
+  setInterval(() => {   // Live-Balken (10× pro Sekunde reicht)
+    if (ges.mode !== 'body' || !ges.on) return;
+    BODY_TRIG.forEach(t => {
+      const v = body.vals[t.id] || 0, b = $('btB_' + t.id);
+      b.style.width = Math.min(100, v / t.max * 100) + '%';
+      b.style.background = body.active === t.id ? 'var(--on)' : (v >= bodyTh(t) ? 'var(--warn)' : 'var(--acc)');
+    });
+  }, 100);
+
+  // Profile pro Kind (nur Einstellungen, keine Bilder)
+  function bodyProfiles() { try { return JSON.parse(localStorage.getItem(BODY_PROF) || '{}') || {}; } catch (e) { return {}; } }
+  function bodyProfList(sel) {
+    const p = bodyProfiles(), s = $('bodyProf');
+    s.innerHTML = '<option value="">– Profil wählen –</option>';
+    Object.keys(p).sort((a, b) => a.localeCompare(b, 'de')).forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; s.appendChild(o); });
+    if (sel) s.value = sel;
+  }
+  $('bodyProfSave').onclick = async () => {
+    const name = ((await ask('Name des Profils (z. B. Name des Kindes):', $('bodyProf').value || '')) || '').trim();
+    if (!name) return;
+    const p = bodyProfiles();
+    if (p[name] && !(await ask('Profil "' + name + '" überschreiben?'))) return;
+    p[name] = JSON.parse(JSON.stringify(body.cfg));
+    try { localStorage.setItem(BODY_PROF, JSON.stringify(p)); } catch (e) { gesInfo('Profil konnte nicht gespeichert werden.', true); return; }
+    bodyProfList(name); gesInfo('Profil gespeichert: ' + name);
+  };
+  $('bodyProfLoad').onclick = () => {
+    const name = $('bodyProf').value, p = bodyProfiles();
+    if (!name || !p[name]) return;
+    bodyActivate(null);
+    body.cfg = bodyCfgClean(p[name]); bodySave(); bodyUi();
+    gesInfo('Profil geladen: ' + name);
+  };
+  $('bodyProfDel').onclick = async () => {
+    const name = $('bodyProf').value, p = bodyProfiles();
+    if (!name || !p[name] || !(await ask('Profil "' + name + '" löschen?'))) return;
+    delete p[name];
+    try { localStorage.setItem(BODY_PROF, JSON.stringify(p)); } catch (e) {}
+    bodyProfList(); gesInfo('Profil gelöscht: ' + name);
+  };
+  bodyProfList(); bodyUi();
+
+  // Modus-Umschaltung Hände / Kopf, Gesicht & Arme
+  function gesSetMode(m) {
+    ges.mode = m === 'body' ? 'body' : 'hands';
+    $('gesMode').value = ges.mode;
+    gesReleaseAll(); body.active = null; body.cand = null; body.calib = null;
+    if (ges.learn) { ges.learn = null; gesLearnUi(); }
+    $('handPanel').hidden = ges.mode !== 'hands';
+    $('bodyPanel').hidden = ges.mode !== 'body';
+    bodyCalibUi();
+    try { localStorage.setItem(STORE + '.gesMode', ges.mode); } catch (e) {}
+    if (ges.on) gesEnsureModels();
+  }
+  async function gesEnsureModels() {
+    if (!ges.vision) return;
+    if (ges.mode === 'body') { await bodyEnsure(); return; }
+    if (!ges.lm) {
+      gesInfo('Handerkennung wird geladen …');
+      const opts = d => ({ baseOptions: { modelAssetPath: MP_BASE + 'models/hand_landmarker.task', delegate: d }, runningMode: 'VIDEO', numHands: 2,
+        minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
+      try { ges.lm = await ges.vision.HandLandmarker.createFromOptions(ges.fs, opts('GPU')); }
+      catch (e) { ges.lm = await ges.vision.HandLandmarker.createFromOptions(ges.fs, opts('CPU')); }
+    }
+    gesInfo('läuft – zeig 1 bis 5 Finger');
+  }
+  $('gesMode').onchange = () => gesSetMode($('gesMode').value);
+
   function gesLoop() {
     if (!ges.on) return;
     const v = $('gesVideo');
-    if (ges.lm && v.readyState >= 2 && v.currentTime !== ges.lastVT) {
+    if (v.readyState >= 2 && v.currentTime !== ges.lastVT && (ges.mode === 'body' ? (body.face || body.pose) : ges.lm)) {
       ges.lastVT = v.currentTime;
+      if (ges.mode === 'body') {
+        if (BG.mode !== 'none' && BG.seg) { try { bgSegment(v); } catch (e) {} }
+        bodyStep(v, (v.videoWidth || 4) / (v.videoHeight || 3));
+      } else {
       let lms = [], hd = [];
       try {
         const res = ges.lm.detectForVideo(v, performance.now());
@@ -1947,6 +2257,7 @@ const GEN = (() => {
           if (S.k >= (S.hand ? 3 : 6)) { S.how = r.how; gesApply(si, r.target); }
         });
       }
+      }   // Ende Hände-Modus
     }
     gesDraw();
     requestAnimationFrame(gesLoop);
@@ -1964,19 +2275,15 @@ const GEN = (() => {
       cv.width = Math.min(1280, v.videoWidth || 640);                 // volle Auflösung, damit Aufnahmen scharf sind
       cv.height = Math.round(cv.width * (v.videoHeight || 480) / (v.videoWidth || 640));
       cv.hidden = false;
-      if (!ges.lm) {
-        gesInfo('Handerkennung wird geladen (einmalig ca. 17 MB) …');
-        const vision = ges.vision = await import(MP_BASE + 'vendor/mediapipe/vision_bundle.mjs');
-        const fs = ges.fs = await vision.FilesetResolver.forVisionTasks(MP_BASE + 'vendor/mediapipe/wasm');
-        const opts = d => ({ baseOptions: { modelAssetPath: MP_BASE + 'models/hand_landmarker.task', delegate: d }, runningMode: 'VIDEO', numHands: 2,
-          minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
-        try { ges.lm = await vision.HandLandmarker.createFromOptions(fs, opts('GPU')); }
-        catch (e) { ges.lm = await vision.HandLandmarker.createFromOptions(fs, opts('CPU')); }
+      if (!ges.vision) {
+        gesInfo('Erkennung wird geladen (einmalig ca. 17 MB) …');
+        ges.vision = await import(MP_BASE + 'vendor/mediapipe/vision_bundle.mjs');
+        ges.fs = await ges.vision.FilesetResolver.forVisionTasks(MP_BASE + 'vendor/mediapipe/wasm');
       }
+      await gesEnsureModels();
       ges.on = true; ges.slots.forEach(S => { S.cand = 'x'; S.k = 0; });
       if (BG.mode !== 'none') bgSetMode(BG.mode);   // lädt auch ein gespeichertes Foto
       $('gesBtn').innerHTML = '&#9632; Kamera aus'; $('gesBtn').classList.add('learning');
-      gesInfo('läuft – zeig 1 bis 5 Finger');
       requestAnimationFrame(gesLoop);
     } catch (e) {
       const map = { NotAllowedError: 'Kamerazugriff wurde abgelehnt. Bitte die Kamera für diese Seite erlauben.', NotFoundError: 'Keine Kamera gefunden.', NotReadableError: 'Die Kamera wird gerade von einer anderen App benutzt.' };
@@ -1990,6 +2297,7 @@ const GEN = (() => {
     if (ges.learn) { ges.learn = null; gesLearnUi(); }
     if (recState.rec) recStop();
     gesReleaseAll();
+    body.active = null; body.cand = null; if (body.calib) { body.calib = null; bodyCalibUi(); }
     if (ges.stream) { ges.stream.getTracks().forEach(t => t.stop()); ges.stream = null; }
     $('gesVideo').srcObject = null;
     $('gesCv').hidden = true; ges.slots.forEach(S => { S.hand = null; });
@@ -1997,6 +2305,7 @@ const GEN = (() => {
     if (!keepMsg) gesInfo('aus');
   }
   $('gesBtn').onclick = () => (ges.on ? gesStop() : gesStart());
+  try { if (localStorage.getItem(STORE + '.gesMode') === 'body') gesSetMode('body'); } catch (e) {}
 
   // ---------- Hintergrund wählen (Foto bleibt im Browser gespeichert) ----------
   async function bgLoadImage(blob, persist) {
