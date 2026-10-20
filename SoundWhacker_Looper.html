@@ -141,6 +141,19 @@
     <div class="hint" style="margin-top:8px">Die SoundFont bleibt in diesem Browser gespeichert, du musst sie nur einmal laden. Alle fünf Loops nutzen dasselbe Instrument und Muster, Kanal 1–5 bekommt jeweils den eingestellten Akkord. Mit den Kanal-Tasten (1–5 oder angelernte Tasten), SWs oder MIDI schaltest du dann zwischen den Akkorden um.</div>
   </details>
 
+  <details class="bar" id="gesBox">
+    <summary style="cursor:pointer"><b>Gesten-Steuerung</b> <span class="small mut">&ndash; 1 bis 5 Finger in die Kamera zeigen schaltet Kanal 1 bis 5</span></summary>
+    <div class="row" style="margin-top:12px">
+      <button class="big" id="gesBtn">&#128247; Kamera starten</button>
+      <span class="small mut" id="gesInfo">aus</span>
+    </div>
+    <div class="row" style="margin-top:10px;align-items:flex-start">
+      <canvas id="gesCv" width="320" height="240" style="width:320px;max-width:100%;border-radius:10px;border:1px solid var(--line);background:var(--card2)" hidden></canvas>
+      <div class="hint" style="flex:1 1 220px">Halte eine Hand (links oder rechts) gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
+    </div>
+    <video id="gesVideo" playsinline muted style="display:none"></video>
+  </details>
+
   <div id="status" class="small mut" style="margin:-4px 0 12px"></div>
 
   <div class="grid" id="channels"></div>
@@ -159,7 +172,7 @@
     <b>So geht's:</b> WAV-Dateien auf die Kanäle ziehen (mehrere Dateien auf einmal füllen freie Kanäle der Reihe nach) &rarr;
     bei jedem Kanal <b>Anlernen</b> klicken und den passenden SW berühren &rarr; <b>Start</b>.
     Alle Loops laufen dann gemeinsam im Hintergrund; ein Kanal ist nur hörbar, solange sein SW berührt wird.
-    Zum Probehören: <b>Vorhören</b> an jedem Kanal (ein/aus per Klick) oder <b>Alle vorhören</b> (Taste <b>0</b>). Am PC auch per Tastatur: Tasten <b>1</b>–<b>5</b> (Hauptreihe oder Ziffernblock), Verhalten wie beim SW (gedrückt halten oder umschalten, je nach Kanal-Einstellung). Mit <b>Taste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Taste fest (hilfreich, wenn die Tastatur nicht alle Ziffern gleichzeitig meldet). MIDI-Geräte über Kabel oder Bluetooth funktionieren weiterhin zusätzlich.<br>
+    Zum Probehören: <b>Vorhören</b> an jedem Kanal (ein/aus per Klick) oder <b>Alle vorhören</b> (Taste <b>0</b>). Am PC auch per Tastatur: Tasten <b>1</b>–<b>5</b> (Hauptreihe oder Ziffernblock), Verhalten wie beim SW (gedrückt halten oder umschalten, je nach Kanal-Einstellung). Mit <b>Taste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Taste fest (hilfreich, wenn die Tastatur nicht alle Ziffern gleichzeitig meldet). MIDI-Geräte über Kabel oder Bluetooth funktionieren weiterhin zusätzlich. Dritte Möglichkeit: <b>Gesten-Steuerung</b> – 1 bis 5 Finger in die Kamera zeigen.<br>
     MIDIberry: Eingang = HUB, Ausgang = <b>loopMIDI Port 1</b>. Der Giada-Modus im HUB wird nicht gebraucht (stört aber auch nicht).
   </div>
 </div>
@@ -1685,6 +1698,104 @@ const GEN = (() => {
     press(chans[i], false);
   });
   window.addEventListener('blur', releaseKeys);   // Fenster verliert den Fokus: keine hängenden Tasten
+
+  // ---------- Gesten-Steuerung (Kamera, Google MediaPipe Hand Landmarker; Fingerzählung aus „handklang“) ----------
+  const MP_BASE = 'https://pati2018.github.io/handklang/';
+  const ges = { on: false, lm: null, stream: null, lastVT: -1, cand: -2, k: 0, cur: -1, count: -1, hand: null, missing: 0 };
+  const gesInfo = (m, err) => { $('gesInfo').textContent = m || ''; $('gesInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  const gdist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  function countFingers(lm) {
+    const palm = gdist(lm[0], lm[9]);
+    const ext = (tip, pip) => gdist(lm[tip], lm[0]) > gdist(lm[pip], lm[0]) * 1.12;
+    const thumb = gdist(lm[4], lm[5]) > palm * 0.62 && gdist(lm[4], lm[0]) > gdist(lm[3], lm[0]);
+    return thumb + ext(8, 6) + ext(12, 10) + ext(16, 14) + ext(20, 18);
+  }
+  // Gezeigte Fingerzahl übernehmen: alter Kanal aus, neuer an (Verhalten je Kanal wie beim SW)
+  function gesApply(n) {
+    const target = n >= 1 && n <= N ? n - 1 : -1;
+    // Gleiche Fingerzahl: nichts tun – außer der Kanal wurde inzwischen gestoppt (dann wieder einschalten wie eine Taste)
+    if (target === ges.cur && (target < 0 || chans[target].open || chans[target].mode === 'toggle')) return;
+    if (ges.cur >= 0 && chans[ges.cur].gesHeld) { chans[ges.cur].gesHeld = false; press(chans[ges.cur], false); }
+    ges.cur = target;
+    if (target < 0) return;
+    if (!playing && chans.some(x => x.buffer)) start();
+    chans[target].gesHeld = true;
+    press(chans[target], true);
+  }
+  function gesDraw() {
+    const cv = $('gesCv'), g = cv.getContext('2d'), v = $('gesVideo'), W = cv.width, H = cv.height;
+    g.save(); g.translate(W, 0); g.scale(-1, 1);              // gespiegelt wie ein Spiegel
+    if (v.readyState >= 2) g.drawImage(v, 0, 0, W, H);
+    if (ges.hand) {
+      g.fillStyle = '#4dff87';
+      ges.hand.forEach(p => { g.beginPath(); g.arc(p.x * W, p.y * H, 3, 0, 7); g.fill(); });
+    }
+    g.restore();
+    g.fillStyle = 'rgba(5,8,14,.65)'; g.fillRect(0, 0, W, 34);
+    g.fillStyle = '#e8edf6'; g.font = '600 18px Segoe UI, Arial, sans-serif';
+    g.fillText(ges.cur >= 0 ? 'Kanal ' + (ges.cur + 1) + (chans[ges.cur].fileName ? ' · ' + chans[ges.cur].fileName.replace(/^\d+_|\.wav$/gi, '').slice(0, 22) : '') : (ges.hand ? 'Faust · stumm' : 'keine Hand'), 10, 23);
+  }
+  function gesLoop() {
+    if (!ges.on) return;
+    const v = $('gesVideo');
+    if (ges.lm && v.readyState >= 2 && v.currentTime !== ges.lastVT) {
+      ges.lastVT = v.currentTime;
+      let n = -1;
+      try {
+        const res = ges.lm.detectForVideo(v, performance.now());
+        const lms = res.landmarks || [];
+        ges.hand = lms[0] || null;
+        n = ges.hand ? countFingers(ges.hand) : -1;
+      } catch (e) { ges.hand = null; }
+      // Erst übernehmen, wenn der Wert 3 Bilder hintereinander gleich ist (keine Hand: 6 Bilder)
+      if (n === ges.cand) ges.k++; else { ges.cand = n; ges.k = 1; }
+      if (ges.k >= (n < 0 ? 6 : 3)) gesApply(n);
+    }
+    gesDraw();
+    requestAnimationFrame(gesLoop);
+  }
+  async function gesStart() {
+    ensureAudio(); ctx.resume();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { gesInfo('Dieser Browser gibt die Kamera für Webseiten nicht frei.', true); return; }
+    $('gesBtn').disabled = true;
+    try {
+      gesInfo('Kamera wird gestartet …');
+      ges.stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false });
+      const v = $('gesVideo');
+      v.srcObject = ges.stream; await v.play();
+      const cv = $('gesCv');
+      cv.height = Math.round(cv.width * (v.videoHeight || 480) / (v.videoWidth || 640));
+      cv.hidden = false;
+      if (!ges.lm) {
+        gesInfo('Handerkennung wird geladen (einmalig ca. 17 MB) …');
+        const vision = await import(MP_BASE + 'vendor/mediapipe/vision_bundle.mjs');
+        const fs = await vision.FilesetResolver.forVisionTasks(MP_BASE + 'vendor/mediapipe/wasm');
+        const opts = d => ({ baseOptions: { modelAssetPath: MP_BASE + 'models/hand_landmarker.task', delegate: d }, runningMode: 'VIDEO', numHands: 1,
+          minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
+        try { ges.lm = await vision.HandLandmarker.createFromOptions(fs, opts('GPU')); }
+        catch (e) { ges.lm = await vision.HandLandmarker.createFromOptions(fs, opts('CPU')); }
+      }
+      ges.on = true; ges.cand = -2; ges.k = 0;
+      $('gesBtn').innerHTML = '&#9632; Kamera aus'; $('gesBtn').classList.add('learning');
+      gesInfo('läuft – zeig 1 bis 5 Finger');
+      requestAnimationFrame(gesLoop);
+    } catch (e) {
+      const map = { NotAllowedError: 'Kamerazugriff wurde abgelehnt. Bitte die Kamera für diese Seite erlauben.', NotFoundError: 'Keine Kamera gefunden.', NotReadableError: 'Die Kamera wird gerade von einer anderen App benutzt.' };
+      gesInfo(map[e && e.name] || ('Gesten-Steuerung konnte nicht starten: ' + ((e && e.message) || e)), true);
+      gesStop(true);
+    }
+    $('gesBtn').disabled = false;
+  }
+  function gesStop(keepMsg) {
+    ges.on = false;
+    gesApply(-1);
+    if (ges.stream) { ges.stream.getTracks().forEach(t => t.stop()); ges.stream = null; }
+    $('gesVideo').srcObject = null;
+    $('gesCv').hidden = true; ges.hand = null;
+    $('gesBtn').innerHTML = '&#128247; Kamera starten'; $('gesBtn').classList.remove('learning');
+    if (!keepMsg) gesInfo('aus');
+  }
+  $('gesBtn').onclick = () => (ges.on ? gesStop() : gesStart());
 
   // iOS/Safari: Audio wird erst nach einer echten Berührung freigegeben – mit der ersten Berührung entsperren
   const unlockAudio = () => {
