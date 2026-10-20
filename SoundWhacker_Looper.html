@@ -179,13 +179,14 @@
         <span class="small mut" id="bodyCalibInfo">noch nicht angelernt – Bewegungen werden von einer Standard-Haltung aus gemessen</span>
       </div>
       <div class="row" style="margin-top:8px">
+        <label class="small"><input type="checkbox" id="bodyMulti"> mehrere Auslöser gleichzeitig</label>
         <label class="small mut">Haltezeit <input type="range" id="bodyHold" min="0" max="1500" step="50" value="400" style="width:140px"> <span id="bodyHoldVal" style="display:inline-block;min-width:4em">400 ms</span></label>
         <span style="flex:1"></span>
         <label class="small mut">Profil <select id="bodyProf" style="min-width:150px"><option value="">– Profil wählen –</option></select></label>
         <button id="bodyProfLoad">Laden</button><button id="bodyProfSave">Speichern …</button><button id="bodyProfDel">Löschen</button>
       </div>
       <div id="bodyTrig" style="display:grid;grid-template-columns:minmax(150px,auto) auto minmax(110px,1fr) minmax(120px,2fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
-      <div class="hint" style="margin-top:8px">Das Kind sitzt entspannt vor der Kamera, dann <b>Ruhe-Position anlernen</b>. Jeder Auslöser misst ab dieser Haltung. Ordne jedem Auslöser einen Kanal zu (oder „–“ für aus). Der Regler <b>Schwelle</b> legt fest, wie deutlich die Bewegung sein muss: weiter links = schon kleine Bewegungen lösen aus. Der Balken zeigt live den aktuellen Wert, der Strich die Schwelle. Es zählt immer nur ein Auslöser, der Kanal klingt, solange die Bewegung gehalten wird. Die <b>Haltezeit</b> verhindert, dass kurze, unwillkürliche Bewegungen etwas auslösen. Für die Arme muss der Oberkörper mit Schultern und Händen im Bild sein. „Links“ und „rechts“ sind aus Sicht des Kindes gemeint.</div>
+      <div class="hint" style="margin-top:8px">Das Kind sitzt entspannt vor der Kamera, dann <b>Ruhe-Position anlernen</b>. Jeder Auslöser misst ab dieser Haltung. Ordne jedem Auslöser einen Kanal zu (oder „–“ für aus). Der Regler <b>Schwelle</b> legt fest, wie deutlich die Bewegung sein muss: weiter links = schon kleine Bewegungen lösen aus. Der Balken zeigt live den aktuellen Wert, der Strich die Schwelle. Normalerweise zählt nur ein Auslöser (der deutlichste). Mit <b>mehrere Auslöser gleichzeitig</b> wirkt jeder Auslöser für sich, z.&nbsp;B. Kopf links (Kanal 1) und Mund auf (Kanal 2) zusammen. Ein Kanal klingt, solange seine Bewegung gehalten wird. Die <b>Haltezeit</b> verhindert, dass kurze, unwillkürliche Bewegungen etwas auslösen. Für die Arme muss der Oberkörper mit Schultern und Händen im Bild sein. „Links“ und „rechts“ sind aus Sicht des Kindes gemeint.</div>
     </div>
     <video id="gesVideo" playsinline muted style="display:none"></video>
   </details>
@@ -1956,13 +1957,13 @@ const GEN = (() => {
   const BODY_NEUTRAL0 = { yaw: 0, pitch: 0.55, roll: 0, jaw: 0, smile: 0, brow: 0, blink: 0, armLU: 0, armRU: 0, armLS: 0, armRS: 0 };
   const body = {
     face: null, pose: null, loading: false, faceLm: null, poseLm: null, raw: null, vals: {},
-    active: null, cand: null, candSince: 0, relSince: 0, calib: null,
-    cfg: { neutral: Object.assign({}, BODY_NEUTRAL0), calibrated: false, hold: 400, trig: {} }
+    active: null, cand: null, candSince: 0, relSince: 0, calib: null, ms: {}, held: new Set(),
+    cfg: { neutral: Object.assign({}, BODY_NEUTRAL0), calibrated: false, hold: 400, multi: false, trig: {} }
   };
   BODY_TRIG.forEach(t => { body.cfg.trig[t.id] = { ch: t.ch, th: t.th }; });
   const BODY_KEY = STORE + '.body', BODY_PROF = STORE + '.bodyProfiles';
   function bodyCfgClean(c) {
-    const out = { neutral: Object.assign({}, BODY_NEUTRAL0), calibrated: !!(c && c.calibrated), hold: 400, trig: {} };
+    const out = { neutral: Object.assign({}, BODY_NEUTRAL0), calibrated: !!(c && c.calibrated), hold: 400, multi: !!(c && c.multi), trig: {} };
     if (c && c.neutral) Object.keys(BODY_NEUTRAL0).forEach(k => { if (Number.isFinite(c.neutral[k])) out.neutral[k] = c.neutral[k]; });
     if (c && Number.isFinite(c.hold)) out.hold = Math.max(0, Math.min(1500, c.hold));
     BODY_TRIG.forEach(t => {
@@ -2062,6 +2063,7 @@ const GEN = (() => {
     }
 
     const vals = body.vals = bodyValues(r);
+    if (body.cfg.multi) { bodyMultiStep(vals, now); return; }
     // Stärksten Auslöser über seiner Schwelle wählen (Beide Arme hat Vorrang vor einem Arm)
     let best = null, bestRatio = 1;
     BODY_TRIG.forEach(t => {
@@ -2083,6 +2085,32 @@ const GEN = (() => {
       } else body.relSince = 0;
     }
   }
+  // Mehrere Auslöser: jeder hat eigene Haltezeit und eigenes Loslassen; es klingen alle Kanäle aktiver Auslöser
+  function bodyMultiStep(vals, now) {
+    const hold = body.cfg.hold;
+    BODY_TRIG.forEach(t => {
+      const c = body.cfg.trig[t.id], st = body.ms[t.id] || (body.ms[t.id] = { on: false, since: 0, rel: 0 });
+      if (c.ch < 0) { st.on = false; st.since = 0; st.rel = 0; return; }
+      const th = bodyTh(t), v = vals[t.id];
+      if (!st.on) {
+        if (v >= th) { if (!st.since) st.since = now; if (now - st.since >= hold) { st.on = true; st.rel = 0; } }
+        else st.since = 0;
+      } else if (v < th * 0.8) { if (!st.rel) st.rel = now; else if (now - st.rel >= 150) { st.on = false; st.since = 0; } }
+      else st.rel = 0;
+    });
+    bodySyncHeld(new Set(BODY_TRIG.filter(t => body.ms[t.id] && body.ms[t.id].on).map(t => body.cfg.trig[t.id].ch).filter(ch => ch >= 0)));
+  }
+  function bodySyncHeld(want) {
+    body.held.forEach(ch => { if (!want.has(ch)) { body.held.delete(ch); press(chans[ch], false); } });
+    want.forEach(ch => {
+      // neu – oder nach „Stopp“ wieder einschalten wie eine gehaltene Taste
+      if (!body.held.has(ch) || (!chans[ch].open && chans[ch].mode !== 'toggle')) {
+        if (!playing && chans.some(x => x.buffer)) start();
+        press(chans[ch], true); body.held.add(ch);
+      }
+    });
+  }
+  function bodyReleaseAll() { bodyActivate(null); body.ms = {}; bodySyncHeld(new Set()); }
   function bodyActivate(id) {
     body.active = id; body.relSince = 0;
     if (id) body.cand = null;
@@ -2108,7 +2136,10 @@ const GEN = (() => {
     g.font = '600 ' + Math.round(15 * u) + 'px Segoe UI, Arial, sans-serif';
     let t, col = '#e8edf6';
     if (body.calib) { t = body.calib.msg; col = '#ffcc4d'; }
-    else if (body.active) { const tr = BODY_TRIG.find(x => x.id === body.active); t = 'Kanal ' + (body.cfg.trig[tr.id].ch + 1) + ' · ' + tr.label; col = '#4dff87'; }
+    else if (body.cfg.multi && body.held.size) {
+      t = BODY_TRIG.filter(x => body.ms[x.id] && body.ms[x.id].on).map(x => (body.cfg.trig[x.id].ch + 1) + ' ' + x.label).join(' + '); col = '#4dff87';
+    }
+    else if (!body.cfg.multi && body.active) { const tr = BODY_TRIG.find(x => x.id === body.active); t = 'Kanal ' + (body.cfg.trig[tr.id].ch + 1) + ' · ' + tr.label; col = '#4dff87'; }
     else t = body.faceLm || body.poseLm ? 'Ruhe · stumm' : 'kein Gesicht erkannt';
     g.fillStyle = col; g.fillText(t || '', 10 * u, 22 * u);
   }
@@ -2129,13 +2160,14 @@ const GEN = (() => {
       $('btT_' + t.id).oninput = () => { body.cfg.trig[t.id].th = +$('btT_' + t.id).value; bodyUi(); };
       $('btT_' + t.id).onchange = bodySave;
     });
+    $('bodyMulti').onchange = () => { bodyReleaseAll(); body.cfg.multi = $('bodyMulti').checked; bodySave(); };
     $('bodyHold').oninput = () => { body.cfg.hold = +$('bodyHold').value; $('bodyHoldVal').textContent = body.cfg.hold + ' ms'; };
     $('bodyHold').onchange = bodySave;
     $('bodyCalib').onclick = async () => {
       if (body.calib) { body.calib = null; bodyCalibUi(); return; }
       if (ges.mode !== 'body') return;
       if (!ges.on) { await gesStart(); if (!ges.on) return; }
-      bodyActivate(null);
+      bodyReleaseAll();
       body.calib = { until: performance.now() + 2000, buf: [], msg: '' };
       bodyCalibUi();
     };
@@ -2154,6 +2186,7 @@ const GEN = (() => {
       $('btL_' + t.id).style.opacity = c.ch < 0 ? 0.55 : 1;
     });
     $('bodyHold').value = body.cfg.hold; $('bodyHoldVal').textContent = body.cfg.hold + ' ms';
+    $('bodyMulti').checked = !!body.cfg.multi;
     bodyCalibUi();
   }
   setInterval(() => {   // Live-Balken (10× pro Sekunde reicht)
@@ -2161,7 +2194,8 @@ const GEN = (() => {
     BODY_TRIG.forEach(t => {
       const v = body.vals[t.id] || 0, b = $('btB_' + t.id);
       b.style.width = Math.min(100, v / t.max * 100) + '%';
-      b.style.background = body.active === t.id ? 'var(--on)' : (v >= bodyTh(t) ? 'var(--warn)' : 'var(--acc)');
+      const on = body.cfg.multi ? !!(body.ms[t.id] && body.ms[t.id].on) : body.active === t.id;
+      b.style.background = on ? 'var(--on)' : (v >= bodyTh(t) ? 'var(--warn)' : 'var(--acc)');
     });
   }, 100);
 
@@ -2185,7 +2219,7 @@ const GEN = (() => {
   $('bodyProfLoad').onclick = () => {
     const name = $('bodyProf').value, p = bodyProfiles();
     if (!name || !p[name]) return;
-    bodyActivate(null);
+    bodyReleaseAll();
     body.cfg = bodyCfgClean(p[name]); bodySave(); bodyUi();
     gesInfo('Profil geladen: ' + name);
   };
@@ -2202,7 +2236,7 @@ const GEN = (() => {
   function gesSetMode(m) {
     ges.mode = m === 'body' ? 'body' : 'hands';
     $('gesMode').value = ges.mode;
-    gesReleaseAll(); body.active = null; body.cand = null; body.calib = null;
+    gesReleaseAll(); bodyReleaseAll(); body.cand = null; body.calib = null;
     if (ges.learn) { ges.learn = null; gesLearnUi(); }
     $('handPanel').hidden = ges.mode !== 'hands';
     $('bodyPanel').hidden = ges.mode !== 'body';
@@ -2297,7 +2331,7 @@ const GEN = (() => {
     if (ges.learn) { ges.learn = null; gesLearnUi(); }
     if (recState.rec) recStop();
     gesReleaseAll();
-    body.active = null; body.cand = null; if (body.calib) { body.calib = null; bodyCalibUi(); }
+    bodyReleaseAll(); body.cand = null; if (body.calib) { body.calib = null; bodyCalibUi(); }
     if (ges.stream) { ges.stream.getTracks().forEach(t => t.stop()); ges.stream = null; }
     $('gesVideo').srcObject = null;
     $('gesCv').hidden = true; ges.slots.forEach(S => { S.hand = null; });
