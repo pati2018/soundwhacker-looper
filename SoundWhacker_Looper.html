@@ -155,22 +155,52 @@
   </details>
 
   <details class="bar" id="chordBox">
-    <summary style="cursor:pointer"><b>Akkord/Ton</b> <span class="small mut">&ndash; Tasten (z.&nbsp;B. vom SW über Bluetooth) spielen Akkorde, Töne oder improvisieren, solange sie gehalten werden</span></summary>
+    <summary style="cursor:pointer"><b>Akkord</b> <span class="small mut">&ndash; Tasten (z.&nbsp;B. vom SW über Bluetooth) spielen Akkorde, solange sie gehalten werden</span></summary>
     <div class="row" style="margin-top:12px">
-      <label class="small" title="An: die Tasten der fünf Felder spielen Akkorde/Töne und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chOn"> <b>Tasten spielen Akkorde/Töne</b> (statt Loops / „Alle vorhören“)</label>
-      <span class="small mut" id="chInfo"></span>
+      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpA"> <b>Tasten spielen Akkorde</b> (statt Loops)</label>
+      <span class="small mut" id="chInfoA"></span>
     </div>
     <div class="row" style="margin-top:10px">
-      <label class="small mut" title="Setzt das Instrument aller Felder auf einmal">Alle Felder auf <select id="chPreset" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
-      <label class="small mut">Lautstärke <input type="range" id="chVol" min="0" max="100" value="80" style="width:110px"></label>
-      <label class="small mut">Hall <input type="range" id="chRev" min="0" max="100" value="30" style="width:110px"></label>
+      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetA" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
+      <label class="small mut">Lautstärke <input type="range" id="chVolA" min="0" max="100" value="80" style="width:110px"></label>
+      <label class="small mut">Hall <input type="range" id="chRevA" min="0" max="100" value="30" style="width:110px"></label>
     </div>
-    <div id="chFields" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
-    <div class="hint" style="margin-top:8px">Felder 1–5 spielen einen <b>Akkord</b> (Dur, Moll oder Dur7) oder einen <b>Ton</b>, Felder 6–10 nur einzelne <b>Töne</b>, Felder 11–15 <b>improvisieren</b> wie im SW-HUB: jeder Druck spielt einen zufälligen Ton aus Tonart und Skala (nie zweimal derselbe hintereinander) – jeweils so lange, wie die Taste gedrückt bleibt, danach klingt es kurz aus. Alle Felder können gleichzeitig mit verschiedenen Instrumenten klingen. Alle drei Gruppen haben die Standard-Tasten 1–5 (auch Ziffernblock) und lassen sich einzeln ein- und ausschalten – sind mehrere an, spielt eine Taste alles zusammen (z.&nbsp;B. Akkord + Basston oder Akkord + Improvisation); mit <b>anlernen</b> legst du eine andere Taste fest, z.&nbsp;B. die, die dein SW-HUB über Bluetooth sendet. Ist <b>Tasten spielen Akkorde/Töne</b> an, schalten die Tasten der eingeschalteten Felder keine Loops; andere Tasten, MIDI und Gesten steuern die Loops weiter. Mit dem Häkchen vor jedem Feld schaltest du einzelne Felder aus – dann steuert z.&nbsp;B. SW&nbsp;1 weiter Loop&nbsp;1, während SW&nbsp;2 einen Akkord spielt (dafür alle Felder mit Taste&nbsp;1 ausschalten). Jedes Feld hat sein eigenes <b>Instrument</b>; mit <b>Alle Felder auf</b> stellst du alle auf einmal um. Mit <b>▶</b> kannst du ein Feld per Maus/Finger gedrückt halten und anhören. Instrumente kommen aus der eingebauten oder deiner eigenen SoundFont, alles funktioniert auch offline.</div>
+    <div id="chFieldsA" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+    <div class="hint" style="margin-top:8px">Jedes der fünf Felder spielt einen <b>Akkord</b> (Dur, Moll oder Dur7) – oder einen einzelnen Ton –, so lange, wie seine Taste gedrückt bleibt; danach klingt er kurz aus. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
+  </details>
+
+  <details class="bar" id="tonBox">
+    <summary style="cursor:pointer"><b>Ton</b> <span class="small mut">&ndash; Tasten spielen einzelne Töne, solange sie gehalten werden</span></summary>
+    <div class="row" style="margin-top:12px">
+      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpB"> <b>Tasten spielen Töne</b> (statt Loops)</label>
+      <span class="small mut" id="chInfoB"></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetB" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
+      <label class="small mut">Lautstärke <input type="range" id="chVolB" min="0" max="100" value="80" style="width:110px"></label>
+      <label class="small mut">Hall <input type="range" id="chRevB" min="0" max="100" value="30" style="width:110px"></label>
+    </div>
+    <div id="chFieldsB" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+    <div class="hint" style="margin-top:8px">Jedes der fünf Felder spielt einen einzelnen <b>Ton</b> (Grundton und Lage), so lange, wie seine Taste gedrückt bleibt. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
+  </details>
+
+  <details class="bar" id="improBox">
+    <summary style="cursor:pointer"><b>Improvisieren</b> <span class="small mut">&ndash; wie im SW-HUB: jeder Druck spielt einen zufälligen Ton der Skala</span></summary>
+    <div class="row" style="margin-top:12px">
+      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpC"> <b>Tasten improvisieren</b> (statt Loops)</label>
+      <span class="small mut" id="chInfoC"></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetC" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
+      <label class="small mut">Lautstärke <input type="range" id="chVolC" min="0" max="100" value="80" style="width:110px"></label>
+      <label class="small mut">Hall <input type="range" id="chRevC" min="0" max="100" value="30" style="width:110px"></label>
+    </div>
+    <div id="chFieldsC" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+    <div class="hint" style="margin-top:8px">Wie im SW-HUB: jeder Druck spielt einen <b>zufälligen Ton</b> aus Tonart und Skala des Feldes (nie zweimal derselbe hintereinander), so lange, wie die Taste gedrückt bleibt. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
   </details>
 
   <details class="bar" id="swmBox">
-    <summary style="cursor:pointer"><b>Melodie</b> <span class="small mut">&ndash; wie im SW-HUB: jeder SW spielt seine eigene Melodie, Schritt für Schritt oder als Ablauf im Tempo</span></summary>
+    <summary style="cursor:pointer"><b>Melodie</b> <span class="small mut">&ndash; wie im SW-HUB: jeder SW spielt seine eigene Melodie, Schritt für Schritt oder als Loop im Tempo</span></summary>
     <div class="row" style="margin-top:12px">
       <label class="small" title="An: die Tasten der eingeschalteten SWs spielen Melodien und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="swmOn"> <b>Tasten spielen Melodien</b> (statt Loops)</label>
     </div>
@@ -205,7 +235,7 @@
         <span class="row" style="gap:4px"><span class="small mut">kopieren nach</span><select id="swmCopyTo"></select><button id="swmCopy">&#128203; Kopieren</button></span>
       </div>
     </div>
-    <div class="hint" style="margin-top:8px">Jeder SW hat seine eigene <b>Melodie</b> aus bis zu 128 Schritten; ein Schritt ist ein Ton, ein Akkord aus bis zu 3 Tönen oder eine Pause, jeweils mit einer <b>Dauer</b>. <b>Schritt für Schritt</b>: jeder Druck spielt den nächsten Schritt, solange gedrückt – so kann ein Kind eine Melodie selbst „durchdrücken“. <b>Loop, solange gehalten</b> (wie das Arpeggio im SW-HUB): die Melodie läuft im Tempo immer wieder von vorn, solange der SW gehalten wird. <b>Loop an/aus</b>: einmal tippen startet, nochmal tippen stoppt. Mehrere Loops laufen im selben Takt. Standard-Tasten sind 1–5 (auch Ziffernblock, wie vom SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem SW schaltest du ihn aus – dann steuert seine Taste weiter den Loop. Sind auch Felder in <b>Akkord/Ton</b> auf derselben Taste an, klingt beides zusammen. Zum Bearbeiten bei einem SW auf <b>bearbeiten</b> tippen, dann Töne auf der Tastatur antippen (die gewählte Dauer gilt für neue Schritte); ein Schritt in der Liste wird beim Antippen gespielt und <b>ausgewählt</b> (orange): dann ändert die Tastatur seinen Ton, ein Dauer-Knopf seine Dauer, und du kannst ihn löschen oder davor/danach einen neuen Schritt einfügen. Grün = klingt gerade, gestrichelt = kommt als nächstes. Alles bleibt im Browser gespeichert und funktioniert auch offline.</div>
+    <div class="hint" style="margin-top:8px">Jeder SW hat seine eigene <b>Melodie</b> aus bis zu 128 Schritten; ein Schritt ist ein Ton, ein Akkord aus bis zu 3 Tönen oder eine Pause, jeweils mit einer <b>Dauer</b>. <b>Schritt für Schritt</b>: jeder Druck spielt den nächsten Schritt, solange gedrückt – so kann ein Kind eine Melodie selbst „durchdrücken“. <b>Loop, solange gehalten</b> (wie das Arpeggio im SW-HUB): die Melodie läuft im Tempo immer wieder von vorn, solange der SW gehalten wird. <b>Loop an/aus</b>: einmal tippen startet, nochmal tippen stoppt. Mehrere Loops laufen im selben Takt. Standard-Tasten sind 1–5 (auch Ziffernblock, wie vom SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem SW schaltest du ihn aus – dann steuert seine Taste weiter den Loop. Sind auch Felder in <b>Akkord</b>, <b>Ton</b> oder <b>Improvisieren</b> auf derselben Taste an, klingt alles zusammen. Zum Bearbeiten bei einem SW auf <b>bearbeiten</b> tippen, dann Töne auf der Tastatur antippen (die gewählte Dauer gilt für neue Schritte); ein Schritt in der Liste wird beim Antippen gespielt und <b>ausgewählt</b> (orange): dann ändert die Tastatur seinen Ton, ein Dauer-Knopf seine Dauer, und du kannst ihn löschen oder davor/danach einen neuen Schritt einfügen. Grün = klingt gerade, gestrichelt = kommt als nächstes. Alles bleibt im Browser gespeichert und funktioniert auch offline.</div>
   </details>
 
   <details class="bar" id="gesBox">
@@ -289,7 +319,7 @@
         <label class="small mut">Haltezeit <input type="range" id="bodyHold" min="0" max="1500" step="50" value="400" style="width:140px"> <span id="bodyHoldVal" style="display:inline-block;min-width:4em">400 ms</span></label>
       </div>
       <div id="bodyTrig" style="display:grid;grid-template-columns:minmax(150px,auto) auto minmax(90px,1fr) minmax(100px,2fr) auto;gap:6px 12px;align-items:center;margin-top:10px"></div>
-      <div class="hint" style="margin-top:8px">Das Kind sitzt entspannt vor der Kamera, dann <b>Ruhe-Position anlernen</b>. Jeder Auslöser misst ab dieser Haltung. Ordne jedem Auslöser einen Loop-Kanal oder ein Feld aus <b>Akkord/Ton</b> zu (oder „–“ für aus). Mit <b>anlernen</b> neben einem Auslöser macht das Kind die Bewegung 2–3 Sekunden lang vor (z.&nbsp;B. nach links schauen), danach passt die Schwelle genau zu diesem Kind. <b>Augensteuerung:</b> Die Kamera erkennt grob, wohin die Augen schauen (links, rechts, oben, unten) – für Blick-Auslöser die Ruhe-Position mit Blick geradeaus in die Kamera anlernen, Kamera möglichst auf Augenhöhe, Gesicht gut beleuchtet; eine längere <b>Haltezeit</b> (z.&nbsp;B. 600–800 ms) verhindert, dass kurzes Umherschauen auslöst. „Augen zu“ mit Haltezeit ignoriert normales Blinzeln. Der Regler <b>Schwelle</b> legt fest, wie deutlich die Bewegung sein muss: weiter links = schon kleine Bewegungen lösen aus. Der Balken zeigt live den aktuellen Wert, der Strich die Schwelle. Normalerweise zählt nur ein Auslöser (der deutlichste). Mit <b>mehrere Auslöser gleichzeitig</b> wirkt jeder Auslöser für sich, z.&nbsp;B. Kopf links (Kanal 1) und Mund auf (Kanal 2) zusammen. Ein Kanal klingt, solange seine Bewegung gehalten wird. Die <b>Haltezeit</b> verhindert, dass kurze, unwillkürliche Bewegungen etwas auslösen. Für die Arme muss der Oberkörper mit Schultern und Händen im Bild sein. „Links“ und „rechts“ sind aus Sicht des Kindes gemeint.</div>
+      <div class="hint" style="margin-top:8px">Das Kind sitzt entspannt vor der Kamera, dann <b>Ruhe-Position anlernen</b>. Jeder Auslöser misst ab dieser Haltung. Ordne jedem Auslöser einen Loop-Kanal oder ein Feld aus <b>Akkord</b>, <b>Ton</b> oder <b>Improvisieren</b> zu (oder „–“ für aus). Mit <b>anlernen</b> neben einem Auslöser macht das Kind die Bewegung 2–3 Sekunden lang vor (z.&nbsp;B. nach links schauen), danach passt die Schwelle genau zu diesem Kind. <b>Augensteuerung:</b> Die Kamera erkennt grob, wohin die Augen schauen (links, rechts, oben, unten) – für Blick-Auslöser die Ruhe-Position mit Blick geradeaus in die Kamera anlernen, Kamera möglichst auf Augenhöhe, Gesicht gut beleuchtet; eine längere <b>Haltezeit</b> (z.&nbsp;B. 600–800 ms) verhindert, dass kurzes Umherschauen auslöst. „Augen zu“ mit Haltezeit ignoriert normales Blinzeln. Der Regler <b>Schwelle</b> legt fest, wie deutlich die Bewegung sein muss: weiter links = schon kleine Bewegungen lösen aus. Der Balken zeigt live den aktuellen Wert, der Strich die Schwelle. Normalerweise zählt nur ein Auslöser (der deutlichste). Mit <b>mehrere Auslöser gleichzeitig</b> wirkt jeder Auslöser für sich, z.&nbsp;B. Kopf links (Kanal 1) und Mund auf (Kanal 2) zusammen. Ein Kanal klingt, solange seine Bewegung gehalten wird. Die <b>Haltezeit</b> verhindert, dass kurze, unwillkürliche Bewegungen etwas auslösen. Für die Arme muss der Oberkörper mit Schultern und Händen im Bild sein. „Links“ und „rechts“ sind aus Sicht des Kindes gemeint.</div>
     </div>
     <video id="gesVideo" playsinline muted style="display:none"></video>
   </details>
@@ -1840,9 +1870,9 @@ const GEN = (() => {
     if (!$('cutModal').hidden) { if (e.key === 'Escape') closeCut(); return; }
     if (!$('askModal').hidden) return;
     if (learnKeyIdx >= 0) { e.preventDefault(); if (!e.repeat) learnKeyFrom(e); return; }
-    if (e.repeat || e.ctrlKey || e.altKey || e.metaKey || typingIn(e.target)) { if (e.repeat && ((chCfg.on && chFieldForKey(e) >= 0) || swmForKey(e).length)) e.preventDefault(); return; }
+    if (e.repeat || e.ctrlKey || e.altKey || e.metaKey || typingIn(e.target)) { if (e.repeat && (chFieldForKey(e) >= 0 || swmForKey(e).length)) e.preventDefault(); return; }
     if (swm.learn >= 0) { if (swmKeyDown(e)) e.preventDefault(); return; }   // Taste für „Melodie“ anlernen
-    // Bereiche „Akkord/Ton“ und „Melodie“ haben Vorrang, wenn eingeschaltet (beide dürfen auf derselben Taste klingen)
+    // Bereiche „Akkord“, „Ton“, „Improvisieren“ und „Melodie“ haben Vorrang, wenn eingeschaltet (beide dürfen auf derselben Taste klingen)
     const chLearning = ch.learn >= 0, usedCh = chordKeyDown(e), usedMel = !chLearning && swmKeyDown(e);
     if (usedCh || usedMel) { e.preventDefault(); return; }
     const i = keyChan(e);
@@ -2074,9 +2104,9 @@ const GEN = (() => {
     { id: 'arme', label: 'Beide Arme hoch', max: 1.5, th: 25, ch: -1 }
   ];
   const BODY_NEUTRAL0 = { yaw: 0, pitch: 0.55, roll: 0, jaw: 0, smile: 0, brow: 0, blink: 0, gazeX: 0, lookUp: 0.05, lookDown: 0.15, armLU: 0, armRU: 0, armLS: 0, armRS: 0 };
-  // Ziel eines Auslösers: 0–4 = Loop-Kanal, ab BODY_FLD = Feld im Bereich „Akkord/Ton“ (15 Felder)
+  // Ziel eines Auslösers: 0–4 = Loop-Kanal, ab BODY_FLD = Feld in „Akkord“/„Ton“/„Improvisieren“ (15 Felder)
   const BODY_FLD = 100, BODY_FLD_N = 15;
-  const bodyTgt = ch => (ch >= BODY_FLD ? 'Feld ' + (ch - BODY_FLD + 1) : 'Kanal ' + (ch + 1));
+  const bodyTgt = ch => (ch >= BODY_FLD ? chFieldName(ch - BODY_FLD) : 'Kanal ' + (ch + 1));
   const body = {
     face: null, pose: null, loading: false, faceLm: null, poseLm: null, raw: null, vals: {},
     active: null, cand: null, candSince: 0, relSince: 0, calib: null, tlearn: null, fld: -1, ms: {}, held: new Set(),
@@ -2252,7 +2282,7 @@ const GEN = (() => {
   function bodySyncHeld(want) {
     body.held.forEach(ch => { if (!want.has(ch)) { body.held.delete(ch); if (ch >= BODY_FLD) chStop(ch - BODY_FLD); else press(chans[ch], false, 'body'); } });
     want.forEach(ch => {
-      if (ch >= BODY_FLD) { if (!body.held.has(ch)) { body.held.add(ch); chStart(ch - BODY_FLD); } return; }   // Feld aus „Akkord/Ton“
+      if (ch >= BODY_FLD) { if (!body.held.has(ch)) { body.held.add(ch); chStart(ch - BODY_FLD); } return; }   // Feld aus Akkord/Ton/Improvisieren
       // neu – oder nach „Stopp“ wieder einschalten wie eine gehaltene Taste
       if (!body.held.has(ch) || (!chans[ch].open && chans[ch].mode !== 'toggle')) {
         if (!playing && chans.some(x => x.buffer)) start();
@@ -2308,7 +2338,7 @@ const GEN = (() => {
       box.insertAdjacentHTML('beforeend',
         '<span id="btL_' + t.id + '">' + t.label + '</span>' +
         '<select id="btC_' + t.id + '" style="max-width:150px"><option value="-1">–</option><optgroup label="Loop-Kanal">' + chans.map((c, i) => '<option value="' + i + '">Kanal ' + (i + 1) + '</option>').join('') + '</optgroup>' +
-        '<optgroup label="Akkord/Ton">' + Array.from({ length: BODY_FLD_N }, (_, k) => '<option value="' + (BODY_FLD + k) + '">Feld ' + (k + 1) + (k < 5 ? ' (Akkord)' : k < 10 ? ' (Ton)' : ' (Impro)') + '</option>').join('') + '</optgroup></select>' +
+        ['Akkord', 'Ton', 'Improvisieren'].map((lab, g) => '<optgroup label="' + lab + '">' + [0, 1, 2, 3, 4].map(k => '<option value="' + (BODY_FLD + g * 5 + k) + '">' + chFieldName(g * 5 + k) + '</option>').join('') + '</optgroup>').join('') + '</select>' +
         '<input type="range" id="btT_' + t.id + '" min="5" max="100" step="1">' +
         '<span style="position:relative;height:14px;background:var(--card2);border:1px solid var(--line);border-radius:7px;overflow:hidden;display:block">' +
         '<b id="btB_' + t.id + '" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc)"></b>' +
@@ -3424,7 +3454,7 @@ const GEN = (() => {
     if (!list.length) throw new Error('keine Instrumente gefunden');
     sfBank = bank; sfFileName = name;
     melCache.clear();   // Töne der vorigen SoundFont verwerfen
-    chReloadBank();     // Echtzeit-Klang (Akkord/Ton) ebenfalls umstellen
+    chReloadBank();     // Echtzeit-Klang (Akkord, Ton, Improvisieren, Melodie) ebenfalls umstellen
     const sel = $('sfPreset'), want = (sfLoadSettings() || {}).preset;
     sel.innerHTML = '';
     list.forEach(p => {
@@ -3597,7 +3627,7 @@ const GEN = (() => {
   renderSfChords();
   try { if (localStorage.getItem(SF_SET + '.open') === '1') $('sfBox').open = true; } catch (e) {}
 
-  // ---------- Bereich „Akkord/Ton“: Tasten spielen gehaltene Akkorde/Töne (Echtzeit-SoundFont über AudioWorklet) ----------
+  // ---------- Bereiche „Akkord“, „Ton“, „Improvisieren“: Tasten spielen gehaltene Akkorde/Töne (Echtzeit-SoundFont über AudioWorklet) ----------
   const CH_LIB = new URL('vendor/spessasynth/spessasynth_lib.mjs', location.href).href;          // spessasynth_lib 4.3.14 (Apache-2.0)
   const CH_PROC = new URL('vendor/spessasynth/spessasynth_processor.min.js', location.href).href;
   const CH_BOOST = 4;   // Echtzeit-Synth ist leise (~ -30 dB) – angleichen an die Loops (~ -14 dB); der Summen-Limiter fängt Spitzen ab
@@ -3606,10 +3636,21 @@ const GEN = (() => {
   const CH_N = 15;   // Felder 1–5: Akkord oder Ton, 6–10: nur Töne, 11–15: Improvisieren (zufälliger Skalenton wie im SW-HUB)
   const chChan = i => (i < 9 ? i : i + 1);   // MIDI-Kanal je Feld: 0–8 und 10–15 (Index 9 = Schlagzeug-Kanal bleibt frei)
   const chDefKey = i => (i % 5) + 1;       // Standard-Tasten: alle Gruppen 1–5 (der SW-HUB sendet 1–5)
+  // Drei Bereiche mit je 5 Feldern: A = Akkord (0–4), B = Ton (5–9), C = Improvisieren (10–14)
+  const CH_G = ['A', 'B', 'C'], chG = i => CH_G[Math.floor(i / 5)];
+  function chFieldName(i) { return ['Akkord', 'Ton', 'Impro'][Math.floor(i / 5)] + ' ' + (i % 5 + 1); }
   function chClean(c) {
     const def = [[0, 'dur'], [5, 'dur'], [7, 'dur'], [9, 'moll'], [7, 'dur7'], [0, 'ton'], [2, 'ton'], [4, 'ton'], [7, 'ton'], [9, 'ton'],
       [9, 'impro', 3], [9, 'impro', 4], [9, 'impro', 4], [9, 'impro', 5], [9, 'impro', 5]];
-    const o = { on: !!(c && c.on), grpA: c && c.grpA === false ? false : true, grpB: !!(c && c.grpB), grpC: !!(c && c.grpC), preset: c && typeof c.preset === 'string' ? c.preset : '0:0:0', vol: c && Number.isFinite(c.vol) ? c.vol : 80, rev: c && Number.isFinite(c.rev) ? c.rev : 30, fields: [] };
+    // Ältere Speicherstände hatten einen gemeinsamen Hauptschalter „on“: war er aus, sind jetzt alle Bereiche aus
+    const v2 = !!(c && c.v === 2), off = !!(c && !v2 && !c.on);
+    const o = { v: 2, grpA: v2 ? !!c.grpA : !!(c && !off && c.grpA !== false), grpB: !off && !!(c && c.grpB), grpC: !off && !!(c && c.grpC),
+      preset: c && typeof c.preset === 'string' ? c.preset : '0:0:0', fields: [] };
+    CH_G.forEach(g => {   // je Bereich eigene Lautstärke, Hall und „Alle Felder auf“
+      o['vol' + g] = c && Number.isFinite(c['vol' + g]) ? c['vol' + g] : c && Number.isFinite(c.vol) ? c.vol : 80;
+      o['rev' + g] = c && Number.isFinite(c['rev' + g]) ? c['rev' + g] : c && Number.isFinite(c.rev) ? c.rev : 30;
+      o['preset' + g] = c && typeof c['preset' + g] === 'string' ? c['preset' + g] : o.preset;
+    });
     for (let i = 0; i < CH_N; i++) {
       const f = (c && c.fields && c.fields[i]) || {};
       o.fields.push({ type: i >= 10 ? 'impro' : i >= 5 ? 'ton' : (CH_TYPES[f.type] ? f.type : def[i][1]), pc: f.pc >= 0 && f.pc < 12 ? f.pc | 0 : def[i][0], oct: [2, 3, 4, 5, 6].includes(f.oct) ? f.oct : (def[i][2] || 4),
@@ -3622,7 +3663,7 @@ const GEN = (() => {
   let chCfg = chClean(null);
   try { const c = JSON.parse(localStorage.getItem(CH_KEY) || 'null'); if (c) chCfg = chClean(c); } catch (e) {}
   const chSave = () => { try { localStorage.setItem(CH_KEY, JSON.stringify(chCfg)); } catch (e) {} };
-  const chInfo = (m, err) => { $('chInfo').textContent = m || ''; $('chInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  const chInfo = (m, err) => CH_G.forEach(g => { const el = $('chInfo' + g); el.textContent = m || ''; el.className = 'small ' + (err ? 'err' : 'mut'); });
   const ch = { synth: null, loading: null, out: null, playing: new Array(CH_N).fill(null), learn: -1, lastImpro: [], shown: [] };
 
   async function chSfBytes() {   // Rohdaten der aktiven SoundFont (eigene oder eingebaute) für den Echtzeit-Synth
@@ -3649,7 +3690,7 @@ const GEN = (() => {
         await synth.isReady;
         for (let k = 0; k < 5; k++) synth.addNewChannel();   // Kanäle 16–20 für den Bereich „Melodie“
         synth.reset();   // neue Kanäle starten mit Reglern auf 0 (Ausdruck, Klangfarbe …) – erst ein Reset setzt sie auf Normalwerte
-        ch.out = ctx.createGain(); ch.out.gain.value = chCfg.vol / 100 * CH_BOOST; ch.out.connect(master);
+        ch.out = ctx.createGain(); ch.out.gain.value = 0.8 * CH_BOOST;   // Lautstärke je Bereich über MIDI-Volume (CC7) ch.out.connect(master);
         synth.connect(ch.out);
         ch.synth = synth;
         chFillPresets(); chProgram();
@@ -3664,7 +3705,8 @@ const GEN = (() => {
     for (let i = 0; i < CH_N; i++) {
       const k = chChan(i), [msb, lsb, program] = (chCfg.fields[i].preset || '0:0:0').split(':').map(Number);
       ch.synth.controllerChange(k, 0, msb); ch.synth.controllerChange(k, 32, lsb); ch.synth.programChange(k, program);
-      ch.synth.controllerChange(k, 91, Math.round(chCfg.rev / 100 * 127)); ch.synth.controllerChange(k, 93, 0);
+      ch.synth.controllerChange(k, 7, Math.round(chCfg['vol' + chG(i)] / 100 * 127));
+      ch.synth.controllerChange(k, 91, Math.round(chCfg['rev' + chG(i)] / 100 * 127)); ch.synth.controllerChange(k, 93, 0);
     }
     swmProgram();
   }
@@ -3714,7 +3756,7 @@ const GEN = (() => {
     return out;
   }
   const chFieldForKey = e => (chFieldsForKey(e).length ? 0 : -1);
-  // Wird vom Tastatur-Handler aufgerufen; true = Taste gehört zu Akkord/Ton (Loops nicht schalten)
+  // Wird vom Tastatur-Handler aufgerufen; true = Taste gehört zu Akkord/Ton/Improvisieren (Loops nicht schalten)
   function chordKeyDown(e) {
     if (ch.learn >= 0) {
       if (e.code === 'Escape') { ch.learn = -1; chUi(); return true; }
@@ -3724,14 +3766,12 @@ const GEN = (() => {
       ch.learn = -1; chSave(); chUi();
       return true;
     }
-    if (!chCfg.on) return false;
     const fs = chFieldsForKey(e);
     if (!fs.length) return false;
     if (!e.repeat) fs.forEach(chStart);
     return true;
   }
   function chordKeyUp(e) {
-    if (!chCfg.on) return false;
     const fs = chFieldsForKey(e);
     if (!fs.length) return false;
     fs.forEach(chStop);
@@ -3740,11 +3780,14 @@ const GEN = (() => {
   window.addEventListener('blur', chStopAll);
 
   function chFillPresets() {
-    const src = $('sfPreset'), dst = $('chPreset');
+    const src = $('sfPreset');
     if (!src || src.disabled) return;
     swmFillPresets();
-    dst.innerHTML = src.innerHTML; dst.disabled = false;
-    if ([...dst.options].some(o => o.value === chCfg.preset)) dst.value = chCfg.preset; else chCfg.preset = dst.value;
+    CH_G.forEach(g => {
+      const dst = $('chPreset' + g);
+      dst.innerHTML = src.innerHTML; dst.disabled = false;
+      if ([...dst.options].some(o => o.value === chCfg['preset' + g])) dst.value = chCfg['preset' + g]; else chCfg['preset' + g] = dst.value;
+    });
     for (let i = 0; i < CH_N; i++) {   // Auswahl je Feld
       const sel = $('chInst' + i), f = chCfg.fields[i];
       sel.innerHTML = src.innerHTML; sel.disabled = false;
@@ -3752,16 +3795,13 @@ const GEN = (() => {
     }
   }
   (function chBuildUi() {
-    const box = $('chFields');
-    box.innerHTML = '';
+    CH_G.forEach(g => { $('chFields' + g).innerHTML = ''; });
     const pcOpts = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'].map((n, k) => '<option value="' + k + '">' + n + '</option>').join('');
     for (let i = 0; i < CH_N; i++) {
-      if (i === 0) box.insertAdjacentHTML('beforeend', '<label class="small"><input type="checkbox" id="chGrpA"> <b>Akkorde</b> <span class="mut">– Felder 1–5 (Akkord oder Ton)</span></label>');
-      if (i === 5) box.insertAdjacentHTML('beforeend', '<label class="small" style="margin-top:6px"><input type="checkbox" id="chGrpB"> <b>Töne</b> <span class="mut">– Felder 6–10 (nur einzelne Töne)</span></label>');
-      if (i === 10) box.insertAdjacentHTML('beforeend', '<label class="small" style="margin-top:6px"><input type="checkbox" id="chGrpC"> <b>Improvisieren</b> <span class="mut">– Felder 11–15: jeder Druck spielt einen zufälligen Ton der Skala (wie im SW-HUB)</span></label>');
+      const box = $('chFields' + chG(i));
       // Eine Zeile je Feld, die bei wenig Platz (iPad hochkant) umbricht
       box.insertAdjacentHTML('beforeend', '<div class="row" style="gap:6px 10px;padding:6px 10px;border:1px solid var(--line);border-radius:10px">' +
-        '<label class="row" style="gap:6px;min-width:90px" title="Feld an/aus – ist es aus, schaltet seine Taste wie gewohnt den Loop"><input type="checkbox" id="chFOn' + i + '"><span class="lamp" id="chLamp' + i + '"></span><b>Feld ' + (i + 1) + '</b></label>' +
+        '<label class="row" style="gap:6px;min-width:90px" title="Feld an/aus – ist es aus, schaltet seine Taste wie gewohnt den Loop"><input type="checkbox" id="chFOn' + i + '"><span class="lamp" id="chLamp' + i + '"></span><b>' + chFieldName(i) + '</b></label>' +
         '<span class="small mut">Taste</span><b id="chKey' + i + '" style="min-width:2.5em;text-align:center"></b>' +
         '<span class="row" style="gap:4px;flex-wrap:nowrap"><button id="chLearn' + i + '">anlernen</button><button id="chKeyClr' + i + '" title="zurück auf Taste ' + chDefKey(i) + '" hidden>&#10005;</button></span>' +
         (i < 5 ? '<select id="chType' + i + '" title="Art"><option value="ton">Ton</option><option value="dur">Akkord Dur</option><option value="moll">Akkord Moll</option><option value="dur7">Akkord Dur7</option></select>'
@@ -3785,23 +3825,27 @@ const GEN = (() => {
       tb.onpointerdown = ev => { ev.preventDefault(); try { tb.setPointerCapture(ev.pointerId); } catch (e) {} chStart(i); };
       tb.onpointerup = tb.onpointercancel = () => chStop(i);
     }
-    $('chGrpA').onchange = () => { chCfg.grpA = $('chGrpA').checked; for (let i = 0; i < 5; i++) chStop(i); chSave(); chUi(); };
-    $('chGrpB').onchange = () => { chCfg.grpB = $('chGrpB').checked; for (let i = 5; i < 10; i++) chStop(i); chSave(); chUi(); };
-    $('chGrpC').onchange = () => { chCfg.grpC = $('chGrpC').checked; for (let i = 10; i < CH_N; i++) chStop(i); chSave(); chUi(); };
-    $('chOn').onchange = () => { chCfg.on = $('chOn').checked; if (!chCfg.on) chStopAll(); else chEnsure().catch(() => {}); chSave(); };
-    $('chPreset').onchange = () => {   // alle Felder auf einmal
-      chStopAll(); chCfg.preset = $('chPreset').value;
-      for (let i = 0; i < CH_N; i++) { chCfg.fields[i].preset = chCfg.preset; $('chInst' + i).value = chCfg.preset; }
-      chProgram(); chSave();
-    };
-    $('chVol').oninput = () => { chCfg.vol = +$('chVol').value; if (ch.out) ch.out.gain.setTargetAtTime(chCfg.vol / 100 * CH_BOOST, ctx.currentTime, 0.03); };
-    $('chVol').onchange = chSave;
-    $('chRev').onchange = () => { chCfg.rev = +$('chRev').value; chProgram(); chSave(); };
-    $('chordBox').addEventListener('toggle', () => { if ($('chordBox').open) { chFillPresets(); chEnsure().catch(() => {}); } });
+    CH_G.forEach((g, n) => {
+      const from = n * 5, to = from + 5;
+      $('chGrp' + g).onchange = () => {
+        chCfg['grp' + g] = $('chGrp' + g).checked;
+        for (let i = from; i < to; i++) chStop(i);
+        if (chCfg['grp' + g]) chEnsure().catch(() => {});
+        chSave(); chUi();
+      };
+      $('chPreset' + g).onchange = () => {   // alle fünf Felder dieses Bereichs auf einmal
+        chCfg['preset' + g] = $('chPreset' + g).value;
+        for (let i = from; i < to; i++) { chStop(i); chCfg.fields[i].preset = chCfg['preset' + g]; $('chInst' + i).value = chCfg['preset' + g]; }
+        chProgram(); chSave();
+      };
+      $('chVol' + g).oninput = () => { chCfg['vol' + g] = +$('chVol' + g).value; chProgram(); };
+      $('chVol' + g).onchange = chSave;
+      $('chRev' + g).onchange = () => { chCfg['rev' + g] = +$('chRev' + g).value; chProgram(); chSave(); };
+    });
+    ['chordBox', 'tonBox', 'improBox'].forEach(id => $(id).addEventListener('toggle', () => { if ($(id).open) { chFillPresets(); chEnsure().catch(() => {}); } }));
   })();
   function chUi() {
-    $('chOn').checked = chCfg.on; $('chVol').value = chCfg.vol;
-    $('chGrpA').checked = chCfg.grpA; $('chGrpB').checked = chCfg.grpB; $('chGrpC').checked = chCfg.grpC; $('chRev').value = chCfg.rev;
+    CH_G.forEach(g => { $('chGrp' + g).checked = chCfg['grp' + g]; $('chVol' + g).value = chCfg['vol' + g]; $('chRev' + g).value = chCfg['rev' + g]; });
     const NN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
     for (let i = 0; i < CH_N; i++) {
       const f = chCfg.fields[i];
@@ -3820,10 +3864,10 @@ const GEN = (() => {
     }
   }
   chUi();
-  if (chCfg.on) setTimeout(() => chEnsure().catch(() => {}), 0);   // beim Start schon laden, damit der erste Tastendruck sofort klingt
+  if (chCfg.grpA || chCfg.grpB || chCfg.grpC) setTimeout(() => chEnsure().catch(() => {}), 0);   // beim Start schon laden, damit der erste Tastendruck sofort klingt
 
   // ---------- Bereich „Melodie“ (wie im SW-HUB): jeder SW hat seine eigene Melodie aus Schritten (bis zu 3 Töne + Dauer) ----------
-  // Klang über den Echtzeit-Synth von „Akkord/Ton“, auf eigenen MIDI-Kanälen 16–20 (werden beim Start des Synths angelegt)
+  // Klang über den Echtzeit-Synth der Bereiche Akkord/Ton/Improvisieren, auf eigenen MIDI-Kanälen 16–20 (werden beim Start des Synths angelegt)
   const SWM_KEY = STORE + '.swmel', SWM_N = 5, SWM_CH0 = 16;
   // Dauern wie im HUB (Nummer → Länge in Vierteln)
   const SWM_DUR = [{ d: 6, l: '1/1', q: 4 }, { d: 5, l: '1/2', q: 2 }, { d: 4, l: '1/2.', q: 3 }, { d: 0, l: '1/4', q: 1 }, { d: 3, l: '1/4.', q: 1.5 }, { d: 1, l: '1/8', q: 0.5 }, { d: 7, l: '1/8T', q: 1 / 3 }, { d: 2, l: '1/16', q: 0.25 }];
