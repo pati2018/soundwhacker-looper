@@ -2,10 +2,10 @@
 
 | Datei | Zweck | Quelle | Lizenz |
 | --- | --- | --- | --- |
-| `face_landmarker.task` | Kopfhaltung und Gesichtszüge (Modus „Kopf, Gesicht & Arme“) | Google MediaPipe, `face_landmarker/float16/1` | Apache-2.0 |
-| `pose_landmarker_lite.task` | Schultern und Arme (Modus „Kopf, Gesicht & Arme“) | Google MediaPipe, `pose_landmarker_lite/float16/1` | Apache-2.0 |
+| `hand_landmarker.task` | Handerkennung (Modus „Hände“) | Google MediaPipe, `hand_landmarker/float16/1` | Apache-2.0 |
+| `selfie_segmenter.tflite` | Virtueller Hintergrund | Google MediaPipe, `selfie_segmenter/float16` | Apache-2.0 |
+| `face_landmarker.task` | Kopfhaltung und Gesichtszüge | Google MediaPipe, `face_landmarker/float16/1` | Apache-2.0 |
+| `pose_landmarker_lite.task` | Schultern, Arme, ganzer Körper | Google MediaPipe, `pose_landmarker_lite/float16/1` | Apache-2.0 |
 
-Die Modelle liegen hier, damit der Looper sie von derselben Adresse lädt und nichts bei Google nachgeladen wird.
+Alle Modelle liegen im Looper selbst, damit nichts von fremden Servern geladen wird und der Offline-Modus funktioniert.
 Lizenztext: `../licenses/Apache-2.0.txt`.
-
-Handerkennung, Hintergrund-Erkennung und die MediaPipe-Bibliothek (Tasks Vision 0.10.14) werden von der handklang-Seite geladen: https://pati2018.github.io/handklang/

@@ -88,6 +88,12 @@
     <span class="small mut" id="presetInfo"></span>
   </div>
 
+  <div class="bar row" id="offBar">
+    <b>Offline</b>
+    <button id="offPrep" title="Lädt einmalig alles herunter, was der Looper braucht – danach läuft er auch ohne Internet">&#128229; Für offline vorbereiten</button>
+    <span class="small mut" id="offInfo"></span>
+  </div>
+
   <details class="bar" id="genBox" open>
     <summary style="cursor:pointer"><b>Loop-Generator</b> <span class="small mut">&ndash; erzeugt fünf passende Loops und lädt sie in die Kanäle</span></summary>
     <div class="row" style="margin-top:12px">
@@ -172,7 +178,7 @@
     <div id="takes" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px"></div>
     <div class="row" style="margin-top:10px;align-items:flex-start">
       <canvas id="gesCv" width="320" height="240" style="width:480px;max-width:100%;border-radius:10px;border:1px solid var(--line);background:var(--card2)" hidden></canvas>
-      <div class="hint" id="handPanel" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine oder beide Hände gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. <b>Beide Hände</b> sind gleichberechtigt: jede schaltet ihren eigenen Kanal, so hörst du bis zu zwei Kanäle gleichzeitig (Punkte im Bild: blau = linke, grün = rechte Hand). Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stört eine Fingerzahl, nimm in der Zeile das Häkchen bei <b>n Finger</b> weg – dann löst sie nichts mehr aus. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Handerkennung (Google MediaPipe) wird von deiner handklang-Seite geladen.</div>
+      <div class="hint" id="handPanel" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine oder beide Hände gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. <b>Beide Hände</b> sind gleichberechtigt: jede schaltet ihren eigenen Kanal, so hörst du bis zu zwei Kanäle gleichzeitig (Punkte im Bild: blau = linke, grün = rechte Hand). Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stört eine Fingerzahl, nimm in der Zeile das Häkchen bei <b>n Finger</b> weg – dann löst sie nichts mehr aus. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Erkennung (Google MediaPipe, Apache-2.0) ist im Looper enthalten und läuft auch offline.</div>
     </div>
     <div id="profRow" class="row" hidden style="margin-top:12px">
       <label class="small mut">Profil <select id="bodyProf" style="min-width:150px"><option value="">– Profil wählen –</option></select></label>
@@ -1793,7 +1799,7 @@ const GEN = (() => {
   window.addEventListener('blur', releaseKeys);   // Fenster verliert den Fokus: keine hängenden Tasten
 
   // ---------- Gesten-Steuerung (Kamera, Google MediaPipe Hand Landmarker; Fingerzählung aus „handklang“) ----------
-  const MP_BASE = 'https://pati2018.github.io/handklang/';
+  const MP_BASE = new URL('./', location.href).href;   // MediaPipe-Bibliothek und Modelle liegen im Looper selbst (vendor/, models/) – auch offline
   // Zwei Hände, gleichberechtigt: jede Hand („Slot“) schaltet unabhängig einen Kanal
   const ges = { on: false, mode: 'hands', lm: null, stream: null, lastVT: -1, learn: null,
     slots: [{ name: 'Links', color: '#4ea3ff' }, { name: 'Rechts', color: '#4dff87' }].map(x => Object.assign(x, { hand: null, cand: 'x', k: 0, cur: -1, how: '' })) };
@@ -3218,7 +3224,7 @@ const GEN = (() => {
   $('genText').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
 
   // ---------- SoundFont-Arpeggio (SpessaSynth, Apache-2.0, wird erst bei Bedarf geladen) ----------
-  const SF_LIB = 'https://cdn.jsdelivr.net/npm/spessasynth_core@4.3.22/+esm';   // jsDelivr löst die Abhängigkeit (stb-vorbis) mit auf
+  const SF_LIB = new URL('vendor/spessasynth/spessasynth_core.mjs', location.href).href;   // spessasynth_core 4.3.22 (Apache-2.0), lokale Kopie – auch offline
   const SF_DB = 'swlooper-soundfont', SF_ST = 'sf';
   const SF_SET = STORE + '.sf';
   let sfLibMod = null, sfBank = null, sfFileName = '', sfBusy = false;
@@ -3475,6 +3481,57 @@ const GEN = (() => {
   sfLoadSettings();
   renderSfChords();
   try { if (localStorage.getItem(SF_SET + '.open') === '1') $('sfBox').open = true; } catch (e) {}
+
+  // ---------- Offline-Modus: Service Worker + „Für offline vorbereiten“ ----------
+  const OFF_CACHE = 'swlooper-v1';   // muss zu CACHE in sw.js passen
+  const OFF_FILES = ['./', 'index.html', 'SoundWhacker_Looper.html',
+    'vendor/spessasynth/spessasynth_core.mjs', 'vendor/spessasynth/stb-vorbis.mjs',
+    'vendor/mediapipe/vision_bundle.mjs', 'vendor/mediapipe/wasm/vision_wasm_internal.js', 'vendor/mediapipe/wasm/vision_wasm_internal.wasm',
+    'models/hand_landmarker.task', 'models/selfie_segmenter.tflite', 'models/face_landmarker.task', 'models/pose_landmarker_lite.task'];
+  const offInfo = (m, err) => { $('offInfo').textContent = m || ''; $('offInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  const offOk = 'serviceWorker' in navigator && 'caches' in window && location.protocol !== 'file:';
+  async function sfBuiltinStored() {
+    try { const r = await sfDb('readonly', s => s.get('builtin')); if (r && r.ver === SF_BUILTIN_VER && r.bytes) return true; } catch (e) {}
+    try { const r = await sfDb('readonly', s => s.get('main')); if (r && r.bytes) return true; } catch (e) {}
+    return false;
+  }
+  async function offStatus() {
+    if (!offOk) { offInfo('Offline-Modus geht nur über die Internetadresse (https), nicht als lokale Datei.'); $('offPrep').disabled = true; return; }
+    try {
+      const c = await caches.open(OFF_CACHE);
+      let have = 0;
+      for (const f of OFF_FILES) if (await c.match(new URL(f, location.href).href)) have++;
+      const sf = await sfBuiltinStored();
+      if (have === OFF_FILES.length && sf) offInfo('✓ offline bereit – der Looper läuft auch ohne Internet.');
+      else offInfo((have + (sf ? 1 : 0)) + ' von ' + (OFF_FILES.length + 1) + ' Teilen offline gespeichert. Einmal mit Internet vorbereiten (ca. 45 MB).');
+    } catch (e) { offInfo('Offline-Speicher nicht verfügbar: ' + ((e && e.message) || e), true); }
+  }
+  $('offPrep').onclick = async () => {
+    if (!offOk) return;
+    $('offPrep').disabled = true;
+    try {
+      try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+      const c = await caches.open(OFF_CACHE);
+      for (let i = 0; i < OFF_FILES.length; i++) {
+        offInfo('Lade ' + (i + 1) + ' von ' + (OFF_FILES.length + 1) + ' … ' + OFF_FILES[i].split('/').pop());
+        const url = new URL(OFF_FILES[i], location.href).href;
+        const res = await fetch(url, { cache: 'reload' });
+        if (!res.ok) throw new Error(OFF_FILES[i] + ' (' + res.status + ')');
+        await c.put(url, res);
+      }
+      if (!(await sfBuiltinStored())) {
+        offInfo('Lade ' + (OFF_FILES.length + 1) + ' von ' + (OFF_FILES.length + 1) + ' … SoundFont (ca. 17 MB)');
+        const r = await fetch(SF_BUILTIN_URL);
+        if (!r.ok) throw new Error('SoundFont (' + r.status + ')');
+        const bytes = await r.arrayBuffer();
+        await sfDb('readwrite', s => s.put({ ver: SF_BUILTIN_VER, bytes }, 'builtin'));
+      }
+      await offStatus();
+    } catch (e) { offInfo('Vorbereiten fehlgeschlagen: ' + ((e && e.message) || e) + ' – besteht eine Internetverbindung?', true); }
+    $('offPrep').disabled = false;
+  };
+  if (offOk) navigator.serviceWorker.register('sw.js').then(() => offStatus(), () => offInfo('Offline-Speicher konnte nicht eingerichtet werden.', true));
+  else offStatus();
 
   // ---------- Projekt-Tempo ----------
   let projBpm = null;
