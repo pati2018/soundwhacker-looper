@@ -189,6 +189,14 @@
       <div class="row" style="margin-top:8px"><span class="small mut">Dauer</span><span id="swmDurs" class="row" style="gap:4px"></span><button id="swmPause">&#9644; Pause</button></div>
       <div class="row" id="swmPendRow" style="margin-top:8px"><span class="small mut">Gesammelt</span><b id="swmPend" style="min-width:5em"></b><button id="swmStepAdd">&#10003; Schritt +</button></div>
       <div id="swmSeq" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;min-height:30px;cursor:pointer"></div>
+      <div class="row" id="swmSelBar" style="margin-top:8px;padding:6px 10px;border:1px dashed var(--warn);border-radius:10px;display:none">
+        <b class="small" id="swmSelInfo"></b>
+        <button id="swmSelDel">&#10005; Schritt löschen</button>
+        <button id="swmSelInsB">&#65291; davor einfügen</button>
+        <button id="swmSelInsA">&#65291; danach einfügen</button>
+        <button id="swmSelDone">&#10003; fertig</button>
+        <span class="small mut">Tastatur = Ton ändern (ohne Auto: Töne an/aus, bis 3), Dauer-Knopf = Dauer ändern, Pause = zur Pause machen</span>
+      </div>
       <div class="row" style="margin-top:10px">
         <button id="swmTry" style="touch-action:none" title="Wirkt wie ein Druck auf den SW – gedrückt halten">&#9654; wie SW drücken</button>
         <button id="swmRestart" title="Schritt für Schritt wieder beim ersten Schritt beginnen">&#8634; an den Anfang</button>
@@ -197,7 +205,7 @@
         <span class="row" style="gap:4px"><span class="small mut">kopieren nach</span><select id="swmCopyTo"></select><button id="swmCopy">&#128203; Kopieren</button></span>
       </div>
     </div>
-    <div class="hint" style="margin-top:8px">Jeder SW hat seine eigene <b>Melodie</b> aus bis zu 128 Schritten; ein Schritt ist ein Ton, ein Akkord aus bis zu 3 Tönen oder eine Pause, jeweils mit einer <b>Dauer</b>. <b>Schritt für Schritt</b>: jeder Druck spielt den nächsten Schritt, solange gedrückt – so kann ein Kind eine Melodie selbst „durchdrücken“. <b>Loop, solange gehalten</b> (wie das Arpeggio im SW-HUB): die Melodie läuft im Tempo immer wieder von vorn, solange der SW gehalten wird. <b>Loop an/aus</b>: einmal tippen startet, nochmal tippen stoppt. Mehrere Loops laufen im selben Takt. Standard-Tasten sind 1–5 (auch Ziffernblock, wie vom SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem SW schaltest du ihn aus – dann steuert seine Taste weiter den Loop. Sind auch Felder in <b>Akkord/Ton</b> auf derselben Taste an, klingt beides zusammen. Zum Bearbeiten bei einem SW auf <b>bearbeiten</b> tippen, dann Töne auf der Tastatur antippen (die gewählte Dauer gilt für neue Schritte); ein Schritt in der Liste spielt beim Antippen. Grün = klingt gerade, gestrichelt = kommt als nächstes. Alles bleibt im Browser gespeichert und funktioniert auch offline.</div>
+    <div class="hint" style="margin-top:8px">Jeder SW hat seine eigene <b>Melodie</b> aus bis zu 128 Schritten; ein Schritt ist ein Ton, ein Akkord aus bis zu 3 Tönen oder eine Pause, jeweils mit einer <b>Dauer</b>. <b>Schritt für Schritt</b>: jeder Druck spielt den nächsten Schritt, solange gedrückt – so kann ein Kind eine Melodie selbst „durchdrücken“. <b>Loop, solange gehalten</b> (wie das Arpeggio im SW-HUB): die Melodie läuft im Tempo immer wieder von vorn, solange der SW gehalten wird. <b>Loop an/aus</b>: einmal tippen startet, nochmal tippen stoppt. Mehrere Loops laufen im selben Takt. Standard-Tasten sind 1–5 (auch Ziffernblock, wie vom SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem SW schaltest du ihn aus – dann steuert seine Taste weiter den Loop. Sind auch Felder in <b>Akkord/Ton</b> auf derselben Taste an, klingt beides zusammen. Zum Bearbeiten bei einem SW auf <b>bearbeiten</b> tippen, dann Töne auf der Tastatur antippen (die gewählte Dauer gilt für neue Schritte); ein Schritt in der Liste wird beim Antippen gespielt und <b>ausgewählt</b> (orange): dann ändert die Tastatur seinen Ton, ein Dauer-Knopf seine Dauer, und du kannst ihn löschen oder davor/danach einen neuen Schritt einfügen. Grün = klingt gerade, gestrichelt = kommt als nächstes. Alles bleibt im Browser gespeichert und funktioniert auch offline.</div>
   </details>
 
   <details class="bar" id="gesBox">
@@ -3842,7 +3850,7 @@ const GEN = (() => {
   try { const c = JSON.parse(localStorage.getItem(SWM_KEY) || 'null'); if (c) swmCfg = swmClean(c); } catch (e) {}
   const swmSave = () => { try { localStorage.setItem(SWM_KEY, JSON.stringify(swmCfg)); } catch (e) {} };
   // pos = nächster Schritt (Schritt für Schritt), held = klingende Töne, run = laufender Ablauf, pending = gesammelte Töne im Editor
-  const swm = { pos: new Array(SWM_N).fill(0), held: new Array(SWM_N).fill(null), run: new Array(SWM_N).fill(null), learn: -1, pending: [], timer: 0, grid0: 0, prev: null };
+  const swm = { pos: new Array(SWM_N).fill(0), held: new Array(SWM_N).fill(null), run: new Array(SWM_N).fill(null), learn: -1, pending: [], timer: 0, grid0: 0, prev: null, sel: -1 };
   const swmLamp = (i, on) => { const l = $('swmLamp' + i); if (l) l.classList.toggle('on', on); };
 
   function swmProgram() {   // Instrument, Lautstärke und Hall der fünf Melodie-Kanäle
@@ -4004,6 +4012,9 @@ const GEN = (() => {
       : '<span class="small mut">noch keine Melodie – Töne auf der Tastatur antippen</span>';
     $('swmPend').textContent = swm.pending.length ? swm.pending.map(swmName).join(' + ') : '–';
     $('swmCount' + swmCfg.edit).textContent = s.steps.length + ' Schritte';
+    const st = s.steps[swm.sel];
+    $('swmSelBar').style.display = st ? '' : 'none';
+    if (st) $('swmSelInfo').textContent = 'Schritt ' + (swm.sel + 1) + ': ' + (st.n.length ? st.n.map(swmName).join('+') : 'Pause') + ' · ' + swmDur(st.d).l;
     swmMark();
   }
   function swmMark() {   // im Editor zeigen, welcher Schritt klingt (grün) bzw. als nächster kommt (gestrichelt)
@@ -4013,13 +4024,15 @@ const GEN = (() => {
     const next = swmCfg.sw[i].mode === 'step' && !swm.held[i] ? swm.pos[i] : -1;
     box.querySelectorAll('[data-k]').forEach(el => {
       const k = +el.dataset.k;
-      el.style.borderColor = k === playing ? 'var(--on)' : k === next ? 'var(--acc)' : 'var(--line)';
+      el.style.borderColor = k === playing ? 'var(--on)' : k === swm.sel ? 'var(--warn)' : k === next ? 'var(--acc)' : 'var(--line)';
+      el.style.boxShadow = k === swm.sel ? '0 0 0 2px var(--warn)' : '';
       el.style.borderStyle = k === next && k !== playing ? 'dashed' : 'solid';
     });
   }
   function swmChanged() {   // nach Änderungen an der Melodie des bearbeiteten SW
     const i = swmCfg.edit, s = swmEd();
     if (swm.pos[i] >= s.steps.length) swm.pos[i] = 0;
+    if (swm.sel >= s.steps.length) swm.sel = s.steps.length - 1;
     if (!s.steps.length && swm.run[i]) swmRunStop(i);
     swmSave(); swmSeq();
   }
@@ -4028,6 +4041,10 @@ const GEN = (() => {
     if (s.steps.length >= 128) return;
     s.steps.push({ n: notes.slice(0, 3), d: swmCfg.dur });
     swmChanged();
+  }
+  function swmPlayStep(st) {   // einen Schritt kurz anhören
+    const k = swmChan(swmCfg.edit);
+    swmReady().then(() => { st.n.forEach(n => ch.synth.noteOn(k, n, 100)); setTimeout(() => st.n.forEach(n => ch.synth.noteOff(k, n)), Math.min(1500, swmDur(st.d).q * 60000 / swmCfg.bpm)); }).catch(() => {});
   }
   async function swmPreviewNote(n, on) {   // Ton beim Antippen der Tastatur hören
     const k = swmChan(swmCfg.edit);
@@ -4054,10 +4071,17 @@ const GEN = (() => {
       $('swmInst' + i).onchange = () => { s().preset = $('swmInst' + i).value; swmProgram(); swmSave(); };
       $('swmLearn' + i).onclick = () => { swm.learn = swm.learn === i ? -1 : i; swmUi(); };
       $('swmKeyClr' + i).onclick = () => { s().key = null; swmSave(); swmUi(); };
-      $('swmEdit' + i).onclick = () => { swmCfg.edit = i; swm.pending = []; swmSave(); swmUi(); };
+      $('swmEdit' + i).onclick = () => { swmCfg.edit = i; swm.pending = []; swm.sel = -1; swmSave(); swmUi(); };
     }
     $('swmDurs').innerHTML = SWM_DUR.map(x => '<button data-d="' + x.d + '" style="min-width:3.2em">' + x.l + '</button>').join('');
-    $('swmDurs').onclick = ev => { const b = ev.target.closest('[data-d]'); if (!b) return; swmCfg.dur = +b.dataset.d; swmSave(); swmUi(); };
+    $('swmDurs').onclick = ev => {
+      const b = ev.target.closest('[data-d]');
+      if (!b) return;
+      swmCfg.dur = +b.dataset.d;
+      const st = swmEd().steps[swm.sel];
+      if (st) { st.d = swmCfg.dur; swmChanged(); }   // ausgewählter Schritt bekommt die neue Dauer
+      swmSave(); swmUi();
+    };
     const pianoUp = () => { swmPreviewNote(0, false); $('swmPiano').querySelectorAll('[data-n]').forEach(k => { k.style.outline = ''; }); };
     $('swmPiano').onpointerdown = ev => {
       const k = ev.target.closest('[data-n]');
@@ -4067,26 +4091,52 @@ const GEN = (() => {
       const n = +k.dataset.n;
       k.style.outline = '3px solid var(--acc)';
       swmPreviewNote(n, true);
-      if (swmCfg.auto) swmAddStep([n]);
-      else { if (!swm.pending.includes(n) && swm.pending.length < 3) swm.pending.push(n); swmSeq(); }
+      const st = swmEd().steps[swm.sel];
+      if (st) {   // ausgewählten Schritt ändern: mit Auto ersetzen, ohne Auto Töne an/aus (bis 3)
+        if (swmCfg.auto) st.n = [n];
+        else if (st.n.includes(n)) st.n = st.n.filter(x => x !== n);
+        else if (st.n.length < 3) st.n = st.n.concat(n).sort((a, b) => a - b);
+        swmChanged();
+      } else if (swmCfg.auto) swmAddStep([n]);
+      else { if (swm.pending.includes(n)) swm.pending = swm.pending.filter(x => x !== n); else if (swm.pending.length < 3) swm.pending.push(n); swmSeq(); }
     };
     $('swmPiano').onpointerup = $('swmPiano').onpointercancel = pianoUp;
     $('swmOctDn').onclick = () => { if (swmCfg.oct > 2) { swmCfg.oct--; swmSave(); swmPiano(); } };
     $('swmOctUp').onclick = () => { if (swmCfg.oct < 6) { swmCfg.oct++; swmSave(); swmPiano(); } };
     $('swmAuto').onchange = () => { swmCfg.auto = $('swmAuto').checked; if (swmCfg.auto && swm.pending.length) { swmAddStep(swm.pending); swm.pending = []; } swmSave(); swmUi(); };
     $('swmStepAdd').onclick = () => { if (swm.pending.length) { swmAddStep(swm.pending); swm.pending = []; swmSeq(); } };
-    $('swmPause').onclick = () => swmAddStep([]);
+    $('swmPause').onclick = () => { const st = swmEd().steps[swm.sel]; if (st) { st.n = []; swmChanged(); } else swmAddStep([]); };
     $('swmDelLast').onclick = () => { if (swm.pending.length) swm.pending.pop(); else swmEd().steps.pop(); swmChanged(); };
     $('swmClear').onclick = async () => {
       if (!swmEd().steps.length || !(await ask('Melodie von SW ' + (swmCfg.edit + 1) + ' wirklich löschen?'))) return;
-      swmEd().steps = []; swm.pending = []; swmChanged();
+      swmEd().steps = []; swm.pending = []; swm.sel = -1; swmChanged();
     };
-    $('swmSeq').onclick = ev => {   // Schritt antippen = anhören
+    $('swmSeq').onclick = ev => {   // Schritt antippen = anhören und auswählen (nochmal antippen = Auswahl aufheben)
       const el = ev.target.closest('[data-k]');
       if (!el) return;
-      const st = swmEd().steps[+el.dataset.k], k = swmChan(swmCfg.edit);
-      swmReady().then(() => { st.n.forEach(n => ch.synth.noteOn(k, n, 100)); setTimeout(() => st.n.forEach(n => ch.synth.noteOff(k, n)), swmDur(st.d).q * 60000 / swmCfg.bpm); }).catch(() => {});
+      const k = +el.dataset.k, st = swmEd().steps[k];
+      if (swm.sel === k) { swm.sel = -1; swmSeq(); return; }
+      swm.sel = k; swmCfg.dur = st.d;
+      swmPlayStep(st); swmUi();
     };
+    const swmInsert = after => {
+      const s = swmEd(), st = s.steps[swm.sel];
+      if (!st || s.steps.length >= 128) return;
+      const at = swm.sel + (after ? 1 : 0);
+      s.steps.splice(at, 0, { n: st.n.slice(), d: st.d });   // Kopie – danach einfach Ton/Dauer ändern
+      swm.sel = at; swmChanged();
+    };
+    $('swmSelInsB').onclick = () => swmInsert(false);
+    $('swmSelInsA').onclick = () => swmInsert(true);
+    $('swmSelDel').onclick = () => {
+      const s = swmEd();
+      if (!s.steps[swm.sel]) return;
+      s.steps.splice(swm.sel, 1);
+      if (swm.pos[swmCfg.edit] > swm.sel) swm.pos[swmCfg.edit]--;
+      if (!s.steps.length) swm.sel = -1;
+      swmChanged();
+    };
+    $('swmSelDone').onclick = () => { swm.sel = -1; swmSeq(); };
     const tb = $('swmTry');   // wie ein Druck auf den SW (je nach Modus)
     tb.onpointerdown = ev => { ev.preventDefault(); try { tb.setPointerCapture(ev.pointerId); } catch (e) {} swmDown(swmCfg.edit); };
     tb.onpointerup = tb.onpointercancel = () => swmUp(swmCfg.edit);
@@ -4094,6 +4144,7 @@ const GEN = (() => {
     $('swmCopy').onclick = async () => {
       const to = $('swmCopyTo').value, from = swmCfg.edit, tg = to === 'all' ? [0, 1, 2, 3, 4].filter(k => k !== from) : [+to];
       if (!(await ask('Melodie von SW ' + (from + 1) + ' nach ' + tg.map(k => 'SW ' + (k + 1)).join(', ') + ' kopieren? (Die dortige Melodie wird ersetzt.)'))) return;
+      swm.sel = -1;
       tg.forEach(k => { if (swm.run[k]) swmRunStop(k); swmCfg.sw[k].steps = JSON.parse(JSON.stringify(swmCfg.sw[from].steps)); swm.pos[k] = 0; });
       swmSave(); swmUi();
     };
