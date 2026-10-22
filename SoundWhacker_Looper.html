@@ -197,7 +197,7 @@
         <span class="row" style="gap:4px"><span class="small mut">kopieren nach</span><select id="swmCopyTo"></select><button id="swmCopy">&#128203; Kopieren</button></span>
       </div>
     </div>
-    <div class="hint" style="margin-top:8px">Jeder SW hat seine eigene <b>Melodie</b> aus bis zu 128 Schritten; ein Schritt ist ein Ton, ein Akkord aus bis zu 3 Tönen oder eine Pause, jeweils mit einer <b>Dauer</b>. <b>Schritt für Schritt</b>: jeder Druck spielt den nächsten Schritt, solange gedrückt – so kann ein Kind eine Melodie selbst „durchdrücken“. <b>Ablauf, solange gedrückt</b>: die Melodie läuft im Tempo, solange der SW gedrückt bleibt. <b>Ablauf an/aus</b>: einmal tippen startet, nochmal tippen stoppt. Mehrere Abläufe laufen im selben Takt. Standard-Tasten sind 1–5 (auch Ziffernblock, wie vom SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem SW schaltest du ihn aus – dann steuert seine Taste weiter den Loop. Sind auch Felder in <b>Akkord/Ton</b> auf derselben Taste an, klingt beides zusammen. Zum Bearbeiten bei einem SW auf <b>bearbeiten</b> tippen, dann Töne auf der Tastatur antippen (die gewählte Dauer gilt für neue Schritte); ein Schritt in der Liste spielt beim Antippen. Grün = klingt gerade, gestrichelt = kommt als nächstes. Alles bleibt im Browser gespeichert und funktioniert auch offline.</div>
+    <div class="hint" style="margin-top:8px">Jeder SW hat seine eigene <b>Melodie</b> aus bis zu 128 Schritten; ein Schritt ist ein Ton, ein Akkord aus bis zu 3 Tönen oder eine Pause, jeweils mit einer <b>Dauer</b>. <b>Schritt für Schritt</b>: jeder Druck spielt den nächsten Schritt, solange gedrückt – so kann ein Kind eine Melodie selbst „durchdrücken“. <b>Loop, solange gehalten</b> (wie das Arpeggio im SW-HUB): die Melodie läuft im Tempo immer wieder von vorn, solange der SW gehalten wird. <b>Loop an/aus</b>: einmal tippen startet, nochmal tippen stoppt. Mehrere Loops laufen im selben Takt. Standard-Tasten sind 1–5 (auch Ziffernblock, wie vom SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem SW schaltest du ihn aus – dann steuert seine Taste weiter den Loop. Sind auch Felder in <b>Akkord/Ton</b> auf derselben Taste an, klingt beides zusammen. Zum Bearbeiten bei einem SW auf <b>bearbeiten</b> tippen, dann Töne auf der Tastatur antippen (die gewählte Dauer gilt für neue Schritte); ein Schritt in der Liste spielt beim Antippen. Grün = klingt gerade, gestrichelt = kommt als nächstes. Alles bleibt im Browser gespeichert und funktioniert auch offline.</div>
   </details>
 
   <details class="bar" id="gesBox">
@@ -3820,7 +3820,7 @@ const GEN = (() => {
   // Dauern wie im HUB (Nummer → Länge in Vierteln)
   const SWM_DUR = [{ d: 6, l: '1/1', q: 4 }, { d: 5, l: '1/2', q: 2 }, { d: 4, l: '1/2.', q: 3 }, { d: 0, l: '1/4', q: 1 }, { d: 3, l: '1/4.', q: 1.5 }, { d: 1, l: '1/8', q: 0.5 }, { d: 7, l: '1/8T', q: 1 / 3 }, { d: 2, l: '1/16', q: 0.25 }];
   const swmDur = d => SWM_DUR.find(x => x.d === d) || SWM_DUR[3];
-  const SWM_MODES = { step: 'Schritt für Schritt', hold: 'Ablauf, solange gedrückt', toggle: 'Ablauf an/aus (Tippen)' };
+  const SWM_MODES = { step: 'Schritt für Schritt (jede Berührung = nächster Ton)', hold: 'Loop, solange gehalten', toggle: 'Loop an/aus (Tippen)' };
   const SWM_NN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
   const swmName = n => SWM_NN[n % 12] + (Math.floor(n / 12) - 1);
   const swmChan = i => SWM_CH0 + i;
