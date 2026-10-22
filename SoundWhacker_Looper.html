@@ -27,7 +27,6 @@
   button.learning{background:#5a4a12;border-color:var(--warn);color:#fff}
   .lamp{width:14px;height:14px;border-radius:50%;background:#2a3445;display:inline-block;flex:none;border:1px solid #3a4658}
   .lamp.on{background:var(--on);box-shadow:0 0 10px var(--on);border-color:var(--on)}
-  .lamp.midi.on{background:var(--acc);box-shadow:0 0 8px var(--acc);border-color:var(--acc)}
   .mut{color:var(--mut)} .small{font-size:13px}
   .bar{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
@@ -37,7 +36,6 @@
   .ch h2{font-size:16px;margin:0;display:flex;align-items:center;gap:8px}
   .fname{font-size:13px;color:var(--mut);word-break:break-all;min-height:18px}
   .fname.ok{color:var(--fg)}
-  .assign{font-size:13px}
   input[type=range]{width:100%;accent-color:var(--acc)}
   .hold{width:100%;user-select:none;touch-action:none}
   .modal{position:fixed;inset:0;background:rgba(5,8,14,.8);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;z-index:50;overflow:auto}
@@ -55,11 +53,6 @@
 <div class="wrap">
   <header>
     <h1>SoundWhacker Looper</h1>
-    <div class="row">
-      <span class="small mut">MIDI-Eingang</span>
-      <select id="midiSel"><option value="">Alle Eingänge</option></select>
-      <span class="lamp midi" id="midiLamp" title="MIDI-Aktivität"></span>
-    </div>
   </header>
 
   <div class="bar row">
@@ -331,22 +324,11 @@
     <div class="grid" id="channels" style="margin-top:12px"></div>
   </details>
 
-  <div class="bar" style="margin-top:14px">
-    <div class="row">
-      <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="logOn"><b>MIDI-Protokoll</b></label>
-      <span class="small mut" id="logHint">(aus)</span>
-      <span style="flex:1"></span>
-      <button id="logClear" class="small" hidden>Leeren</button>
-    </div>
-    <div id="midiLog" class="small" style="font-family:Consolas,monospace;line-height:1.5;max-height:170px;overflow:auto;white-space:pre;margin-top:6px" hidden></div>
-  </div>
-
   <div class="bar hint" style="margin-top:14px">
-    <b>So geht's:</b> WAV-Dateien auf die Kanäle ziehen (mehrere Dateien auf einmal füllen freie Kanäle der Reihe nach) &rarr;
-    bei jedem Kanal <b>Anlernen</b> klicken und den passenden SW berühren &rarr; <b>Start</b>.
-    Alle Loops laufen dann gemeinsam im Hintergrund; ein Kanal ist nur hörbar, solange sein SW berührt wird.
-    Zum Probehören: <b>Vorhören</b> an jedem Kanal (ein/aus per Klick) oder <b>Alle vorhören</b> (Taste <b>0</b>). Am PC auch per Tastatur: Tasten <b>1</b>–<b>5</b> (Hauptreihe oder Ziffernblock), Verhalten wie beim SW (gedrückt halten oder umschalten, je nach Kanal-Einstellung). Mit <b>Taste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Taste fest (hilfreich, wenn die Tastatur nicht alle Ziffern gleichzeitig meldet). MIDI-Geräte über Kabel oder Bluetooth funktionieren weiterhin zusätzlich. Dritte Möglichkeit: <b>Gesten-Steuerung</b> – 1 bis 5 Finger in die Kamera zeigen.<br>
-    MIDIberry: Eingang = HUB, Ausgang = <b>loopMIDI Port 1</b>. Der Giada-Modus im HUB wird nicht gebraucht (stört aber auch nicht).
+    <b>So geht's:</b> WAV-Dateien auf die Kanäle ziehen (mehrere Dateien auf einmal füllen freie Kanäle der Reihe nach) &rarr; <b>Start</b>.
+    Alle Loops laufen dann gemeinsam im Hintergrund; ein Kanal ist nur hörbar, solange seine Taste gedrückt ist (oder er wird umgeschaltet – je nach Kanal-Einstellung).
+    Gesteuert wird über die Tasten <b>1</b>–<b>5</b> (Hauptreihe oder Ziffernblock) – so sendet sie auch der SW-HUB im Bluetooth-Tastatur-Modus. Mit <b>Taste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Taste fest.
+    Zum Probehören: <b>Vorhören</b> an jedem Kanal oder <b>Alle vorhören</b> (Taste <b>0</b>). Außerdem möglich: <b>Kamera-Steuerung</b> mit Fingern, Kopf, Gesicht, Augen oder Armen.
   </div>
 </div>
 
@@ -1253,12 +1235,10 @@ const GEN = (() => {
   let ctx = null, master = null, recDest = null;   // recDest: Looper-Ton für Video-Aufnahmen
   let playing = false, startTime = 0;
   let previewAll = false;
-  let learnIdx = -1;
-  let midiAccess = null;
 
   const chans = Array.from({ length: N }, (_, i) => ({
     idx: i, buffer: null, fileName: '', source: null, gain: null,
-    vol: 0.9, mode: 'hold', learn: null, key: null, gesture: null, fingerOn: true, open: false, keyHeld: false, el: {}
+    vol: 0.9, mode: 'hold', key: null, gesture: null, fingerOn: true, open: false, keyHeld: false, el: {}
   }));
   // Angelernte Geste = 20 Handform-Merkmale (normierte Abstände), siehe gesFeat()
   const validGes = g => Array.isArray(g) && g.length === 20 && g.every(Number.isFinite);
@@ -1270,8 +1250,8 @@ const GEN = (() => {
   function save() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        midiIn: $('midiSel').value, master: +$('master').value,
-        ch: chans.map(c => ({ vol: c.vol, mode: c.mode, learn: c.learn, key: c.key, gesture: c.gesture, fingerOn: c.fingerOn }))
+        master: +$('master').value,
+        ch: chans.map(c => ({ vol: c.vol, mode: c.mode, key: c.key, gesture: c.gesture, fingerOn: c.fingerOn }))
       }));
     } catch (e) {}
   }
@@ -1284,7 +1264,6 @@ const GEN = (() => {
         if (!chans[i] || !d) return;
         if (typeof d.vol === 'number') chans[i].vol = d.vol;
         if (d.mode === 'hold' || d.mode === 'toggle') chans[i].mode = d.mode;
-        if (d.learn && typeof d.learn.ch === 'number' && typeof d.learn.note === 'number') chans[i].learn = d.learn;
         if (d.key && typeof d.key.code === 'string') chans[i].key = { code: d.key.code, label: String(d.key.label || d.key.code) };
         if (validGes(d.gesture)) chans[i].gesture = d.gesture;
         if (d.fingerOn === false) chans[i].fingerOn = false;
@@ -1469,7 +1448,7 @@ const GEN = (() => {
       await dbDo('readwrite', s => s.put({
         name, master: +$('master').value,
         projBpm,
-        ch: chans.map(c => ({ fileName: c.fileName, bytes: c.bytes || null, vol: c.vol, mode: c.mode, learn: c.learn, key: c.key, gesture: c.gesture, fingerOn: c.fingerOn, bpm: c.bpm || null, bpmGuess: !!c.bpmGuess }))
+        ch: chans.map(c => ({ fileName: c.fileName, bytes: c.bytes || null, vol: c.vol, mode: c.mode, key: c.key, gesture: c.gesture, fingerOn: c.fingerOn, bpm: c.bpm || null, bpmGuess: !!c.bpmGuess }))
       }));
       await refreshPresets(name);
       try { localStorage.setItem(STORE + '.preset', name); } catch (e) {}
@@ -1483,7 +1462,6 @@ const GEN = (() => {
     try {
       const p = await dbDo('readonly', s => s.get(name));
       if (!p) { presetInfo('Preset nicht gefunden.', true); return; }
-      stopLearn();
       $('master').value = p.master; $('master').oninput();
       for (let i = 0; i < N; i++) {
         const c = chans[i], d = p.ch[i] || {};
@@ -1493,7 +1471,6 @@ const GEN = (() => {
         } else clearSample(c);
         c.vol = typeof d.vol === 'number' ? d.vol : 0.9;
         c.mode = d.mode === 'toggle' ? 'toggle' : 'hold';
-        c.learn = d.learn || null;
         c.key = d.key && typeof d.key.code === 'string' ? d.key : null;
         c.gesture = validGes(d.gesture) ? d.gesture : null;
         c.fingerOn = d.fingerOn !== false;
@@ -1614,9 +1591,9 @@ const GEN = (() => {
     fi.click();
   };
 
-  // ---------- Eingaben (MIDI + Tastatur) ----------
-  // src = wer drückt (Taste, MIDI, linke/rechte Hand, Kopf/Körper). Im Modus „gedrückt halten“ bleibt ein Kanal hörbar,
-  // solange irgendeine Quelle ihn hält – Tasten, MIDI und Gesten stören sich so nicht gegenseitig.
+  // ---------- Eingaben (Tastatur + Kamera) ----------
+  // src = wer drückt (Taste, linke/rechte Hand, Kopf/Körper). Im Modus „gedrückt halten“ bleibt ein Kanal hörbar,
+  // solange irgendeine Quelle ihn hält – Tasten und Gesten stören sich so nicht gegenseitig.
   function press(c, on, src) {
     if (previewAll) return;
     const h = c.holders || (c.holders = new Set());
@@ -1627,101 +1604,7 @@ const GEN = (() => {
     } else if (on) setOpen(c, !c.open);
   }
 
-  function onMidi(e) {
-    const [st, d1, d2] = e.data;
-    const type = st & 0xF0, ch = (st & 0x0F) + 1;
-    if (type !== 0x90 && type !== 0x80) return;
-    // Anschlag 0 oder 1 = Loslassen (1 sendet der HUB im Giada-Modus)
-    const on = type === 0x90 && d2 > 1;
-    flashMidi();
-    logMidi(type === 0x90 ? 'Note AN ' : 'Note AUS', ch, d1, d2, on);
-    if (learnIdx >= 0) {
-      if (!on) return;
-      const c = chans[learnIdx];
-      c.learn = { ch, note: d1 };
-      stopLearn();
-      renderAssign(c);
-      save();
-      return;
-    }
-    chans.forEach(c => { if (c.learn && c.learn.ch === ch && c.learn.note === d1) press(c, on, 'midi'); });
-  }
-
-  const logLines = [];
-  const t0 = performance.now();
-  function logMidi(kind, ch, note, vel, on) {
-    if (!$('logOn').checked) return;
-    const t = ((performance.now() - t0) / 1000).toFixed(2).padStart(7);
-    logLines.unshift(t + ' s  ' + kind + '  Kanal ' + String(ch).padStart(2) + '  Note ' + String(note).padStart(3) + ' (' + noteName(note) + ')  Anschlag ' + String(vel).padStart(3) + (on ? '  → hörbar' : '  → stumm'));
-    if (logLines.length > 40) logLines.pop();
-    $('midiLog').textContent = logLines.join('\n');
-  }
-  $('logClear').onclick = () => { logLines.length = 0; $('midiLog').textContent = ''; };
-  $('logOn').onchange = () => {
-    const on = $('logOn').checked;
-    $('midiLog').hidden = !on;
-    $('logClear').hidden = !on;
-    $('logHint').textContent = on ? '(letzte Ereignisse, neueste oben)' : '(aus)';
-    if (!on) { logLines.length = 0; $('midiLog').textContent = ''; }
-    try { localStorage.setItem(STORE + '.log', on ? '1' : '0'); } catch (e) {}
-  };
-  try { if (localStorage.getItem(STORE + '.log') === '1') { $('logOn').checked = true; $('logOn').onchange(); } } catch (e) {}
-
-  let midiTimer = 0;
-  function flashMidi() {
-    $('midiLamp').classList.add('on');
-    clearTimeout(midiTimer);
-    midiTimer = setTimeout(() => $('midiLamp').classList.remove('on'), 120);
-  }
-
-  function bindMidiInputs() {
-    if (!midiAccess) return;
-    const want = $('midiSel').value;
-    midiAccess.inputs.forEach(inp => { inp.onmidimessage = (!want || inp.id === want) ? onMidi : null; });
-  }
-  function fillMidiList(savedName) {
-    const sel = $('midiSel');
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">Alle Eingänge</option>';
-    midiAccess.inputs.forEach(inp => {
-      const o = document.createElement('option');
-      o.value = inp.id; o.textContent = inp.name;
-      sel.appendChild(o);
-    });
-    const byName = savedName && [...sel.options].find(o => o.textContent === savedName);
-    if (byName) sel.value = byName.value;
-    else if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
-    bindMidiInputs();
-  }
-  async function initMidi(saved) {
-    if (!navigator.requestMIDIAccess) { status('Dieser Browser kann kein MIDI. Bitte Google Chrome oder Microsoft Edge verwenden.', true); return; }
-    try {
-      midiAccess = await navigator.requestMIDIAccess();
-      fillMidiList(saved && saved.midiInName);
-      midiAccess.onstatechange = () => fillMidiList();
-      if (!midiAccess.inputs.size) status('Kein MIDI-Eingang gefunden. Läuft loopMIDI?', true);
-    } catch (e) {
-      status('MIDI-Zugriff wurde abgelehnt. Seite neu laden und MIDI erlauben.', true);
-    }
-  }
-
-  function startLearn(i) {
-    stopLearn(); stopKeyLearn();
-    learnIdx = i;
-    chans[i].el.learnBtn.classList.add('learning');
-    chans[i].el.learnBtn.textContent = 'SW berühren …';
-  }
-  function stopLearn() {
-    if (learnIdx >= 0) {
-      const b = chans[learnIdx].el.learnBtn;
-      b.classList.remove('learning');
-      b.textContent = 'Anlernen';
-    }
-    learnIdx = -1;
-  }
   function renderAssign(c) {
-    c.el.assign.textContent = c.learn ? 'MIDI-Kanal ' + c.learn.ch + ' · Note ' + c.learn.note + ' (' + noteName(c.learn.note) + ')' : 'nicht angelernt';
-    c.el.assign.className = 'assign ' + (c.learn ? '' : 'mut');
     c.el.keyTag.textContent = 'Taste ' + (c.key ? c.key.label + ' / ' : '') + (c.idx + 1);
     c.el.keyShow.textContent = c.key ? 'Taste: ' + c.key.label + ' (und ' + (c.idx + 1) + ')' : '';
     c.el.keyClr.hidden = !c.key;
@@ -1742,7 +1625,7 @@ const GEN = (() => {
     return e.key && e.key.length === 1 ? e.key.toUpperCase() : (e.key || e.code);
   }
   function startKeyLearn(i) {
-    stopLearn(); stopKeyLearn();
+    stopKeyLearn();
     learnKeyIdx = i;
     const b = chans[i].el.keyBtn;
     b.classList.add('learning');
@@ -1774,17 +1657,15 @@ const GEN = (() => {
     card.className = 'ch';
     card.innerHTML =
       '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '<span class="keyTag small mut" style="font-weight:400;margin-left:auto" title="Tasten auf der PC-Tastatur"></span></h2>' +
-      '<div class="row" style="gap:6px"><button class="fileBtn">WAV laden</button><button class="delBtn" title="Datei aus diesem Kanal entfernen">&#128465; Entfernen</button><input type="file" hidden></div>' +
+      '<div class="row" style="gap:6px"><button class="fileBtn">WAV laden</button><button class="delBtn" title="Datei aus diesem Kanal entfernen">&#128465; Entfernen</button><button class="dlBtn" title="Datei dieses Kanals speichern">&#11015;</button><input type="file" hidden></div>' +
       '<div class="fname">keine Datei – hierher ziehen</div>' +
       '<div class="row small"><span class="bpmTag mut">Tempo –</span><span style="flex:1"></span><button class="cutBtn" title="Ausschnitt aus einem Song oder Stem taktgenau als Loop schneiden">&#9986; Zuschneiden</button></div>' +
-      '<div class="row"><button class="learnBtn">Anlernen</button><button class="clearBtn" title="Zuordnung löschen">&#10005;</button><button class="dlBtn" title="Datei dieses Kanals speichern">&#11015;</button></div>' +
-      '<div class="assign"></div>' +
       '<div class="row small" style="gap:6px"><button class="keyBtn" title="Eine Taste der PC-Tastatur für diesen Kanal festlegen (gilt zusätzlich zur Ziffer)">Taste anlernen</button><button class="keyClr" title="Angelernte Taste entfernen" hidden>&#10005;</button><span class="keyShow mut"></span></div>' +
       '<select class="modeSel"><option value="hold">Hörbar solange berührt</option><option value="toggle">Umschalten bei Berührung</option></select>' +
       '<div><div class="small mut">Lautstärke</div><input type="range" class="vol" min="0" max="100"></div>' +
       '<button class="hold">&#128266; Vorhören</button>';
     const q = s => card.querySelector(s);
-    c.el = { card, lamp: q('.lamp'), fname: q('.fname'), learnBtn: q('.learnBtn'), assign: q('.assign'), bpmTag: q('.bpmTag'),
+    c.el = { card, lamp: q('.lamp'), fname: q('.fname'), bpmTag: q('.bpmTag'),
       keyTag: q('.keyTag'), keyBtn: q('.keyBtn'), keyClr: q('.keyClr'), keyShow: q('.keyShow') };
     c.el.keyBtn.onclick = () => (learnKeyIdx === c.idx ? stopKeyLearn() : startKeyLearn(c.idx));
     c.el.keyClr.onclick = () => { c.key = null; renderAssign(c); save(); };
@@ -1808,8 +1689,6 @@ const GEN = (() => {
       if (files.length === 1) loadFile(c, files[0]); else distribute(files, c.idx);
     });
 
-    c.el.learnBtn.onclick = () => (learnIdx === c.idx ? stopLearn() : startLearn(c.idx));
-    q('.clearBtn').onclick = () => { c.learn = null; renderAssign(c); save(); };
     q('.dlBtn').onclick = async () => {
       if (!c.bytes) { status('Kanal ' + (c.idx + 1) + ' hat noch keine Datei.', true); return; }
       if (!window.showDirectoryPicker && await shareFiles([{ name: c.fileName || ('kanal' + (c.idx + 1) + '.wav'), bytes: c.bytes }])) return;
@@ -1856,7 +1735,7 @@ const GEN = (() => {
   document.addEventListener('dragover', e => e.preventDefault());
   document.addEventListener('drop', e => { e.preventDefault(); distribute([...e.dataTransfer.files], 0); });
 
-  // PC-Tastatur: 1–5 = Kanäle (Hauptreihe oder Ziffernblock), 0 = alle vorhören. MIDI (Kabel/Bluetooth) läuft unabhängig davon weiter.
+  // PC-Tastatur: 1–5 = Kanäle (Hauptreihe oder Ziffernblock), 0 = alle vorhören. Der SW-HUB sendet im Bluetooth-Tastatur-Modus genau diese Tasten.
   // Angelernte Taste hat Vorrang; sonst gelten die Ziffern 1–5. Ergebnis: Kanal-Index oder -1
   const keyChan = e => {
     const code = e.code || '';
@@ -3223,15 +3102,6 @@ const GEN = (() => {
   $('allBtn').onclick = togglePreviewAll;
   $('master').oninput = () => { if (master) master.gain.setTargetAtTime($('master').value / 100, ctx.currentTime, 0.01); };
   $('master').onchange = save;
-  $('midiSel').onchange = () => {
-    bindMidiInputs();
-    try {
-      const s = JSON.parse(localStorage.getItem(STORE) || '{}');
-      s.midiInName = $('midiSel').selectedOptions[0].textContent;
-      localStorage.setItem(STORE, JSON.stringify(s));
-    } catch (e) {}
-    save();
-  };
 
   // Laufzeit-Anzeige
   setInterval(() => {
@@ -4696,7 +4566,6 @@ const GEN = (() => {
 
   const saved = load();
   chans.forEach(buildChannel);
-  initMidi(saved);
   if (window.indexedDB) {
     let last = null;
     try { last = localStorage.getItem(STORE + '.preset'); } catch (e) {}
