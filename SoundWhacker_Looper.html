@@ -160,7 +160,7 @@
       <label class="small mut">Hall <input type="range" id="chRev" min="0" max="100" value="30" style="width:110px"></label>
     </div>
     <div id="chFields" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
-    <div class="hint" style="margin-top:8px">Felder 1–5 spielen einen <b>Akkord</b> (Dur, Moll oder Dur7) oder einen <b>Ton</b>, Felder 6–10 nur einzelne <b>Töne</b> – jeweils so lange, wie die Taste gedrückt bleibt, danach klingt es kurz aus. Alle zehn können gleichzeitig mit verschiedenen Instrumenten klingen. Standard-Tasten sind 1–5 für die Akkorde und 6, 7, 8, 9, 0 für die Töne (auch Ziffernblock); mit <b>anlernen</b> legst du eine andere Taste fest, z.&nbsp;B. die, die dein SW-HUB über Bluetooth sendet. Ist <b>Tasten spielen Akkorde/Töne</b> an, schalten diese Tasten keine Loops; andere Tasten, MIDI und Gesten steuern die Loops weiter. Jedes Feld hat sein eigenes <b>Instrument</b>; mit <b>Alle Felder auf</b> stellst du alle fünf auf einmal um. Mit <b>▶</b> kannst du ein Feld per Maus/Finger gedrückt halten und anhören. Instrumente kommen aus der eingebauten oder deiner eigenen SoundFont, alles funktioniert auch offline.</div>
+    <div class="hint" style="margin-top:8px">Felder 1–5 spielen einen <b>Akkord</b> (Dur, Moll oder Dur7) oder einen <b>Ton</b>, Felder 6–10 nur einzelne <b>Töne</b> – jeweils so lange, wie die Taste gedrückt bleibt, danach klingt es kurz aus. Alle zehn können gleichzeitig mit verschiedenen Instrumenten klingen. Beide Gruppen haben die Standard-Tasten 1–5 (auch Ziffernblock) und lassen sich einzeln ein- und ausschalten: nur <b>Akkorde</b>, nur <b>Töne</b> – oder beide, dann spielt z.&nbsp;B. Taste 1 Akkord und Ton zusammen (etwa Akkord + Basston); mit <b>anlernen</b> legst du eine andere Taste fest, z.&nbsp;B. die, die dein SW-HUB über Bluetooth sendet. Ist <b>Tasten spielen Akkorde/Töne</b> an, schalten diese Tasten keine Loops; andere Tasten, MIDI und Gesten steuern die Loops weiter. Jedes Feld hat sein eigenes <b>Instrument</b>; mit <b>Alle Felder auf</b> stellst du alle fünf auf einmal um. Mit <b>▶</b> kannst du ein Feld per Maus/Finger gedrückt halten und anhören. Instrumente kommen aus der eingebauten oder deiner eigenen SoundFont, alles funktioniert auch offline.</div>
   </details>
 
   <details class="bar" id="gesBox">
@@ -3508,10 +3508,10 @@ const GEN = (() => {
   const CH_KEY = STORE + '.chord';
   const CH_N = 10;   // Felder 1–5: Akkord oder Ton, Felder 6–10: nur Töne
   const chChan = i => (i < 9 ? i : 10);   // MIDI-Kanal je Feld (Kanal 10 = Index 9 ist Schlagzeug und bleibt frei)
-  const chDefKey = i => (i + 1) % 10;      // Standard-Tasten 1–9, 0
+  const chDefKey = i => (i % 5) + 1;       // Standard-Tasten: beide Gruppen 1–5 (der SW-HUB sendet 1–5)
   function chClean(c) {
     const def = [[0, 'dur'], [5, 'dur'], [7, 'dur'], [9, 'moll'], [7, 'dur7'], [0, 'ton'], [2, 'ton'], [4, 'ton'], [7, 'ton'], [9, 'ton']];
-    const o = { on: !!(c && c.on), preset: c && typeof c.preset === 'string' ? c.preset : '0:0:0', vol: c && Number.isFinite(c.vol) ? c.vol : 80, rev: c && Number.isFinite(c.rev) ? c.rev : 30, fields: [] };
+    const o = { on: !!(c && c.on), grpA: c && c.grpA === false ? false : true, grpB: !!(c && c.grpB), preset: c && typeof c.preset === 'string' ? c.preset : '0:0:0', vol: c && Number.isFinite(c.vol) ? c.vol : 80, rev: c && Number.isFinite(c.rev) ? c.rev : 30, fields: [] };
     for (let i = 0; i < CH_N; i++) {
       const f = (c && c.fields && c.fields[i]) || {};
       o.fields.push({ type: i >= 5 ? 'ton' : (CH_TYPES[f.type] ? f.type : def[i][1]), pc: f.pc >= 0 && f.pc < 12 ? f.pc | 0 : def[i][0], oct: [2, 3, 4, 5, 6].includes(f.oct) ? f.oct : 4,
@@ -3594,14 +3594,17 @@ const GEN = (() => {
   }
   const chStopAll = () => { for (let i = 0; i < CH_N; i++) if (ch.playing[i]) chStop(i); };
   const chLamp = (i, on) => { const l = $('chLamp' + i); if (l) l.classList.toggle('on', on); };
-  function chFieldForKey(e) {
-    const code = e.code || '';
+  const chGrpOn = i => (i < 5 ? chCfg.grpA : chCfg.grpB);
+  function chFieldsForKey(e) {   // alle Felder (aktiver Gruppen), die auf diese Taste hören
+    const code = e.code || '', out = [];
     for (let i = 0; i < CH_N; i++) {
+      if (!chGrpOn(i)) continue;
       const k = chCfg.fields[i].key;
-      if (k ? k.code === code : (code === 'Digit' + chDefKey(i) || code === 'Numpad' + chDefKey(i))) return i;
+      if (k ? k.code === code : (code === 'Digit' + chDefKey(i) || code === 'Numpad' + chDefKey(i))) out.push(i);
     }
-    return -1;
+    return out;
   }
+  const chFieldForKey = e => (chFieldsForKey(e).length ? 0 : -1);
   // Wird vom Tastatur-Handler aufgerufen; true = Taste gehört zu Akkord/Ton (Loops nicht schalten)
   function chordKeyDown(e) {
     if (ch.learn >= 0) {
@@ -3613,16 +3616,16 @@ const GEN = (() => {
       return true;
     }
     if (!chCfg.on) return false;
-    const i = chFieldForKey(e);
-    if (i < 0) return false;
-    if (!e.repeat) chStart(i);
+    const fs = chFieldsForKey(e);
+    if (!fs.length) return false;
+    if (!e.repeat) fs.forEach(chStart);
     return true;
   }
   function chordKeyUp(e) {
     if (!chCfg.on) return false;
-    const i = chFieldForKey(e);
-    if (i < 0) return false;
-    chStop(i);
+    const fs = chFieldsForKey(e);
+    if (!fs.length) return false;
+    fs.forEach(chStop);
     return true;
   }
   window.addEventListener('blur', chStopAll);
@@ -3643,8 +3646,8 @@ const GEN = (() => {
     box.innerHTML = '';
     const pcOpts = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'].map((n, k) => '<option value="' + k + '">' + n + '</option>').join('');
     for (let i = 0; i < CH_N; i++) {
-      if (i === 0) box.insertAdjacentHTML('beforeend', '<b class="small mut">Akkorde (oder Töne) – Felder 1–5</b>');
-      if (i === 5) box.insertAdjacentHTML('beforeend', '<b class="small mut" style="margin-top:6px">Nur Töne – Felder 6–10</b>');
+      if (i === 0) box.insertAdjacentHTML('beforeend', '<label class="small"><input type="checkbox" id="chGrpA"> <b>Akkorde</b> <span class="mut">– Felder 1–5 (Akkord oder Ton)</span></label>');
+      if (i === 5) box.insertAdjacentHTML('beforeend', '<label class="small" style="margin-top:6px"><input type="checkbox" id="chGrpB"> <b>Töne</b> <span class="mut">– Felder 6–10 (nur einzelne Töne)</span></label>');
       // Eine Zeile je Feld, die bei wenig Platz (iPad hochkant) umbricht
       box.insertAdjacentHTML('beforeend', '<div class="row" style="gap:6px 10px;padding:6px 10px;border:1px solid var(--line);border-radius:10px">' +
         '<span class="row" style="gap:6px;min-width:70px"><span class="lamp" id="chLamp' + i + '"></span><b>Feld ' + (i + 1) + '</b></span>' +
@@ -3668,6 +3671,8 @@ const GEN = (() => {
       tb.onpointerdown = ev => { ev.preventDefault(); try { tb.setPointerCapture(ev.pointerId); } catch (e) {} chStart(i); };
       tb.onpointerup = tb.onpointercancel = () => chStop(i);
     }
+    $('chGrpA').onchange = () => { chCfg.grpA = $('chGrpA').checked; for (let i = 0; i < 5; i++) chStop(i); chSave(); chUi(); };
+    $('chGrpB').onchange = () => { chCfg.grpB = $('chGrpB').checked; for (let i = 5; i < CH_N; i++) chStop(i); chSave(); chUi(); };
     $('chOn').onchange = () => { chCfg.on = $('chOn').checked; if (!chCfg.on) chStopAll(); else chEnsure().catch(() => {}); chSave(); };
     $('chPreset').onchange = () => {   // alle Felder auf einmal
       chStopAll(); chCfg.preset = $('chPreset').value;
@@ -3680,7 +3685,8 @@ const GEN = (() => {
     $('chordBox').addEventListener('toggle', () => { if ($('chordBox').open) { chFillPresets(); chEnsure().catch(() => {}); } });
   })();
   function chUi() {
-    $('chOn').checked = chCfg.on; $('chVol').value = chCfg.vol; $('chRev').value = chCfg.rev;
+    $('chOn').checked = chCfg.on; $('chVol').value = chCfg.vol;
+    $('chGrpA').checked = chCfg.grpA; $('chGrpB').checked = chCfg.grpB; $('chRev').value = chCfg.rev;
     const NN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
     for (let i = 0; i < CH_N; i++) {
       const f = chCfg.fields[i];
@@ -3690,6 +3696,7 @@ const GEN = (() => {
       const b = $('chLearn' + i);
       b.textContent = ch.learn === i ? 'Taste drücken … (Esc)' : 'anlernen';
       b.classList.toggle('learning', ch.learn === i);
+      $('chLamp' + i).parentElement.parentElement.style.opacity = chGrpOn(i) ? 1 : 0.45;
       $('chName' + i).textContent = f.type === 'ton' ? NN[f.pc] + f.oct : NN[f.pc] + (f.type === 'moll' ? 'm' : f.type === 'dur7' ? '7' : '');
     }
   }
