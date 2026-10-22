@@ -164,10 +164,10 @@
   </details>
 
   <details class="bar" id="gesBox">
-    <summary style="cursor:pointer"><b>Kamera-Steuerung</b> <span class="small mut">&ndash; Finger, Kopf, Gesicht oder Arme schalten Kanal 1 bis 5; dazu Hintergrund und Video-Aufnahme</span></summary>
+    <summary style="cursor:pointer"><b>Kamera-Steuerung</b> <span class="small mut">&ndash; Finger, Kopf, Gesicht, Augen oder Arme schalten Kanal 1 bis 5 oder spielen Akkorde/Töne; dazu Hintergrund und Video-Aufnahme</span></summary>
     <div class="row" style="margin-top:12px">
       <button class="big" id="gesBtn">&#128247; Kamera starten</button>
-      <label class="small mut">Erkennung <select id="gesMode"><option value="hands">Hände</option><option value="body">Kopf, Gesicht &amp; Arme → Kanäle</option><option value="melody">Melodie: Kopf, Mund &amp; Arme spielen Töne</option><option value="fullbody">Ganzkörper: Bewegung spielt Töne</option></select></label>
+      <label class="small mut">Erkennung <select id="gesMode"><option value="hands">Hände</option><option value="body">Kopf, Gesicht, Augen &amp; Arme → Kanäle/Akkorde</option><option value="melody">Melodie: Kopf, Mund &amp; Arme spielen Töne</option><option value="fullbody">Ganzkörper: Bewegung spielt Töne</option></select></label>
       <span class="small mut" id="gesInfo">aus</span>
     </div>
     <div class="row" style="margin-top:10px">
@@ -243,8 +243,8 @@
         <label class="small"><input type="checkbox" id="bodyMulti"> mehrere Auslöser gleichzeitig</label>
         <label class="small mut">Haltezeit <input type="range" id="bodyHold" min="0" max="1500" step="50" value="400" style="width:140px"> <span id="bodyHoldVal" style="display:inline-block;min-width:4em">400 ms</span></label>
       </div>
-      <div id="bodyTrig" style="display:grid;grid-template-columns:minmax(150px,auto) auto minmax(110px,1fr) minmax(120px,2fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
-      <div class="hint" style="margin-top:8px">Das Kind sitzt entspannt vor der Kamera, dann <b>Ruhe-Position anlernen</b>. Jeder Auslöser misst ab dieser Haltung. Ordne jedem Auslöser einen Kanal zu (oder „–“ für aus). Der Regler <b>Schwelle</b> legt fest, wie deutlich die Bewegung sein muss: weiter links = schon kleine Bewegungen lösen aus. Der Balken zeigt live den aktuellen Wert, der Strich die Schwelle. Normalerweise zählt nur ein Auslöser (der deutlichste). Mit <b>mehrere Auslöser gleichzeitig</b> wirkt jeder Auslöser für sich, z.&nbsp;B. Kopf links (Kanal 1) und Mund auf (Kanal 2) zusammen. Ein Kanal klingt, solange seine Bewegung gehalten wird. Die <b>Haltezeit</b> verhindert, dass kurze, unwillkürliche Bewegungen etwas auslösen. Für die Arme muss der Oberkörper mit Schultern und Händen im Bild sein. „Links“ und „rechts“ sind aus Sicht des Kindes gemeint.</div>
+      <div id="bodyTrig" style="display:grid;grid-template-columns:minmax(150px,auto) auto minmax(90px,1fr) minmax(100px,2fr) auto;gap:6px 12px;align-items:center;margin-top:10px"></div>
+      <div class="hint" style="margin-top:8px">Das Kind sitzt entspannt vor der Kamera, dann <b>Ruhe-Position anlernen</b>. Jeder Auslöser misst ab dieser Haltung. Ordne jedem Auslöser einen Loop-Kanal oder ein Feld aus <b>Akkord/Ton</b> zu (oder „–“ für aus). Mit <b>anlernen</b> neben einem Auslöser macht das Kind die Bewegung 2–3 Sekunden lang vor (z.&nbsp;B. nach links schauen), danach passt die Schwelle genau zu diesem Kind. <b>Augensteuerung:</b> Die Kamera erkennt grob, wohin die Augen schauen (links, rechts, oben, unten) – für Blick-Auslöser die Ruhe-Position mit Blick geradeaus in die Kamera anlernen, Kamera möglichst auf Augenhöhe, Gesicht gut beleuchtet; eine längere <b>Haltezeit</b> (z.&nbsp;B. 600–800 ms) verhindert, dass kurzes Umherschauen auslöst. „Augen zu“ mit Haltezeit ignoriert normales Blinzeln. Der Regler <b>Schwelle</b> legt fest, wie deutlich die Bewegung sein muss: weiter links = schon kleine Bewegungen lösen aus. Der Balken zeigt live den aktuellen Wert, der Strich die Schwelle. Normalerweise zählt nur ein Auslöser (der deutlichste). Mit <b>mehrere Auslöser gleichzeitig</b> wirkt jeder Auslöser für sich, z.&nbsp;B. Kopf links (Kanal 1) und Mund auf (Kanal 2) zusammen. Ein Kanal klingt, solange seine Bewegung gehalten wird. Die <b>Haltezeit</b> verhindert, dass kurze, unwillkürliche Bewegungen etwas auslösen. Für die Arme muss der Oberkörper mit Schultern und Händen im Bild sein. „Links“ und „rechts“ sind aus Sicht des Kindes gemeint.</div>
     </div>
     <video id="gesVideo" playsinline muted style="display:none"></video>
   </details>
@@ -2014,16 +2014,23 @@ const GEN = (() => {
     { id: 'laecheln', label: 'Lächeln', max: 1, th: 30, ch: -1 },
     { id: 'brauen', label: 'Augenbrauen hoch', max: 1, th: 45, ch: -1 },
     { id: 'augen', label: 'Augen zu', max: 1, th: 70, ch: -1 },
+    { id: 'blickL', label: 'Augen schauen nach links', max: 0.3, th: 35, ch: -1 },
+    { id: 'blickR', label: 'Augen schauen nach rechts', max: 0.3, th: 35, ch: -1 },
+    { id: 'blickH', label: 'Augen schauen nach oben', max: 0.6, th: 35, ch: -1 },
+    { id: 'blickU', label: 'Augen schauen nach unten', max: 0.6, th: 35, ch: -1 },
     { id: 'armLH', label: 'Linker Arm hoch', max: 1.5, th: 25, ch: -1 },
     { id: 'armRH', label: 'Rechter Arm hoch', max: 1.5, th: 25, ch: -1 },
     { id: 'armLS', label: 'Linker Arm zur Seite', max: 1.5, th: 45, ch: -1 },
     { id: 'armRS', label: 'Rechter Arm zur Seite', max: 1.5, th: 45, ch: -1 },
     { id: 'arme', label: 'Beide Arme hoch', max: 1.5, th: 25, ch: -1 }
   ];
-  const BODY_NEUTRAL0 = { yaw: 0, pitch: 0.55, roll: 0, jaw: 0, smile: 0, brow: 0, blink: 0, armLU: 0, armRU: 0, armLS: 0, armRS: 0 };
+  const BODY_NEUTRAL0 = { yaw: 0, pitch: 0.55, roll: 0, jaw: 0, smile: 0, brow: 0, blink: 0, gazeX: 0, lookUp: 0.05, lookDown: 0.15, armLU: 0, armRU: 0, armLS: 0, armRS: 0 };
+  // Ziel eines Auslösers: 0–4 = Loop-Kanal, ab BODY_FLD = Feld im Bereich „Akkord/Ton“ (15 Felder)
+  const BODY_FLD = 100, BODY_FLD_N = 15;
+  const bodyTgt = ch => (ch >= BODY_FLD ? 'Feld ' + (ch - BODY_FLD + 1) : 'Kanal ' + (ch + 1));
   const body = {
     face: null, pose: null, loading: false, faceLm: null, poseLm: null, raw: null, vals: {},
-    active: null, cand: null, candSince: 0, relSince: 0, calib: null, ms: {}, held: new Set(),
+    active: null, cand: null, candSince: 0, relSince: 0, calib: null, tlearn: null, fld: -1, ms: {}, held: new Set(),
     cfg: { neutral: Object.assign({}, BODY_NEUTRAL0), calibrated: false, hold: 400, multi: false, trig: {} }
   };
   BODY_TRIG.forEach(t => { body.cfg.trig[t.id] = { ch: t.ch, th: t.th }; });
@@ -2034,7 +2041,7 @@ const GEN = (() => {
     if (c && Number.isFinite(c.hold)) out.hold = Math.max(0, Math.min(1500, c.hold));
     BODY_TRIG.forEach(t => {
       const s = c && c.trig && c.trig[t.id];
-      out.trig[t.id] = { ch: s && Number.isInteger(s.ch) && s.ch >= -1 && s.ch < N ? s.ch : t.ch, th: s && Number.isFinite(s.th) ? Math.max(5, Math.min(100, s.th)) : t.th };
+      out.trig[t.id] = { ch: s && Number.isInteger(s.ch) && ((s.ch >= -1 && s.ch < N) || (s.ch >= BODY_FLD && s.ch < BODY_FLD + BODY_FLD_N)) ? s.ch : t.ch, th: s && Number.isFinite(s.th) ? Math.max(5, Math.min(100, s.th)) : t.th };
     });
     return out;
   }
@@ -2053,7 +2060,7 @@ const GEN = (() => {
     try {
       if (!body.face) body.face = await mk(ges.vision.FaceLandmarker, 'face_landmarker.task', { numFaces: 1, outputFaceBlendshapes: true });
       if (!body.pose) body.pose = await mk(ges.vision.PoseLandmarker, 'pose_landmarker_lite.task', { numPoses: 1 });
-      gesInfo('läuft – Kopf, Gesicht und Arme werden erkannt');
+      gesInfo('läuft – Kopf, Gesicht, Augen und Arme werden erkannt');
     } catch (e) { gesInfo('Gesichts-/Körpererkennung konnte nicht geladen werden: ' + ((e && e.message) || e), true); }
     body.loading = false;
   }
@@ -2072,6 +2079,11 @@ const GEN = (() => {
       const eyeY = (a1.y + a2.y) / 2, mouthY = (m1.y + m2.y) / 2;
       if (Math.abs(c2.x - c1.x) > 1e-4) r.yaw = (nose.x - c1.x) / (c2.x - c1.x) - 0.5;      // + = Kopf nach links (aus Sicht des Kindes)
       if (Math.abs(mouthY - eyeY) > 1e-4) r.pitch = (nose.y - eyeY) / (mouthY - eyeY);       // größer = Kopf nach unten
+      if (face.length > 477) {   // Blick links/rechts: Lage der Pupille im Auge (Augenwinkel 33/133 und 362/263, Iris 468 und 473)
+        const eye = (ia, ib, ic) => { const a = P(ia), b = P(ib), c = P(ic), w = Math.abs(b.x - a.x); return w > 1e-4 ? (c.x - (a.x + b.x) / 2) / w : null; };
+        const g = [eye(33, 133, 468), eye(362, 263, 473)].filter(x => x != null);
+        if (g.length) r.gazeX = g.reduce((s, x) => s + x, 0) / g.length;                   // + = Blick nach links (aus Sicht des Kindes)
+      }
     }
     if (shapes) {
       const s = {}; shapes.forEach(c => { s[c.categoryName] = c.score; });
@@ -2079,6 +2091,8 @@ const GEN = (() => {
       r.smile = ((s.mouthSmileLeft || 0) + (s.mouthSmileRight || 0)) / 2;
       r.brow = s.browInnerUp || 0;
       r.blink = ((s.eyeBlinkLeft || 0) + (s.eyeBlinkRight || 0)) / 2;
+      r.lookUp = ((s.eyeLookUpLeft || 0) + (s.eyeLookUpRight || 0)) / 2;
+      r.lookDown = ((s.eyeLookDownLeft || 0) + (s.eyeLookDownRight || 0)) / 2;
     }
     if (pose) {
       const ok = p => p && (p.visibility == null || p.visibility > 0.5);
@@ -2097,6 +2111,9 @@ const GEN = (() => {
     v.kopfU = pos(r.pitch, n.pitch); v.kopfH = r.pitch == null ? 0 : Math.max(0, n.pitch - r.pitch);
     v.neigL = pos(r.roll, n.roll); v.neigR = r.roll == null ? 0 : Math.max(0, n.roll - r.roll);
     v.mund = pos(r.jaw, n.jaw); v.laecheln = pos(r.smile, n.smile); v.brauen = pos(r.brow, n.brow); v.augen = pos(r.blink, n.blink);
+    const open = !((r.blink || 0) > 0.45);   // bei geschlossenen Augen zählt kein Blick (sonst wirkt Blinzeln wie „nach unten“)
+    v.blickL = open ? pos(r.gazeX, n.gazeX) : 0; v.blickR = open && r.gazeX != null ? Math.max(0, n.gazeX - r.gazeX) : 0;
+    v.blickH = open ? pos(r.lookUp, n.lookUp) : 0; v.blickU = open ? pos(r.lookDown, n.lookDown) : 0;
     v.armLH = pos(r.armLU, n.armLU); v.armRH = pos(r.armRU, n.armRU);
     v.armLS = pos(r.armLS, n.armLS); v.armRS = pos(r.armRS, n.armRS);
     v.arme = Math.min(v.armLH, v.armRH);
@@ -2132,6 +2149,20 @@ const GEN = (() => {
     }
 
     const vals = body.vals = bodyValues(r);
+    if (body.tlearn) {   // einen Auslöser anlernen: 1,5 s vorbereiten, 2,5 s messen, Schwelle = 60 % des typischen Werts
+      const L = body.tlearn, t = BODY_TRIG.find(x => x.id === L.id);
+      if (now < L.until) { L.msg = t.label + ' – gleich vormachen … ' + Math.ceil((L.until - now) / 1000); return; }
+      if (r.yaw == null && r.armLU == null) { L.msg = 'Kein Gesicht erkannt – bitte in die Kamera schauen'; return; }
+      L.buf.push(vals[L.id] || 0);
+      L.msg = t.label + ' – jetzt halten … ' + Math.max(0, Math.ceil((L.end - now) / 1000));
+      if (now < L.end) return;
+      const xs = L.buf.slice().sort((a, b) => a - b), typ = xs[Math.floor(xs.length * 0.7)] || 0;
+      body.tlearn = null;
+      if (typ < t.max * 0.06) { gesInfo(t.label + ': keine deutliche Bewegung gemessen – Schwelle bleibt. Evtl. vorher Ruhe-Position neu anlernen.', true); }
+      else { body.cfg.trig[L.id].th = Math.max(5, Math.min(100, Math.round(typ * 0.6 / t.max * 100))); bodySave(); gesInfo(t.label + ' angelernt ✓ (Schwelle ' + body.cfg.trig[L.id].th + ')'); }
+      bodyUi();
+      return;
+    }
     if (body.cfg.multi) { bodyMultiStep(vals, now); return; }
     // Stärksten Auslöser über seiner Schwelle wählen (Beide Arme hat Vorrang vor einem Arm)
     let best = null, bestRatio = 1;
@@ -2170,8 +2201,9 @@ const GEN = (() => {
     bodySyncHeld(new Set(BODY_TRIG.filter(t => body.ms[t.id] && body.ms[t.id].on).map(t => body.cfg.trig[t.id].ch).filter(ch => ch >= 0)));
   }
   function bodySyncHeld(want) {
-    body.held.forEach(ch => { if (!want.has(ch)) { body.held.delete(ch); press(chans[ch], false, 'body'); } });
+    body.held.forEach(ch => { if (!want.has(ch)) { body.held.delete(ch); if (ch >= BODY_FLD) chStop(ch - BODY_FLD); else press(chans[ch], false, 'body'); } });
     want.forEach(ch => {
+      if (ch >= BODY_FLD) { if (!body.held.has(ch)) { body.held.add(ch); chStart(ch - BODY_FLD); } return; }   // Feld aus „Akkord/Ton“
       // neu – oder nach „Stopp“ wieder einschalten wie eine gehaltene Taste
       if (!body.held.has(ch) || (!chans[ch].open && chans[ch].mode !== 'toggle')) {
         if (!playing && chans.some(x => x.buffer)) start();
@@ -2183,7 +2215,9 @@ const GEN = (() => {
   function bodyActivate(id) {
     body.active = id; body.relSince = 0;
     if (id) body.cand = null;
-    gesApply(0, id ? body.cfg.trig[id].ch : -1);
+    const tg = id ? body.cfg.trig[id].ch : -1, f = tg >= BODY_FLD ? tg - BODY_FLD : -1;
+    gesApply(0, tg >= BODY_FLD ? -1 : tg);
+    if (body.fld !== f) { if (body.fld >= 0) chStop(body.fld); body.fld = f; if (f >= 0) chStart(f); }
   }
 
   function bodyDraw(g, W, H, u) {
@@ -2208,10 +2242,11 @@ const GEN = (() => {
     if (ges.mode === 'fullbody') { t = fbHeader(); col = fbCal || fbPartCal ? '#ffcc4d' : '#4dff87'; }
     else if (ges.mode === 'melody') { t = melHeader(); col = melCal ? '#ffcc4d' : '#4dff87'; }
     else if (body.calib) { t = body.calib.msg; col = '#ffcc4d'; }
+    else if (body.tlearn) { t = body.tlearn.msg || ''; col = '#ffcc4d'; }
     else if (body.cfg.multi && body.held.size) {
-      t = BODY_TRIG.filter(x => body.ms[x.id] && body.ms[x.id].on).map(x => (body.cfg.trig[x.id].ch + 1) + ' ' + x.label).join(' + '); col = '#4dff87';
+      t = BODY_TRIG.filter(x => body.ms[x.id] && body.ms[x.id].on).map(x => bodyTgt(body.cfg.trig[x.id].ch) + ' ' + x.label).join(' + '); col = '#4dff87';
     }
-    else if (!body.cfg.multi && body.active) { const tr = BODY_TRIG.find(x => x.id === body.active); t = 'Kanal ' + (body.cfg.trig[tr.id].ch + 1) + ' · ' + tr.label; col = '#4dff87'; }
+    else if (!body.cfg.multi && body.active) { const tr = BODY_TRIG.find(x => x.id === body.active); t = bodyTgt(body.cfg.trig[tr.id].ch) + ' · ' + tr.label; col = '#4dff87'; }
     else t = body.faceLm || body.poseLm ? 'Ruhe · stumm' : 'kein Gesicht erkannt';
     g.fillStyle = col; g.fillText(t || '', 10 * u, 22 * u);
   }
@@ -2219,15 +2254,26 @@ const GEN = (() => {
   // Oberfläche: Auslöser-Tabelle mit Kanal, Schwelle und Live-Balken
   (function bodyBuildUi() {
     const box = $('bodyTrig');
-    box.innerHTML = '<b class="small mut">Auslöser</b><b class="small mut">Kanal</b><b class="small mut">Schwelle</b><b class="small mut">aktuell</b>';
+    box.innerHTML = '<b class="small mut">Auslöser</b><b class="small mut">spielt</b><b class="small mut">Schwelle</b><b class="small mut">aktuell</b><span></span>';
     BODY_TRIG.forEach(t => {
       box.insertAdjacentHTML('beforeend',
         '<span id="btL_' + t.id + '">' + t.label + '</span>' +
-        '<select id="btC_' + t.id + '"><option value="-1">–</option>' + chans.map((c, i) => '<option value="' + i + '">' + (i + 1) + '</option>').join('') + '</select>' +
+        '<select id="btC_' + t.id + '" style="max-width:150px"><option value="-1">–</option><optgroup label="Loop-Kanal">' + chans.map((c, i) => '<option value="' + i + '">Kanal ' + (i + 1) + '</option>').join('') + '</optgroup>' +
+        '<optgroup label="Akkord/Ton">' + Array.from({ length: BODY_FLD_N }, (_, k) => '<option value="' + (BODY_FLD + k) + '">Feld ' + (k + 1) + (k < 5 ? ' (Akkord)' : k < 10 ? ' (Ton)' : ' (Impro)') + '</option>').join('') + '</optgroup></select>' +
         '<input type="range" id="btT_' + t.id + '" min="5" max="100" step="1">' +
         '<span style="position:relative;height:14px;background:var(--card2);border:1px solid var(--line);border-radius:7px;overflow:hidden;display:block">' +
         '<b id="btB_' + t.id + '" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc)"></b>' +
-        '<i id="btM_' + t.id + '" style="position:absolute;top:0;bottom:0;width:2px;background:var(--warn)"></i></span>');
+        '<i id="btM_' + t.id + '" style="position:absolute;top:0;bottom:0;width:2px;background:var(--warn)"></i></span>' +
+        '<button id="btA_' + t.id + '" class="small" title="Das Kind macht die Bewegung 2–3 Sekunden lang vor – die Schwelle wird passend eingestellt">anlernen</button>');
+      $('btA_' + t.id).onclick = async () => {
+        if (body.tlearn) { const same = body.tlearn.id === t.id; body.tlearn = null; bodyUi(); if (same) return; }
+        if (ges.mode !== 'body') return;
+        if (!ges.on) { await gesStart(); if (!ges.on) return; }
+        bodyReleaseAll();
+        const now = performance.now();
+        body.tlearn = { id: t.id, until: now + 1500, end: now + 4000, buf: [], msg: '' };
+        bodyUi();
+      };
       $('btC_' + t.id).onchange = () => { body.cfg.trig[t.id].ch = +$('btC_' + t.id).value; if (body.active === t.id) bodyActivate(null); bodySave(); bodyUi(); };
       $('btT_' + t.id).oninput = () => { body.cfg.trig[t.id].th = +$('btT_' + t.id).value; bodyUi(); };
       $('btT_' + t.id).onchange = bodySave;
@@ -2256,6 +2302,8 @@ const GEN = (() => {
       $('btC_' + t.id).value = c.ch; $('btT_' + t.id).value = c.th;
       $('btM_' + t.id).style.left = Math.min(99, c.th) + '%';
       $('btL_' + t.id).style.opacity = c.ch < 0 ? 0.55 : 1;
+      const lb = $('btA_' + t.id), on = !!(body.tlearn && body.tlearn.id === t.id);
+      lb.textContent = on ? 'Abbrechen' : 'anlernen'; lb.classList.toggle('learning', on);
     });
     $('bodyHold').value = body.cfg.hold; $('bodyHoldVal').textContent = body.cfg.hold + ' ms';
     $('bodyMulti').checked = !!body.cfg.multi;
