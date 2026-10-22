@@ -41,7 +41,6 @@
   .modal{position:fixed;inset:0;background:rgba(5,8,14,.8);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;z-index:50;overflow:auto}
   .modal[hidden]{display:none}
   .modalBox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;width:min(1040px,100%);display:flex;flex-direction:column;gap:12px}
-  #cutWave{width:100%;height:160px;background:var(--card2);border:1px solid var(--line);border-radius:8px;cursor:crosshair;touch-action:none;display:block}
   .bpmTag{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   .hint{font-size:13px;color:var(--mut);line-height:1.5}
   .err{color:var(--err)}
@@ -329,48 +328,6 @@
     Alle Loops laufen dann gemeinsam im Hintergrund; ein Kanal ist nur hörbar, solange seine Taste gedrückt ist (oder er wird umgeschaltet – je nach Kanal-Einstellung).
     Gesteuert wird über die Tasten <b>1</b>–<b>5</b> (Hauptreihe oder Ziffernblock) – so sendet sie auch der SW-HUB im Bluetooth-Tastatur-Modus. Mit <b>Taste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Taste fest.
     Zum Probehören: <b>Vorhören</b> an jedem Kanal oder <b>Alle vorhören</b> (Taste <b>0</b>). Außerdem möglich: <b>Kamera-Steuerung</b> mit Fingern, Kopf, Gesicht, Augen oder Armen.
-  </div>
-</div>
-
-<div class="modal" id="cutModal" hidden>
-  <div class="modalBox">
-    <div class="row"><b style="font-size:18px">&#9986; Loop zuschneiden</b><span class="small mut" id="cutFor"></span><span style="flex:1"></span><button id="cutClose">&#10005; Schließen</button></div>
-    <div class="small mut" id="cutFile"></div>
-    <canvas id="cutWave"></canvas>
-    <div class="row small mut">Klicke in die Wellenform, um den Start zu setzen. Blaue Linien = Taktanfänge, dünne Linien = Schläge.
-      <span style="flex:1"></span>Ansicht <select id="cutZoom"><option value="all">ganze Datei</option><option value="sel">Ausschnitt</option></select></div>
-    <div class="row">
-      <span class="small mut">Tempo der Datei</span>
-      <input id="cutBpm" type="number" min="40" max="240" step="0.01" style="width:90px"> BPM
-      <button id="cutHalf" title="Halbes Tempo">&divide;2</button><button id="cutDouble" title="Doppeltes Tempo">&times;2</button>
-      <button id="cutTap" title="Im Takt mehrmals klicken">Mitklopfen</button>
-      <span class="small mut" id="cutDetect"></span>
-    </div>
-    <div class="row">
-      <span class="small mut">Länge</span>
-      <select id="cutBars"><option value="1">1 Takt</option><option value="2">2 Takte</option><option value="4" selected>4 Takte</option><option value="8">8 Takte</option></select>
-      <span class="small mut">Start</span>
-      <button class="cutNudge" data-n="-4">&#9664;&#9664; Takt</button><button class="cutNudge" data-n="-1">&#9664; Schlag</button>
-      <span id="cutStart" style="min-width:78px;text-align:center"></span>
-      <button class="cutNudge" data-n="1">Schlag &#9654;</button><button class="cutNudge" data-n="4">Takt &#9654;&#9654;</button>
-      <label class="small mut"><input type="checkbox" id="cutSnap" checked> am Schlag einrasten</label>
-    </div>
-    <div class="row small mut">
-      Feinkorrektur: <button class="cutFine" data-ms="-10">&#9664; 10 ms</button><button class="cutFine" data-ms="10">10 ms &#9654;</button>
-      <button id="cutGridHere" title="Taktraster so verschieben, dass hier ein Taktanfang liegt">Raster hier ansetzen</button>
-      <span>Tipp: Liegen die blauen Linien nicht auf den Bassdrum-Schlägen, „am Schlag einrasten“ ausschalten, genau auf eine Bassdrum am Taktanfang klicken und „Raster hier ansetzen“ drücken.</span>
-    </div>
-    <div class="row">
-      <span class="small mut">Ziel-Tempo</span>
-      <input id="cutTarget" type="number" min="40" max="240" step="0.01" style="width:90px"> BPM
-      <select id="cutMode"><option value="keep">Tonhöhe beibehalten</option><option value="vinyl">Wie Plattenspieler (Tonhöhe ändert sich mit)</option></select>
-      <span class="small mut" id="cutRatio"></span>
-    </div>
-    <div class="row">
-      <button class="big" id="cutPlay">&#9654; Anhören</button>
-      <button class="big start" id="cutApply">&#10004; Übernehmen</button>
-      <span class="small mut" id="cutInfo"></span>
-    </div>
   </div>
 </div>
 
@@ -1659,7 +1616,7 @@ const GEN = (() => {
       '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '<span class="keyTag small mut" style="font-weight:400;margin-left:auto" title="Tasten auf der PC-Tastatur"></span></h2>' +
       '<div class="row" style="gap:6px"><button class="fileBtn">WAV laden</button><button class="delBtn" title="Datei aus diesem Kanal entfernen">&#128465; Entfernen</button><button class="dlBtn" title="Datei dieses Kanals speichern">&#11015;</button><input type="file" hidden></div>' +
       '<div class="fname">keine Datei – hierher ziehen</div>' +
-      '<div class="row small"><span class="bpmTag mut">Tempo –</span><span style="flex:1"></span><button class="cutBtn" title="Ausschnitt aus einem Song oder Stem taktgenau als Loop schneiden">&#9986; Zuschneiden</button></div>' +
+      '<div class="row small"><span class="bpmTag mut">Tempo –</span></div>' +
       '<div class="row small" style="gap:6px"><button class="keyBtn" title="Eine Taste der PC-Tastatur für diesen Kanal festlegen (gilt zusätzlich zur Ziffer)">Taste anlernen</button><button class="keyClr" title="Angelernte Taste entfernen" hidden>&#10005;</button><span class="keyShow mut"></span></div>' +
       '<select class="modeSel"><option value="hold">Hörbar solange berührt</option><option value="toggle">Umschalten bei Berührung</option></select>' +
       '<div><div class="small mut">Lautstärke</div><input type="range" class="vol" min="0" max="100"></div>' +
@@ -1669,7 +1626,6 @@ const GEN = (() => {
       keyTag: q('.keyTag'), keyBtn: q('.keyBtn'), keyClr: q('.keyClr'), keyShow: q('.keyShow') };
     c.el.keyBtn.onclick = () => (learnKeyIdx === c.idx ? stopKeyLearn() : startKeyLearn(c.idx));
     c.el.keyClr.onclick = () => { c.key = null; renderAssign(c); save(); };
-    q('.cutBtn').onclick = () => openCut(c);
     c.el.bpmTag.onclick = async () => {
       if (!c.buffer) return;
       const v = +((await ask('Tempo dieses Loops in BPM:', c.bpm ? String(+c.bpm.toFixed(2)) : '')) || 0);
@@ -1749,7 +1705,6 @@ const GEN = (() => {
     (t.tagName === 'INPUT' && !['range', 'checkbox', 'button'].includes(t.type));
   function releaseKeys() { chans.forEach(c => { if (c.keyHeld) { c.keyHeld = false; press(c, false, 'key'); } }); }
   document.addEventListener('keydown', e => {
-    if (!$('cutModal').hidden) { if (e.key === 'Escape') closeCut(); return; }
     if (!$('askModal').hidden) return;
     if (learnKeyIdx >= 0) { e.preventDefault(); if (!e.repeat) learnKeyFrom(e); return; }
     if (e.repeat || e.ctrlKey || e.altKey || e.metaKey || typingIn(e.target)) { if (e.repeat && (chFieldForKey(e) >= 0 || swmForKey(e).length)) e.preventDefault(); return; }
@@ -4333,207 +4288,6 @@ const GEN = (() => {
     const alts = cands.map(c => c.bpm).filter(b => Math.abs(b / bpm - 1) > 0.05).slice(0, 3);
     return { bpm, grid0, conf, alts };
   }
-
-  // ---------- Schnitt-Editor ----------
-  const cut = { c: null, buf: null, name: '', bpm: 120, grid0: 0, start: 0, taps: [], src: null, playT0: 0, playLen: 0, raf: 0 };
-  const cutInfo = (m, err) => { $('cutInfo').textContent = m || ''; $('cutInfo').className = 'small ' + (err ? 'err' : 'mut'); };
-  const cutBeat = () => 60 / cut.bpm;
-  const cutBars = () => +$('cutBars').value;
-  const cutSelLen = () => cutBars() * 4 * cutBeat();
-  const cutTarget = () => { const v = +$('cutTarget').value; return v >= 40 && v <= 240 ? v : cut.bpm; };
-  const fmtTime = s => Math.floor(s / 60) + ':' + (s % 60).toFixed(2).padStart(5, '0');
-
-  function openCut(c) {
-    const fi = document.createElement('input');
-    fi.type = 'file';   // ohne accept: iOS graut WAV-Dateien aus der Dateien-App sonst aus
-    fi.onchange = async () => {
-      const f = fi.files[0]; if (!f) return;
-      ensureAudio();
-      status('Lade „' + f.name + '“ …');
-      try {
-        const buf = await ctx.decodeAudioData(await f.arrayBuffer());
-        status('');
-        await loadIntoCut(c, buf, f.name);
-      } catch (e) {
-        status('„' + f.name + '“ konnte nicht gelesen werden (Audiodatei wie WAV, MP3, OGG, M4A nötig).', true);
-      }
-    };
-    fi.click();
-  }
-  async function loadIntoCut(c, buf, fileName) {
-    cut.c = c; cut.buf = buf; cut.name = fileName.replace(/\.[^.]+$/, '');
-    $('cutFor').textContent = '→ Kanal ' + (c.idx + 1);
-    $('cutFile').textContent = fileName + ' · ' + fmtTime(buf.duration) + ' min · ' + buf.numberOfChannels + ' Kanal/Kanäle';
-    $('cutApply').innerHTML = '&#10004; In Kanal ' + (c.idx + 1) + ' übernehmen';
-    $('cutModal').hidden = false;
-    $('cutDetect').textContent = 'Erkenne Tempo …';
-    cutInfo('');
-    await new Promise(r => setTimeout(r, 30));
-    const t = analyzeTempo(buf);
-    cut.bpm = t.bpm; cut.grid0 = t.grid0;
-    showDetect(t);
-    $('cutBpm').value = +t.bpm.toFixed(2);
-    const others = chans.find(x => x !== c && x.buffer && x.bpm && !x.bpmGuess);
-    $('cutTarget').value = +(projBpm || (others && others.bpm) || t.bpm).toFixed(2);
-    // Start: lautester Takt (meist der Refrain bzw. die vollste Stelle)
-    const barLen = 4 * cutBeat(), sr = buf.sampleRate, L = buf.getChannelData(0);
-    let bestBar = cut.grid0, bestE = -1;
-    for (let s = cut.grid0; s + cutSelLen() <= buf.duration; s += barLen) {
-      let e = 0; const a = Math.floor(s * sr), b = Math.floor((s + barLen) * sr);
-      for (let i = a; i < b; i += 16) e += L[i] * L[i];
-      if (e > bestE) { bestE = e; bestBar = s; }
-    }
-    cut.start = bestBar;
-    $('cutZoom').value = 'sel';
-    updateCut();
-  }
-  function showDetect(t) {
-    const el = $('cutDetect');
-    el.textContent = 'erkannt: ' + t.bpm.toFixed(2) + ' BPM (' + (t.conf > 3 ? 'sicher' : t.conf > 1.8 ? 'ziemlich sicher' : 'unsicher – bitte prüfen') + ')';
-    if (t.alts && t.alts.length) {
-      el.appendChild(document.createTextNode(' · auch möglich: '));
-      t.alts.forEach(b => {
-        const btn = document.createElement('button');
-        btn.className = 'small'; btn.style.cssText = 'padding:2px 8px;margin:0 3px'; btn.textContent = b.toFixed(1) + ' BPM';
-        btn.title = 'Dieses Tempo übernehmen und das Schlagraster neu berechnen';
-        btn.onclick = () => {
-          const r = analyzeTempo(cut.buf, b);
-          const keep = cut.start;
-          cut.bpm = r.bpm; cut.grid0 = r.grid0; $('cutBpm').value = +r.bpm.toFixed(2);
-          showDetect(Object.assign({}, r, { conf: 9, alts: [] }));
-          $('cutDetect').textContent = 'gewählt: ' + r.bpm.toFixed(2) + ' BPM';
-          setCutStart(keep);
-        };
-        el.appendChild(btn);
-      });
-    }
-  }
-  function closeCut() { stopCutPlay(); $('cutModal').hidden = true; cut.buf = null; }
-  function cutView() {
-    const dur = cut.buf.duration;
-    if ($('cutZoom').value === 'all') return [0, dur];
-    const L = cutSelLen();
-    return [cut.start - L * 0.25, cut.start + L * 1.25];
-  }
-  function updateCut() {
-    if (!cut.buf) return;
-    $('cutStart').textContent = fmtTime(Math.max(0, cut.start));
-    const tg = cutTarget(), r = tg / cut.bpm;
-    $('cutRatio').textContent = Math.abs(r - 1) < 1e-4 ? 'keine Tempoänderung' : (r > 1 ? 'schneller' : 'langsamer') + ' um ' + Math.abs((r - 1) * 100).toFixed(1) + ' %' + (Math.abs(r - 1) > 0.25 ? ' – große Änderung, Klang kann leiden' : '');
-    drawCut();
-  }
-  function drawCut() {
-    const cv = $('cutWave'), dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
-    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-    const buf = cut.buf, sr = buf.sampleRate, d0 = buf.getChannelData(0), d1 = buf.numberOfChannels > 1 ? buf.getChannelData(1) : d0;
-    const [v0, v1] = cutView(), X = t => (t - v0) / (v1 - v0) * w;
-    const a = cut.start, b = cut.start + cutSelLen();
-    g.fillStyle = 'rgba(77,255,135,0.14)'; g.fillRect(X(a), 0, X(b) - X(a), h);
-    const beat = cutBeat(), k0 = Math.ceil((v0 - cut.grid0) / beat), k1 = Math.floor((v1 - cut.grid0) / beat);
-    if ((k1 - k0) < w / 3) for (let k = k0; k <= k1; k++) {
-      const x = Math.round(X(cut.grid0 + k * beat)) + 0.5, bar = ((k % 4) + 4) % 4 === 0;
-      g.strokeStyle = bar ? 'rgba(78,163,255,0.6)' : 'rgba(255,255,255,0.09)'; g.lineWidth = 1;
-      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
-    }
-    g.fillStyle = '#8fb8ff';
-    for (let px = 0; px < w; px++) {
-      const i0 = Math.max(0, Math.floor((v0 + (v1 - v0) * px / w) * sr)), i1 = Math.min(buf.length, Math.floor((v0 + (v1 - v0) * (px + 1) / w) * sr));
-      if (i1 <= i0) continue;
-      let mn = 0, mx = 0; const st = Math.max(1, Math.floor((i1 - i0) / 300));
-      for (let i = i0; i < i1; i += st) { const s = (d0[i] + d1[i]) * 0.5; if (s < mn) mn = s; if (s > mx) mx = s; }
-      g.fillRect(px, h / 2 - mx * h * 0.48, 1, Math.max(1, (mx - mn) * h * 0.48));
-    }
-    g.fillStyle = '#4dff87'; g.fillRect(X(a) - 1, 0, 2, h); g.fillRect(X(b) - 1, 0, 2, h);
-    if (cut.src) {
-      const pos = ((ctx.currentTime - cut.playT0) % cut.playLen) / cut.playLen;
-      g.fillStyle = '#ffcc4d'; g.fillRect(X(a + pos * (b - a)) - 1, 0, 2, h);
-    }
-  }
-  function setCutStart(t) {
-    if (!cut.buf) return;
-    if ($('cutSnap').checked) t = cut.grid0 + Math.round((t - cut.grid0) / cutBeat()) * cutBeat();
-    const max = Math.max(0, cut.buf.duration - cutSelLen());
-    cut.start = Math.min(Math.max(t, $('cutSnap').checked ? cut.grid0 - 4 * cutBeat() : 0), max);
-    if (cut.start < 0) cut.start += cutBeat() * Math.ceil(-cut.start / cutBeat());
-    updateCut();
-    if (cut.src) { stopCutPlay(); playCut(); }
-  }
-  function cutResult() {
-    const buf = cut.buf, sr = buf.sampleRate, chs = [buf.getChannelData(0), buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)];
-    const srcLen = Math.round(cutSelLen() * sr), outFrames = Math.round(cutBars() * 4 * 60 / cutTarget() * sr);
-    const [L, R] = renderLoop(chs, Math.round(cut.start * sr), srcLen, outFrames, $('cutMode').value, false, sr);
-    return { L, R, sr, frames: outFrames };
-  }
-  async function playCut() {
-    if (cut.src) { stopCutPlay(); return; }
-    ensureAudio(); await ctx.resume();
-    $('cutPlay').disabled = true; cutInfo('Berechne …');
-    await new Promise(r => setTimeout(r, 20));
-    const res = cutResult(), b = ctx.createBuffer(2, res.frames, res.sr);
-    b.copyToChannel(res.L, 0); b.copyToChannel(res.R, 1);
-    const s = ctx.createBufferSource(); s.buffer = b; s.loop = true; s.connect(master); s.start();
-    cut.src = s; cut.playT0 = ctx.currentTime; cut.playLen = b.duration;
-    $('cutPlay').disabled = false; $('cutPlay').innerHTML = '&#9632; Stopp'; cutInfo('Läuft als Schleife – so klingt der Loop später.');
-    const tick = () => { if (!cut.src) return; drawCut(); cut.raf = requestAnimationFrame(tick); };
-    tick();
-  }
-  function stopCutPlay() {
-    if (cut.src) { try { cut.src.stop(); } catch (e) {} cut.src.disconnect(); cut.src = null; }
-    cancelAnimationFrame(cut.raf);
-    $('cutPlay').innerHTML = '&#9654; Anhören';
-    if (cut.buf) drawCut();
-  }
-  async function applyCut() {
-    if (!cut.buf) return;
-    stopCutPlay();
-    $('cutApply').disabled = true; cutInfo('Berechne …');
-    await new Promise(r => setTimeout(r, 20));
-    try {
-      const res = cutResult(), tg = cutTarget(), c = cut.c;
-      const name = cut.name.replace(/[\\/:*?"<>|]+/g, '_') + '_' + cutBars() + 'T_' + (+tg.toFixed(2)) + 'bpm.wav';
-      await setSample(c, GEN.encodeWav(res.L, res.R, res.sr), name, tg);
-      if (!projBpm) setProjBpm(tg);
-      closeCut();
-      status('Kanal ' + (c.idx + 1) + ': ' + name + ' übernommen.');
-    } catch (e) { cutInfo('Fehler: ' + e.message, true); }
-    $('cutApply').disabled = false;
-  }
-  $('cutClose').onclick = closeCut;
-  $('cutModal').addEventListener('click', e => { if (e.target === $('cutModal')) closeCut(); });
-  $('cutPlay').onclick = playCut;
-  $('cutApply').onclick = applyCut;
-  $('cutZoom').onchange = updateCut;
-  $('cutBars').onchange = () => setCutStart(cut.start);
-  $('cutTarget').oninput = updateCut;
-  $('cutMode').onchange = () => { if (cut.src) { stopCutPlay(); playCut(); } };
-  $('cutSnap').onchange = () => setCutStart(cut.start);
-  const setCutBpm = v => { if (!(v >= 40 && v <= 240)) return; cut.grid0 = cut.start; cut.bpm = v; $('cutBpm').value = +v.toFixed(2); setCutStart(cut.start); };
-  $('cutBpm').onchange = () => setCutBpm(+$('cutBpm').value);
-  $('cutHalf').onclick = () => setCutBpm(cut.bpm / 2);
-  $('cutDouble').onclick = () => setCutBpm(cut.bpm * 2);
-  $('cutTap').onclick = () => {
-    const now = performance.now();
-    if (cut.taps.length && now - cut.taps[cut.taps.length - 1] > 2000) cut.taps = [];
-    cut.taps.push(now); if (cut.taps.length > 9) cut.taps.shift();
-    if (cut.taps.length >= 4) setCutBpm(60000 * (cut.taps.length - 1) / (cut.taps[cut.taps.length - 1] - cut.taps[0]));
-    $('cutDetect').textContent = cut.taps.length < 4 ? 'weiter klopfen … (' + cut.taps.length + ')' : 'geklopft: ' + cut.bpm.toFixed(1) + ' BPM';
-  };
-  document.querySelectorAll('.cutNudge').forEach(b => { b.onclick = () => setCutStart(cut.start + (+b.dataset.n) * cutBeat()); });
-  document.querySelectorAll('.cutFine').forEach(b => {
-    b.onclick = () => {   // Feinschritt immer ohne Einrasten; ein gesetztes Raster wandert mit
-      const d = (+b.dataset.ms) / 1000, snap = $('cutSnap').checked;
-      if (snap) cut.grid0 += d;
-      $('cutSnap').checked = false; setCutStart(cut.start + d); $('cutSnap').checked = snap;
-    };
-  });
-  $('cutGridHere').onclick = () => { if (!cut.buf) return; cut.grid0 = cut.start; $('cutDetect').textContent = 'Raster auf ' + fmtTime(cut.start) + ' ausgerichtet'; updateCut(); };
-  $('cutWave').addEventListener('pointerdown', e => {
-    if (!cut.buf) return;
-    const r = $('cutWave').getBoundingClientRect(), [v0, v1] = cutView();
-    setCutStart(v0 + (e.clientX - r.left) / r.width * (v1 - v0));
-  });
-  window.addEventListener('resize', () => { if (cut.buf && !$('cutModal').hidden) drawCut(); });
 
   // ---------- Alle Kanäle an das Projekt-Tempo anpassen ----------
   async function retempoAll() {
