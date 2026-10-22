@@ -94,6 +94,12 @@
     <span class="small mut" id="offInfo"></span>
   </div>
 
+  <div class="bar row" id="hubBar">
+    <b>SW-HUB</b>
+    <button id="hubLed" title="Öffnet die Web-App des SW-HUB in einem neuen Tab – dort unter „LED-Farbe“ die Farbe je SW wählen">&#128161; LED-Farben am HUB einstellen</button>
+    <span class="small mut">Dafür muss das Gerät kurz im WLAN des HUB sein (z.&nbsp;B. „ESP32-MIDI-HUB“). Im neuen Tab auf <b>LED-Farbe</b> tippen; der HUB speichert die Farben, danach zurück zum Looper.</span>
+  </div>
+
   <details class="bar" id="genBox" open>
     <summary style="cursor:pointer"><b>Loop-Generator</b> <span class="small mut">&ndash; erzeugt fünf passende Loops und lädt sie in die Kanäle</span></summary>
     <div class="row" style="margin-top:12px">
@@ -3793,6 +3799,8 @@ const GEN = (() => {
       else offInfo((have + (sf ? 1 : 0)) + ' von ' + (OFF_FILES.length + 1) + ' Teilen offline gespeichert. Einmal mit Internet vorbereiten (ca. 45 MB).');
     } catch (e) { offInfo('Offline-Speicher nicht verfügbar: ' + ((e && e.message) || e), true); }
   }
+  // SW-HUB: Web-App des HUB (Standard-Adresse im HUB-WLAN) in neuem Tab öffnen – LED-Farben stellt der HUB selbst ein und speichert sie
+  $('hubLed').onclick = () => { window.open('http://192.168.4.1/', '_blank'); };
   $('offPrep').onclick = async () => {
     if (!offOk) return;
     $('offPrep').disabled = true;
