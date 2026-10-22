@@ -114,7 +114,8 @@
     <summary style="cursor:pointer"><b>SoundFont-Arpeggio</b> <span class="small mut">&ndash; fünf Loops: dasselbe Arpeggio über fünf Akkorde, zum Begleiten</span></summary>
     <div class="row" style="margin-top:12px">
       <span class="small mut">SoundFont</span>
-      <button id="sfFileBtn">&#128193; SoundFont laden (.sf2)</button>
+      <button id="sfFileBtn">&#128193; Eigene SoundFont laden (.sf2)</button>
+      <button id="sfBuiltinBtn" title="Die mitgelieferte Instrumenten-Auswahl verwenden">Eingebaute verwenden</button>
       <span class="small" id="sfName">keine geladen</span>
     </div>
     <div class="row" style="margin-top:10px">
@@ -138,7 +139,7 @@
       <button class="big start" id="sfGenBtn" disabled>&#127929; 5 Arpeggio-Loops erzeugen</button>
       <span class="small mut" id="sfInfo"></span>
     </div>
-    <div class="hint" style="margin-top:8px">Die SoundFont bleibt in diesem Browser gespeichert, du musst sie nur einmal laden. Alle fünf Loops nutzen dasselbe Instrument und Muster, Kanal 1–5 bekommt jeweils den eingestellten Akkord. Mit den Kanal-Tasten (1–5 oder angelernte Tasten), SWs oder MIDI schaltest du dann zwischen den Akkorden um.</div>
+    <div class="hint" style="margin-top:8px">Eingebaut ist eine Auswahl von 45 Instrumenten aus <b>GeneralUser GS</b> (S. Christian Collins, frei nutzbar; Lizenz im Ordner <code>soundfonts</code>). Sie wird beim ersten Gebrauch einmal geladen (ca. 17 MB) und bleibt dann im Browser gespeichert – auch auf dem iPad. Eine eigene SoundFont ersetzt sie und bleibt ebenfalls gespeichert; mit <b>Eingebaute verwenden</b> geht es zurück. Alle fünf Loops nutzen dasselbe Instrument und Muster, Kanal 1–5 bekommt jeweils den eingestellten Akkord. Mit den Kanal-Tasten (1–5 oder angelernte Tasten), SWs oder MIDI schaltest du dann zwischen den Akkorden um.</div>
   </details>
 
   <details class="bar" id="gesBox">
@@ -191,7 +192,7 @@
       </div>
       <div id="melOnly">
       <div id="melCtrl" style="display:grid;grid-template-columns:auto minmax(170px,auto) auto auto auto minmax(140px,1fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
-      <div class="hint" style="margin-top:8px">Jede Stellung ist ein Ton der Skala: Bewegt sich das Kind in eine neue Stellung, erklingt deren Ton. Kopf drehen: links tief, rechts hoch. Kopf, Arme: unten tief, oben hoch. Mund: zu tief, weit offen hoch. Mit <b>Bereich anlernen</b> bewegt das Kind Kopf, Mund oder Arm einmal so weit es kann (4 Sekunden) – die Töne werden dann genau auf diesen Bereich verteilt, auch wenn er klein ist. <b>Töne</b> = wie viele Stufen der Skala, <b>Lage</b> = tiefster Ton. Die SoundFont wird im Bereich „SoundFont-Arpeggio“ geladen, der Hall-Regler dort gilt auch hier. Die Töne werden nach jeder Änderung von Instrument, Tonart oder Skala kurz vorbereitet.</div>
+      <div class="hint" style="margin-top:8px">Jede Stellung ist ein Ton der Skala: Bewegt sich das Kind in eine neue Stellung, erklingt deren Ton. Kopf drehen: links tief, rechts hoch. Kopf, Arme: unten tief, oben hoch. Mund: zu tief, weit offen hoch. Mit <b>Bereich anlernen</b> bewegt das Kind Kopf, Mund oder Arm einmal so weit es kann (4 Sekunden) – die Töne werden dann genau auf diesen Bereich verteilt, auch wenn er klein ist. <b>Töne</b> = wie viele Stufen der Skala, <b>Lage</b> = tiefster Ton. Ohne eigene SoundFont wird die eingebaute Instrumenten-Auswahl verwendet (eigene SoundFont und Hall-Regler im Bereich „SoundFont-Arpeggio“). Die Töne werden nach jeder Änderung von Instrument, Tonart oder Skala kurz vorbereitet.</div>
       </div>
     </div>
     <div id="fbPanel" hidden style="margin-top:12px">
@@ -3302,6 +3303,7 @@ const GEN = (() => {
       .sort((a, b) => a.bankMSB - b.bankMSB || a.program - b.program || a.bankLSB - b.bankLSB);
     if (!list.length) throw new Error('keine Instrumente gefunden');
     sfBank = bank; sfFileName = name;
+    melCache.clear();   // Töne der vorigen SoundFont verwerfen
     const sel = $('sfPreset'), want = (sfLoadSettings() || {}).preset;
     sel.innerHTML = '';
     list.forEach(p => {
@@ -3325,6 +3327,7 @@ const GEN = (() => {
       await sfUse(bytes.slice(0), file.name);
       try { await sfDb('readwrite', s => s.put({ name: file.name, bytes }, 'main')); sfInfo('SoundFont geladen und gespeichert.'); }
       catch (e) { sfInfo('SoundFont geladen, aber nicht dauerhaft gespeichert (Browser-Speicher voll oder gesperrt).', true); }
+      if (ges.mode === 'melody' || ges.mode === 'fullbody') melPrepare();
     } catch (e) {
       sfInfo('SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e) + '. Ist das eine .sf2-Datei, und besteht eine Internetverbindung?', true);
     }
@@ -3338,18 +3341,46 @@ const GEN = (() => {
   };
 
   // Gespeicherte SoundFont erst laden, wenn der Bereich geöffnet wird (spart Speicher und Ladezeit)
-  let sfRestored = false;
-  async function sfRestore() {
-    if (sfRestored || sfBank) return;
-    sfRestored = true;
-    try {
-      const rec = await sfDb('readonly', s => s.get('main'));
-      if (!rec || !rec.bytes) return;
-      sfInfo('Lade gespeicherte SoundFont …');
-      await sfUse(rec.bytes, rec.name || 'SoundFont');
-      sfInfo('');
-    } catch (e) { sfInfo('Gespeicherte SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e), true); }
+  // Eingebaute SoundFont (Auswahl aus GeneralUser GS) – wird erst bei Bedarf geladen und dann im Browser gespeichert
+  const SF_BUILTIN_URL = new URL('soundfonts/SoundWhacker-Auswahl.sf2', location.href).href, SF_BUILTIN_VER = 1;
+  async function sfLoadBuiltin() {
+    sfInfo('Lade eingebaute SoundFont (einmalig ca. 17 MB) …');
+    let rec = null;
+    try { rec = await sfDb('readonly', s => s.get('builtin')); } catch (e) {}
+    let bytes = rec && rec.ver === SF_BUILTIN_VER ? rec.bytes : null;
+    if (!bytes) {
+      const r = await fetch(SF_BUILTIN_URL);
+      if (!r.ok) throw new Error('Download fehlgeschlagen (' + r.status + ')');
+      bytes = await r.arrayBuffer();
+      try { await sfDb('readwrite', s => s.put({ ver: SF_BUILTIN_VER, bytes }, 'builtin')); } catch (e) {}
+    }
+    await sfUse(bytes.slice(0), 'SoundWhacker-Auswahl (eingebaut)');
+    sfInfo('');
   }
+  let sfRestoring = null;
+  function sfRestore() {   // gleichzeitige Aufrufe teilen sich denselben Ladevorgang
+    if (sfBank) return Promise.resolve();
+    if (!sfRestoring) sfRestoring = (async () => {
+      try {
+        const rec = await sfDb('readonly', s => s.get('main'));
+        if (rec && rec.bytes) { sfInfo('Lade gespeicherte SoundFont …'); await sfUse(rec.bytes, rec.name || 'SoundFont'); sfInfo(''); return; }
+        await sfLoadBuiltin();
+      } catch (e) { sfInfo('SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e) + ' – besteht eine Internetverbindung?', true); }
+      finally { sfRestoring = null; }
+    })();
+    return sfRestoring;
+  }
+  $('sfBuiltinBtn').onclick = async () => {
+    if (sfBusy) return;
+    sfBusy = true;
+    try {
+      try { await sfDb('readwrite', s => s.delete('main')); } catch (e) {}
+      await sfLoadBuiltin();
+      sfInfo('Eingebaute SoundFont aktiv.');
+      if (ges.mode === 'melody' || ges.mode === 'fullbody') melPrepare();
+    } catch (e) { sfInfo('Eingebaute SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e), true); }
+    sfBusy = false;
+  };
   $('sfBox').addEventListener('toggle', () => { if ($('sfBox').open) { sfRestore(); try { localStorage.setItem(SF_SET + '.open', '1'); } catch (e) {} } else { try { localStorage.removeItem(SF_SET + '.open'); } catch (e) {} } });
 
   // Arpeggio-Töne eines Akkords: Grundton, Terz, Quinte über n Oktaven + oberster Grundton
