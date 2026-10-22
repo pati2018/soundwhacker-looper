@@ -3690,7 +3690,7 @@ const GEN = (() => {
         await synth.isReady;
         for (let k = 0; k < 5; k++) synth.addNewChannel();   // Kanäle 16–20 für den Bereich „Melodie“
         synth.reset();   // neue Kanäle starten mit Reglern auf 0 (Ausdruck, Klangfarbe …) – erst ein Reset setzt sie auf Normalwerte
-        ch.out = ctx.createGain(); ch.out.gain.value = 0.8 * CH_BOOST;   // Lautstärke je Bereich über MIDI-Volume (CC7) ch.out.connect(master);
+        ch.out = ctx.createGain(); ch.out.gain.value = 0.8 * CH_BOOST; ch.out.connect(master);   // Lautstärke je Bereich über MIDI-Volume (CC7)
         synth.connect(ch.out);
         ch.synth = synth;
         chFillPresets(); chProgram();
