@@ -149,18 +149,18 @@
   </details>
 
   <details class="bar" id="chordBox">
-    <summary style="cursor:pointer"><b>Akkord/Ton</b> <span class="small mut">&ndash; Tasten (z.&nbsp;B. vom SW über Bluetooth) spielen Akkorde oder Töne, solange sie gehalten werden</span></summary>
+    <summary style="cursor:pointer"><b>Akkord/Ton</b> <span class="small mut">&ndash; Tasten (z.&nbsp;B. vom SW über Bluetooth) spielen Akkorde (Felder 1–5) und Töne (Felder 6–10), solange sie gehalten werden</span></summary>
     <div class="row" style="margin-top:12px">
-      <label class="small" title="An: die Tasten der fünf Felder spielen Akkorde/Töne und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chOn"> <b>Tasten spielen Akkorde/Töne</b> (statt Loops)</label>
+      <label class="small" title="An: die Tasten der fünf Felder spielen Akkorde/Töne und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chOn"> <b>Tasten spielen Akkorde/Töne</b> (statt Loops / „Alle vorhören“)</label>
       <span class="small mut" id="chInfo"></span>
     </div>
     <div class="row" style="margin-top:10px">
-      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPreset" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
+      <label class="small mut" title="Setzt das Instrument aller zehn Felder auf einmal">Alle Felder auf <select id="chPreset" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
       <label class="small mut">Lautstärke <input type="range" id="chVol" min="0" max="100" value="80" style="width:110px"></label>
       <label class="small mut">Hall <input type="range" id="chRev" min="0" max="100" value="30" style="width:110px"></label>
     </div>
     <div id="chFields" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
-    <div class="hint" style="margin-top:8px">Fünf Felder: jedes spielt entweder einen <b>Ton</b> (einer der 12 Töne) oder einen <b>Akkord</b> (Dur, Moll oder Dur7) – so lange, wie seine Taste gedrückt bleibt, danach klingt er kurz aus. Standard-Tasten sind 1–5 (auch Ziffernblock); mit <b>anlernen</b> legst du eine andere Taste fest, z.&nbsp;B. die, die dein SW-HUB über Bluetooth sendet. Ist <b>Tasten spielen Akkorde/Töne</b> an, schalten diese Tasten keine Loops; andere Tasten, MIDI und Gesten steuern die Loops weiter. Jedes Feld hat sein eigenes <b>Instrument</b>; mit <b>Alle Felder auf</b> stellst du alle fünf auf einmal um. Mit <b>▶</b> kannst du ein Feld per Maus/Finger gedrückt halten und anhören. Instrumente kommen aus der eingebauten oder deiner eigenen SoundFont, alles funktioniert auch offline.</div>
+    <div class="hint" style="margin-top:8px">Felder 1–5 spielen einen <b>Akkord</b> (Dur, Moll oder Dur7) oder einen <b>Ton</b>, Felder 6–10 nur einzelne <b>Töne</b> – jeweils so lange, wie die Taste gedrückt bleibt, danach klingt es kurz aus. Alle zehn können gleichzeitig mit verschiedenen Instrumenten klingen. Standard-Tasten sind 1–5 für die Akkorde und 6, 7, 8, 9, 0 für die Töne (auch Ziffernblock); mit <b>anlernen</b> legst du eine andere Taste fest, z.&nbsp;B. die, die dein SW-HUB über Bluetooth sendet. Ist <b>Tasten spielen Akkorde/Töne</b> an, schalten diese Tasten keine Loops; andere Tasten, MIDI und Gesten steuern die Loops weiter. Jedes Feld hat sein eigenes <b>Instrument</b>; mit <b>Alle Felder auf</b> stellst du alle fünf auf einmal um. Mit <b>▶</b> kannst du ein Feld per Maus/Finger gedrückt halten und anhören. Instrumente kommen aus der eingebauten oder deiner eigenen SoundFont, alles funktioniert auch offline.</div>
   </details>
 
   <details class="bar" id="gesBox">
@@ -3506,12 +3506,15 @@ const GEN = (() => {
   const CH_BOOST = 4;   // Echtzeit-Synth ist leise (~ -30 dB) – angleichen an die Loops (~ -14 dB); der Summen-Limiter fängt Spitzen ab
   const CH_TYPES = { ton: { label: 'Ton', iv: [0] }, dur: { label: 'Dur', iv: [0, 4, 7] }, moll: { label: 'Moll', iv: [0, 3, 7] }, dur7: { label: 'Dur7', iv: [0, 4, 7, 10] } };
   const CH_KEY = STORE + '.chord';
+  const CH_N = 10;   // Felder 1–5: Akkord oder Ton, Felder 6–10: nur Töne
+  const chChan = i => (i < 9 ? i : 10);   // MIDI-Kanal je Feld (Kanal 10 = Index 9 ist Schlagzeug und bleibt frei)
+  const chDefKey = i => (i + 1) % 10;      // Standard-Tasten 1–9, 0
   function chClean(c) {
-    const def = [[0, 'dur'], [5, 'dur'], [7, 'dur'], [9, 'moll'], [7, 'dur7']];
+    const def = [[0, 'dur'], [5, 'dur'], [7, 'dur'], [9, 'moll'], [7, 'dur7'], [0, 'ton'], [2, 'ton'], [4, 'ton'], [7, 'ton'], [9, 'ton']];
     const o = { on: !!(c && c.on), preset: c && typeof c.preset === 'string' ? c.preset : '0:0:0', vol: c && Number.isFinite(c.vol) ? c.vol : 80, rev: c && Number.isFinite(c.rev) ? c.rev : 30, fields: [] };
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < CH_N; i++) {
       const f = (c && c.fields && c.fields[i]) || {};
-      o.fields.push({ type: CH_TYPES[f.type] ? f.type : def[i][1], pc: f.pc >= 0 && f.pc < 12 ? f.pc | 0 : def[i][0], oct: [2, 3, 4, 5, 6].includes(f.oct) ? f.oct : 4,
+      o.fields.push({ type: i >= 5 ? 'ton' : (CH_TYPES[f.type] ? f.type : def[i][1]), pc: f.pc >= 0 && f.pc < 12 ? f.pc | 0 : def[i][0], oct: [2, 3, 4, 5, 6].includes(f.oct) ? f.oct : 4,
         key: f.key && typeof f.key.code === 'string' ? { code: f.key.code, label: String(f.key.label || f.key.code) } : null,
         preset: typeof f.preset === 'string' ? f.preset : o.preset });
     }
@@ -3521,7 +3524,7 @@ const GEN = (() => {
   try { const c = JSON.parse(localStorage.getItem(CH_KEY) || 'null'); if (c) chCfg = chClean(c); } catch (e) {}
   const chSave = () => { try { localStorage.setItem(CH_KEY, JSON.stringify(chCfg)); } catch (e) {} };
   const chInfo = (m, err) => { $('chInfo').textContent = m || ''; $('chInfo').className = 'small ' + (err ? 'err' : 'mut'); };
-  const ch = { synth: null, loading: null, out: null, playing: [null, null, null, null, null], learn: -1 };
+  const ch = { synth: null, loading: null, out: null, playing: new Array(10).fill(null), learn: -1 };
 
   async function chSfBytes() {   // Rohdaten der aktiven SoundFont (eigene oder eingebaute) für den Echtzeit-Synth
     try { const r = await sfDb('readonly', s => s.get('main')); if (r && r.bytes) return r.bytes; } catch (e) {}
@@ -3557,8 +3560,8 @@ const GEN = (() => {
   }
   function chProgram() {   // Instrument + Hall auf allen fünf Kanälen (je Feld ein MIDI-Kanal, Kanal 10 = Schlagzeug wird nicht benutzt)
     if (!ch.synth) return;
-    for (let k = 0; k < 5; k++) {
-      const [msb, lsb, program] = (chCfg.fields[k].preset || '0:0:0').split(':').map(Number);
+    for (let i = 0; i < CH_N; i++) {
+      const k = chChan(i), [msb, lsb, program] = (chCfg.fields[i].preset || '0:0:0').split(':').map(Number);
       ch.synth.controllerChange(k, 0, msb); ch.synth.controllerChange(k, 32, lsb); ch.synth.programChange(k, program);
       ch.synth.controllerChange(k, 91, Math.round(chCfg.rev / 100 * 127)); ch.synth.controllerChange(k, 93, 0);
     }
@@ -3575,13 +3578,13 @@ const GEN = (() => {
     await ctx.resume();
     if (!ch.playing[i]) return;   // schon wieder losgelassen, während geladen wurde
     const notes = chNotes(i);
-    notes.forEach(n => ch.synth.noteOn(i, n, 100));
+    notes.forEach(n => ch.synth.noteOn(chChan(i), n, 100));
     ch.playing[i] = notes;
   }
   function chStop(i) {
     const notes = ch.playing[i];
     ch.playing[i] = null; chLamp(i, false);
-    if (notes && ch.synth) notes.forEach(n => ch.synth.noteOff(i, n));
+    if (notes && ch.synth) notes.forEach(n => ch.synth.noteOff(chChan(i), n));
   }
   async function chReloadBank() {   // nach Wechsel der SoundFont (eigene ↔ eingebaute)
     if (!ch.synth) return;
@@ -3589,13 +3592,13 @@ const GEN = (() => {
     try { await ch.synth.soundBankManager.addSoundBank((await chSfBytes()).slice(0), 'main'); chFillPresets(); chProgram(); }
     catch (e) { chInfo('Neue SoundFont konnte nicht übernommen werden: ' + ((e && e.message) || e), true); }
   }
-  const chStopAll = () => { for (let i = 0; i < 5; i++) if (ch.playing[i]) chStop(i); };
+  const chStopAll = () => { for (let i = 0; i < CH_N; i++) if (ch.playing[i]) chStop(i); };
   const chLamp = (i, on) => { const l = $('chLamp' + i); if (l) l.classList.toggle('on', on); };
   function chFieldForKey(e) {
     const code = e.code || '';
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < CH_N; i++) {
       const k = chCfg.fields[i].key;
-      if (k ? k.code === code : (code === 'Digit' + (i + 1) || code === 'Numpad' + (i + 1))) return i;
+      if (k ? k.code === code : (code === 'Digit' + chDefKey(i) || code === 'Numpad' + chDefKey(i))) return i;
     }
     return -1;
   }
@@ -3629,7 +3632,7 @@ const GEN = (() => {
     if (!src || src.disabled) return;
     dst.innerHTML = src.innerHTML; dst.disabled = false;
     if ([...dst.options].some(o => o.value === chCfg.preset)) dst.value = chCfg.preset; else chCfg.preset = dst.value;
-    for (let i = 0; i < 5; i++) {   // Auswahl je Feld
+    for (let i = 0; i < CH_N; i++) {   // Auswahl je Feld
       const sel = $('chInst' + i), f = chCfg.fields[i];
       sel.innerHTML = src.innerHTML; sel.disabled = false;
       if ([...sel.options].some(o => o.value === f.preset)) sel.value = f.preset; else f.preset = sel.value;
@@ -3639,20 +3642,23 @@ const GEN = (() => {
     const box = $('chFields');
     box.innerHTML = '';
     const pcOpts = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'].map((n, k) => '<option value="' + k + '">' + n + '</option>').join('');
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < CH_N; i++) {
+      if (i === 0) box.insertAdjacentHTML('beforeend', '<b class="small mut">Akkorde (oder Töne) – Felder 1–5</b>');
+      if (i === 5) box.insertAdjacentHTML('beforeend', '<b class="small mut" style="margin-top:6px">Nur Töne – Felder 6–10</b>');
       // Eine Zeile je Feld, die bei wenig Platz (iPad hochkant) umbricht
       box.insertAdjacentHTML('beforeend', '<div class="row" style="gap:6px 10px;padding:6px 10px;border:1px solid var(--line);border-radius:10px">' +
         '<span class="row" style="gap:6px;min-width:70px"><span class="lamp" id="chLamp' + i + '"></span><b>Feld ' + (i + 1) + '</b></span>' +
         '<span class="small mut">Taste</span><b id="chKey' + i + '" style="min-width:2.5em;text-align:center"></b>' +
-        '<span class="row" style="gap:4px;flex-wrap:nowrap"><button id="chLearn' + i + '">anlernen</button><button id="chKeyClr' + i + '" title="zurück auf Taste ' + (i + 1) + '" hidden>&#10005;</button></span>' +
-        '<select id="chType' + i + '" title="Art"><option value="ton">Ton</option><option value="dur">Akkord Dur</option><option value="moll">Akkord Moll</option><option value="dur7">Akkord Dur7</option></select>' +
+        '<span class="row" style="gap:4px;flex-wrap:nowrap"><button id="chLearn' + i + '">anlernen</button><button id="chKeyClr' + i + '" title="zurück auf Taste ' + chDefKey(i) + '" hidden>&#10005;</button></span>' +
+        (i < 5 ? '<select id="chType' + i + '" title="Art"><option value="ton">Ton</option><option value="dur">Akkord Dur</option><option value="moll">Akkord Moll</option><option value="dur7">Akkord Dur7</option></select>'
+          : '<span id="chType' + i + '" class="small mut" style="min-width:5em">Ton</span>') +
         '<select id="chPc' + i + '" title="Grundton">' + pcOpts + '</select>' +
         '<select id="chOct' + i + '" title="Lage"><option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option></select>' +
         '<select id="chInst' + i + '" title="Instrument" style="max-width:230px" disabled><option>…</option></select>' +
         '<button id="chTry' + i + '" title="gedrückt halten zum Anhören" style="touch-action:none">&#9654;</button>' +
         '<b class="small" id="chName' + i + '" style="color:var(--acc)"></b></div>');
       const f = () => chCfg.fields[i];
-      $('chType' + i).onchange = () => { chStop(i); f().type = $('chType' + i).value; chSave(); chUi(); };
+      if (i < 5) $('chType' + i).onchange = () => { chStop(i); f().type = $('chType' + i).value; chSave(); chUi(); };
       $('chPc' + i).onchange = () => { chStop(i); f().pc = +$('chPc' + i).value; chSave(); chUi(); };
       $('chOct' + i).onchange = () => { chStop(i); f().oct = +$('chOct' + i).value; chSave(); chUi(); };
       $('chInst' + i).onchange = () => { chStop(i); f().preset = $('chInst' + i).value; chProgram(); chSave(); };
@@ -3665,7 +3671,7 @@ const GEN = (() => {
     $('chOn').onchange = () => { chCfg.on = $('chOn').checked; if (!chCfg.on) chStopAll(); else chEnsure().catch(() => {}); chSave(); };
     $('chPreset').onchange = () => {   // alle Felder auf einmal
       chStopAll(); chCfg.preset = $('chPreset').value;
-      for (let i = 0; i < 5; i++) { chCfg.fields[i].preset = chCfg.preset; $('chInst' + i).value = chCfg.preset; }
+      for (let i = 0; i < CH_N; i++) { chCfg.fields[i].preset = chCfg.preset; $('chInst' + i).value = chCfg.preset; }
       chProgram(); chSave();
     };
     $('chVol').oninput = () => { chCfg.vol = +$('chVol').value; if (ch.out) ch.out.gain.setTargetAtTime(chCfg.vol / 100 * CH_BOOST, ctx.currentTime, 0.03); };
@@ -3676,15 +3682,15 @@ const GEN = (() => {
   function chUi() {
     $('chOn').checked = chCfg.on; $('chVol').value = chCfg.vol; $('chRev').value = chCfg.rev;
     const NN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < CH_N; i++) {
       const f = chCfg.fields[i];
-      $('chType' + i).value = f.type; $('chPc' + i).value = f.pc; $('chOct' + i).value = f.oct;
-      $('chKey' + i).textContent = f.key ? f.key.label : String(i + 1);
+      if (i < 5) $('chType' + i).value = f.type; $('chPc' + i).value = f.pc; $('chOct' + i).value = f.oct;
+      $('chKey' + i).textContent = f.key ? f.key.label : String(chDefKey(i));
       $('chKeyClr' + i).hidden = !f.key;
       const b = $('chLearn' + i);
       b.textContent = ch.learn === i ? 'Taste drücken … (Esc)' : 'anlernen';
       b.classList.toggle('learning', ch.learn === i);
-      $('chName' + i).textContent = NN[f.pc] + (f.type === 'moll' ? 'm' : f.type === 'dur7' ? '7' : f.type === 'ton' ? ' (Ton)' : '');
+      $('chName' + i).textContent = f.type === 'ton' ? NN[f.pc] + f.oct : NN[f.pc] + (f.type === 'moll' ? 'm' : f.type === 'dur7' ? '7' : '');
     }
   }
   chUi();
