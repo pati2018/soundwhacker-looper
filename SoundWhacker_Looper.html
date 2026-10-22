@@ -160,7 +160,7 @@
       <label class="small mut">Hall <input type="range" id="chRev" min="0" max="100" value="30" style="width:110px"></label>
     </div>
     <div id="chFields" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
-    <div class="hint" style="margin-top:8px">Felder 1–5 spielen einen <b>Akkord</b> (Dur, Moll oder Dur7) oder einen <b>Ton</b>, Felder 6–10 nur einzelne <b>Töne</b>, Felder 11–15 <b>improvisieren</b> wie im SW-HUB: jeder Druck spielt einen zufälligen Ton aus Tonart und Skala (nie zweimal derselbe hintereinander) – jeweils so lange, wie die Taste gedrückt bleibt, danach klingt es kurz aus. Alle Felder können gleichzeitig mit verschiedenen Instrumenten klingen. Alle drei Gruppen haben die Standard-Tasten 1–5 (auch Ziffernblock) und lassen sich einzeln ein- und ausschalten – sind mehrere an, spielt eine Taste alles zusammen (z.&nbsp;B. Akkord + Basston oder Akkord + Improvisation); mit <b>anlernen</b> legst du eine andere Taste fest, z.&nbsp;B. die, die dein SW-HUB über Bluetooth sendet. Ist <b>Tasten spielen Akkorde/Töne</b> an, schalten diese Tasten keine Loops; andere Tasten, MIDI und Gesten steuern die Loops weiter. Jedes Feld hat sein eigenes <b>Instrument</b>; mit <b>Alle Felder auf</b> stellst du alle auf einmal um. Mit <b>▶</b> kannst du ein Feld per Maus/Finger gedrückt halten und anhören. Instrumente kommen aus der eingebauten oder deiner eigenen SoundFont, alles funktioniert auch offline.</div>
+    <div class="hint" style="margin-top:8px">Felder 1–5 spielen einen <b>Akkord</b> (Dur, Moll oder Dur7) oder einen <b>Ton</b>, Felder 6–10 nur einzelne <b>Töne</b>, Felder 11–15 <b>improvisieren</b> wie im SW-HUB: jeder Druck spielt einen zufälligen Ton aus Tonart und Skala (nie zweimal derselbe hintereinander) – jeweils so lange, wie die Taste gedrückt bleibt, danach klingt es kurz aus. Alle Felder können gleichzeitig mit verschiedenen Instrumenten klingen. Alle drei Gruppen haben die Standard-Tasten 1–5 (auch Ziffernblock) und lassen sich einzeln ein- und ausschalten – sind mehrere an, spielt eine Taste alles zusammen (z.&nbsp;B. Akkord + Basston oder Akkord + Improvisation); mit <b>anlernen</b> legst du eine andere Taste fest, z.&nbsp;B. die, die dein SW-HUB über Bluetooth sendet. Ist <b>Tasten spielen Akkorde/Töne</b> an, schalten die Tasten der eingeschalteten Felder keine Loops; andere Tasten, MIDI und Gesten steuern die Loops weiter. Mit dem Häkchen vor jedem Feld schaltest du einzelne Felder aus – dann steuert z.&nbsp;B. SW&nbsp;1 weiter Loop&nbsp;1, während SW&nbsp;2 einen Akkord spielt (dafür alle Felder mit Taste&nbsp;1 ausschalten). Jedes Feld hat sein eigenes <b>Instrument</b>; mit <b>Alle Felder auf</b> stellst du alle auf einmal um. Mit <b>▶</b> kannst du ein Feld per Maus/Finger gedrückt halten und anhören. Instrumente kommen aus der eingebauten oder deiner eigenen SoundFont, alles funktioniert auch offline.</div>
   </details>
 
   <details class="bar" id="gesBox">
@@ -3518,7 +3518,7 @@ const GEN = (() => {
       o.fields.push({ type: i >= 10 ? 'impro' : i >= 5 ? 'ton' : (CH_TYPES[f.type] ? f.type : def[i][1]), pc: f.pc >= 0 && f.pc < 12 ? f.pc | 0 : def[i][0], oct: [2, 3, 4, 5, 6].includes(f.oct) ? f.oct : (def[i][2] || 4),
         scale: i >= 10 ? (MEL_SCALES[f.scale] ? f.scale : 'mollpenta') : undefined,
         key: f.key && typeof f.key.code === 'string' ? { code: f.key.code, label: String(f.key.label || f.key.code) } : null,
-        preset: typeof f.preset === 'string' ? f.preset : o.preset });
+        preset: typeof f.preset === 'string' ? f.preset : o.preset, on: f.on !== false });
     }
     return o;
   }
@@ -3607,7 +3607,7 @@ const GEN = (() => {
   function chFieldsForKey(e) {   // alle Felder (aktiver Gruppen), die auf diese Taste hören
     const code = e.code || '', out = [];
     for (let i = 0; i < CH_N; i++) {
-      if (!chGrpOn(i)) continue;
+      if (!chGrpOn(i) || !chCfg.fields[i].on) continue;   // Feld aus → die Taste schaltet weiter ihren Loop
       const k = chCfg.fields[i].key;
       if (k ? k.code === code : (code === 'Digit' + chDefKey(i) || code === 'Numpad' + chDefKey(i))) out.push(i);
     }
@@ -3660,7 +3660,7 @@ const GEN = (() => {
       if (i === 10) box.insertAdjacentHTML('beforeend', '<label class="small" style="margin-top:6px"><input type="checkbox" id="chGrpC"> <b>Improvisieren</b> <span class="mut">– Felder 11–15: jeder Druck spielt einen zufälligen Ton der Skala (wie im SW-HUB)</span></label>');
       // Eine Zeile je Feld, die bei wenig Platz (iPad hochkant) umbricht
       box.insertAdjacentHTML('beforeend', '<div class="row" style="gap:6px 10px;padding:6px 10px;border:1px solid var(--line);border-radius:10px">' +
-        '<span class="row" style="gap:6px;min-width:70px"><span class="lamp" id="chLamp' + i + '"></span><b>Feld ' + (i + 1) + '</b></span>' +
+        '<label class="row" style="gap:6px;min-width:90px" title="Feld an/aus – ist es aus, schaltet seine Taste wie gewohnt den Loop"><input type="checkbox" id="chFOn' + i + '"><span class="lamp" id="chLamp' + i + '"></span><b>Feld ' + (i + 1) + '</b></label>' +
         '<span class="small mut">Taste</span><b id="chKey' + i + '" style="min-width:2.5em;text-align:center"></b>' +
         '<span class="row" style="gap:4px;flex-wrap:nowrap"><button id="chLearn' + i + '">anlernen</button><button id="chKeyClr' + i + '" title="zurück auf Taste ' + chDefKey(i) + '" hidden>&#10005;</button></span>' +
         (i < 5 ? '<select id="chType' + i + '" title="Art"><option value="ton">Ton</option><option value="dur">Akkord Dur</option><option value="moll">Akkord Moll</option><option value="dur7">Akkord Dur7</option></select>'
@@ -3674,6 +3674,7 @@ const GEN = (() => {
       const f = () => chCfg.fields[i];
       if (i < 5) $('chType' + i).onchange = () => { chStop(i); f().type = $('chType' + i).value; chSave(); chUi(); };
       if (i >= 10) $('chScale' + i).onchange = () => { chStop(i); f().scale = $('chScale' + i).value; ch.lastImpro[i] = ch.shown[i] = null; chSave(); chUi(); };
+      $('chFOn' + i).onchange = () => { chStop(i); f().on = $('chFOn' + i).checked; chSave(); chUi(); };
       $('chPc' + i).onchange = () => { chStop(i); f().pc = +$('chPc' + i).value; chSave(); chUi(); };
       $('chOct' + i).onchange = () => { chStop(i); f().oct = +$('chOct' + i).value; chSave(); chUi(); };
       $('chInst' + i).onchange = () => { chStop(i); f().preset = $('chInst' + i).value; chProgram(); chSave(); };
@@ -3711,7 +3712,8 @@ const GEN = (() => {
       const b = $('chLearn' + i);
       b.textContent = ch.learn === i ? 'Taste drücken … (Esc)' : 'anlernen';
       b.classList.toggle('learning', ch.learn === i);
-      $('chLamp' + i).parentElement.parentElement.style.opacity = chGrpOn(i) ? 1 : 0.45;
+      $('chFOn' + i).checked = f.on;
+      $('chLamp' + i).parentElement.parentElement.style.opacity = chGrpOn(i) && f.on ? 1 : 0.45;
       $('chName' + i).textContent = f.type === 'impro' ? (ch.shown[i] != null ? '♪ ' + NN[ch.shown[i] % 12] + (Math.floor(ch.shown[i] / 12) - 1) : '')
         : f.type === 'ton' ? NN[f.pc] + f.oct : NN[f.pc] + (f.type === 'moll' ? 'm' : f.type === 'dur7' ? '7' : '');
     }
