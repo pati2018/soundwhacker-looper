@@ -3282,7 +3282,7 @@ const GEN = (() => {
     if (!list.length) throw new Error('keine Instrumente gefunden');
     sfBank = bank; sfFileName = name;
     melCache.clear();   // Töne der vorigen SoundFont verwerfen
-    chReloadBank();     // Echtzeit-Klang (Akkord, Ton, Improvisieren, Melodie) ebenfalls umstellen
+    if (!sfRestoringNow) chReloadBank();     // Echtzeit-Klang ebenfalls umstellen – nicht beim bloßen Wiederherstellen derselben SoundFont (spart Speicher)
     const sel = $('sfPreset'), want = (sfLoadSettings() || {}).preset;
     sel.innerHTML = '';
     list.forEach(p => {
@@ -3336,16 +3336,17 @@ const GEN = (() => {
     await sfUse(bytes.slice(0), 'SoundWhacker-Auswahl (eingebaut)');
     sfInfo('');
   }
-  let sfRestoring = null;
+  let sfRestoring = null, sfRestoringNow = false;
   function sfRestore() {   // gleichzeitige Aufrufe teilen sich denselben Ladevorgang
     if (sfBank) return Promise.resolve();
     if (!sfRestoring) sfRestoring = (async () => {
+      sfRestoringNow = true;
       try {
         const rec = await sfDb('readonly', s => s.get('main'));
         if (rec && rec.bytes) { sfInfo('Lade gespeicherte SoundFont …'); await sfUse(rec.bytes, rec.name || 'SoundFont'); sfInfo(''); return; }
         await sfLoadBuiltin();
       } catch (e) { sfInfo('SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e) + ' – besteht eine Internetverbindung?', true); }
-      finally { sfRestoring = null; }
+      finally { sfRestoring = null; sfRestoringNow = false; }
     })();
     return sfRestoring;
   }
@@ -3506,16 +3507,19 @@ const GEN = (() => {
   function chEnsure() {
     if (ch.synth) return Promise.resolve(ch.synth);
     if (!ch.loading) ch.loading = (async () => {
+      let synth = null;
       try {
         ensureAudio();
         if (!ctx.audioWorklet) throw new Error('Dieser Browser kann keine Echtzeit-Klangerzeugung (AudioWorklet).');
         chInfo('Klangerzeugung wird geladen …');
-        if (!sfBank) await sfRestore();   // für die Instrumentenliste
+        // Speicher sparen (iPad): die SoundFont nur einmal im Echtzeit-Synth laden – die Instrumentenliste kommt von dort,
+        // die SoundFont wird nicht zusätzlich im Hauptprogramm entpackt (das passiert nur, wenn Arpeggio/Melodie-Modus sie brauchen)
         await ctx.audioWorklet.addModule(CH_PROC);
         const lib = await import(CH_LIB);
-        const synth = new lib.WorkletSynthesizer(ctx);
-        await synth.soundBankManager.addSoundBank((await chSfBytes()).slice(0), 'main');
+        synth = new lib.WorkletSynthesizer(ctx);
+        await synth.soundBankManager.addSoundBank(await chSfBytes(), 'main');
         await synth.isReady;
+        await chPresetsFromSynth(synth);
         for (let k = 0; k < 5; k++) synth.addNewChannel();   // Kanäle 16–20 für den Bereich „Melodie“
         synth.reset();   // neue Kanäle starten mit Reglern auf 0 (Ausdruck, Klangfarbe …) – erst ein Reset setzt sie auf Normalwerte
         ch.out = ctx.createGain(); ch.out.gain.value = 0.8 * CH_BOOST; ch.out.connect(master);   // Lautstärke je Bereich über MIDI-Volume (CC7)
@@ -3524,7 +3528,13 @@ const GEN = (() => {
         chFillPresets(); chProgram();
         chInfo('bereit');
         return synth;
-      } catch (e) { chInfo('Klangerzeugung konnte nicht starten: ' + ((e && e.message) || e), true); ch.loading = null; throw e; }
+      } catch (e) {
+        try { if (synth) synth.destroy(); } catch (e2) {}   // halb gestarteten Synth freigeben, damit ein neuer Versuch genug Speicher hat
+        const msg = (e && e.message) || String(e);
+        chInfo(/memory|speicher/i.test(msg) ? 'Zu wenig Speicher für die Klangerzeugung – bitte andere Safari-Tabs schließen, die Kamera ausschalten und die Seite neu laden.'
+          : 'Klangerzeugung konnte nicht starten: ' + msg, true);
+        ch.loading = null; throw e;
+      }
     })();
     return ch.loading;
   }
@@ -3565,10 +3575,22 @@ const GEN = (() => {
     ch.playing[i] = null; chLamp(i, false);
     if (notes && ch.synth) notes.forEach(n => ch.synth.noteOff(chChan(i), n));
   }
+  async function chPresetsFromSynth(synth) {
+    const sel = $('sfPreset');
+    if (!sel.disabled) return;   // Liste schon da (SoundFont im Hauptprogramm geladen)
+    for (let t = 0; t < 40 && !(synth.presetList && synth.presetList.length); t++) await new Promise(r => setTimeout(r, 50));
+    const list = (synth.presetList || []).filter(p => !p.isGMGSDrum && !p.isDrum)
+      .sort((a, b) => a.bankMSB - b.bankMSB || a.program - b.program || a.bankLSB - b.bankLSB);
+    if (!list.length) return;
+    const want = (sfLoadSettings() || {}).preset;
+    sel.innerHTML = list.map(p => '<option value="' + p.bankMSB + ':' + p.bankLSB + ':' + p.program + '">' + (p.bankMSB || p.bankLSB ? p.bankMSB + '/' : '') + (p.program + 1) + ' ' + String(p.name).trim().replace(/</g, '&lt;') + '</option>').join('');
+    if (want && [...sel.options].some(o => o.value === want)) sel.value = want;
+    sel.disabled = false;
+  }
   async function chReloadBank() {   // nach Wechsel der SoundFont (eigene ↔ eingebaute)
     if (!ch.synth) return;
     chStopAll();
-    try { await ch.synth.soundBankManager.addSoundBank((await chSfBytes()).slice(0), 'main'); chFillPresets(); chProgram(); }
+    try { await ch.synth.soundBankManager.addSoundBank(await chSfBytes(), 'main'); chFillPresets(); chProgram(); }
     catch (e) { chInfo('Neue SoundFont konnte nicht übernommen werden: ' + ((e && e.message) || e), true); }
   }
   const chStopAll = () => { for (let i = 0; i < CH_N; i++) if (ch.playing[i]) chStop(i); };
