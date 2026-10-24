@@ -1,0 +1,2865 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SoundWhacker Kamera</title>
+<style>
+  :root{
+    --bg:#0f1420; --card:#18202f; --card2:#0d1a2e; --line:#2a3a5a; --fg:#e8edf6; --mut:#8b98ad;
+    --acc:#4ea3ff; --on:#4dff87; --warn:#ffcc4d; --err:#ff6363;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:"Segoe UI",Arial,sans-serif;font-size:15px}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-bottom:14px}
+  h1{font-size:22px;margin:0;flex:1 1 auto}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  select,button,input[type=range]{font:inherit}
+  select,input[type=text],input[type=number]{background:var(--card2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit}
+  details>summary{list-style:none} details>summary::-webkit-details-marker{display:none}
+  details>summary::before{content:"\25B8";margin-right:6px;color:var(--acc)} details[open]>summary::before{content:"\25BE"}
+  button{background:var(--card2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+  button:hover{border-color:var(--acc)}
+  button.big{font-size:17px;padding:11px 22px;font-weight:600}
+  button.start{background:#1d4d2e;border-color:#2f8a4c}
+  button.stop{background:#4d1d1d;border-color:#8a2f2f}
+  button.learning{background:#5a4a12;border-color:var(--warn);color:#fff}
+  .lamp{width:14px;height:14px;border-radius:50%;background:#2a3445;display:inline-block;flex:none;border:1px solid #3a4658}
+  .lamp.on{background:var(--on);box-shadow:0 0 10px var(--on);border-color:var(--on)}
+  .mut{color:var(--mut)} .small{font-size:13px}
+  .bar{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+  .ch{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;transition:border-color .1s}
+  .ch.drag{border-color:var(--acc);border-style:dashed}
+  .ch.open{border-color:var(--on)}
+  .ch h2{font-size:16px;margin:0;display:flex;align-items:center;gap:8px}
+  .fname{font-size:13px;color:var(--mut);word-break:break-all;min-height:18px}
+  .fname.ok{color:var(--fg)}
+  input[type=range]{width:100%;accent-color:var(--acc)}
+  .hold{width:100%;user-select:none;touch-action:none}
+  .modal{position:fixed;inset:0;background:rgba(5,8,14,.8);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;z-index:50;overflow:auto}
+  .modal[hidden]{display:none}
+  .modalBox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;width:min(1040px,100%);display:flex;flex-direction:column;gap:12px}
+  .bpmTag{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+  .hint{font-size:13px;color:var(--mut);line-height:1.5}
+  .err{color:var(--err)}
+  .clock{font-variant-numeric:tabular-nums}
+  @media (max-width:520px){ .wrap{padding:12px} h1{font-size:19px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>SoundWhacker Kamera</h1>
+  </header>
+
+  <div class="bar row">
+    <button class="big start" id="startBtn">&#9654; Start</button>
+    <button class="big stop" id="stopBtn">&#9632; Stopp</button>
+    <button class="big" id="allBtn" title="Alle Kanäle gleichzeitig hörbar schalten (Taste 0)">&#128266; Alle vorhören</button>
+    <span class="small mut">Projekt-Tempo</span>
+    <input id="projBpm" type="number" min="50" max="200" step="0.01" style="width:86px" placeholder="–">
+    <button id="retempoBtn" title="Alle Kanäle auf das Projekt-Tempo bringen (Tonhöhe bleibt)">Alle anpassen</button>
+    <span class="clock mut" id="clock">gestoppt</span>
+    <span style="flex:1"></span>
+    <span class="small mut">Gesamt</span>
+    <input type="range" id="master" min="0" max="100" value="90" style="width:160px">
+  </div>
+
+  <details class="bar" id="gesBox" open>
+    <summary style="cursor:pointer"><b>Kamera-Steuerung</b> <span class="small mut">&ndash; Finger, Kopf, Gesicht, Augen oder Arme schalten Kanal 1 bis 5 oder spielen Akkorde/Töne; dazu Hintergrund und Video-Aufnahme</span></summary>
+    <div class="row" style="margin-top:12px">
+      <button class="big" id="gesBtn">&#128247; Kamera starten</button>
+      <label class="small mut">Erkennung <select id="gesMode"><option value="hands">Hände</option><option value="body">Kopf, Gesicht, Augen &amp; Arme → Kanäle/Akkorde</option><option value="melody">Melodie: Kopf, Mund &amp; Arme spielen Töne</option><option value="fullbody">Ganzkörper: Bewegung spielt Töne</option></select></label>
+      <span class="small mut" id="gesInfo">aus</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut">Hintergrund <select id="bgSel"><option value="none">Kamerabild</option><option value="blur">unscharf</option><option value="stage">Bühne</option><option value="image">eigenes Foto …</option></select></label>
+      <button id="bgFileBtn" hidden>&#128444; Foto wählen</button>
+      <label class="small mut"><input type="checkbox" id="gesOverlay" checked> Handpunkte und Kanal einblenden</label>
+      <span class="small mut" id="bgNote"></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="big" id="recBtn">&#9679; Video aufnehmen</button>
+      <span class="small mut clock" id="recTime">max. 5:00</span>
+      <span class="small mut">Aufgenommen wird das Kamerabild (mit Hintergrund), der Ton des Loopers und – wenn eingeschaltet – das Mikrofon.</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small"><input type="checkbox" id="micOn"> &#127908; Mikrofon mit aufnehmen</label>
+      <select id="micSel" hidden></select>
+      <span class="row" id="micMix" style="gap:8px" hidden>
+        <span class="small mut">Lautstärke</span><input type="range" id="micVol" min="0" max="200" value="100" style="width:120px">
+        <span title="Mikrofon-Pegel" style="width:70px;height:8px;background:var(--line);border-radius:4px;overflow:hidden;display:inline-block"><b id="micLvl" style="display:block;height:100%;width:0;background:var(--on)"></b></span>
+      </span>
+      <span class="small mut" id="micNote"></span>
+    </div>
+    <div id="takes" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px"></div>
+    <div class="row" style="margin-top:10px;align-items:flex-start">
+      <canvas id="gesCv" width="320" height="240" style="width:480px;max-width:100%;border-radius:10px;border:1px solid var(--line);background:var(--card2)" hidden></canvas>
+      <div class="hint" id="handPanel" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine oder beide Hände gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. <b>Beide Hände</b> sind gleichberechtigt: jede schaltet ihren eigenen Kanal, so hörst du bis zu zwei Kanäle gleichzeitig (Punkte im Bild: blau = linke, grün = rechte Hand). Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stört eine Fingerzahl, nimm in der Zeile das Häkchen bei <b>n Finger</b> weg – dann löst sie nichts mehr aus. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Erkennung (Google MediaPipe, Apache-2.0) ist im Looper enthalten und läuft auch offline.</div>
+    </div>
+    <div id="profRow" class="row" hidden style="margin-top:12px">
+      <label class="small mut">Profil <select id="bodyProf" style="min-width:150px"><option value="">– Profil wählen –</option></select></label>
+      <button id="bodyProfLoad">Laden</button><button id="bodyProfSave">Speichern …</button><button id="bodyProfDel">Löschen</button>
+      <span class="small mut">speichert Ruhe-Position, Auslöser und Melodie-Einstellungen pro Kind</span>
+    </div>
+    <div id="melPanel" hidden style="margin-top:12px">
+      <div class="row">
+        <label class="small mut">Instrument <select id="melPreset" style="min-width:200px" disabled><option>– erst SoundFont laden –</option></select></label>
+        <label class="small mut">Tonart <select id="melKey"></select></label>
+        <label class="small mut">Skala <select id="melScale"></select></label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="small mut">Lautstärke <input type="range" id="melVol" min="0" max="100" value="80" style="width:120px"></label>
+        <label class="small"><input type="checkbox" id="melQuant"> im Takt (Achtel, wenn Loops laufen)</label>
+        <span class="small mut" id="melInfo"></span>
+      </div>
+      <div id="melOnly">
+      <div id="melCtrl" style="display:grid;grid-template-columns:auto minmax(170px,auto) auto auto auto minmax(140px,1fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
+      <div class="hint" style="margin-top:8px">Jede Stellung ist ein Ton der Skala: Bewegt sich das Kind in eine neue Stellung, erklingt deren Ton. Kopf drehen: links tief, rechts hoch. Kopf, Arme: unten tief, oben hoch. Mund: zu tief, weit offen hoch. Mit <b>Bereich anlernen</b> bewegt das Kind Kopf, Mund oder Arm einmal so weit es kann (4 Sekunden) – die Töne werden dann genau auf diesen Bereich verteilt, auch wenn er klein ist. <b>Töne</b> = wie viele Stufen der Skala, <b>Lage</b> = tiefster Ton. Ohne eigene SoundFont wird die eingebaute Instrumenten-Auswahl verwendet (eigene SoundFont und Hall-Regler im Bereich „SoundFont-Arpeggio“). Die Töne werden nach jeder Änderung von Instrument, Tonart oder Skala kurz vorbereitet.</div>
+      </div>
+    </div>
+    <div id="fbPanel" hidden style="margin-top:12px">
+      <div class="row">
+        <label class="small mut">Empfindlichkeit: wenig <input type="range" id="fbSens" min="0" max="100" value="50" style="width:130px"> viel</label>
+        <label class="small mut">Tondichte: ruhig <input type="range" id="fbDens" min="0" max="100" value="50" style="width:130px"> dicht</label>
+      </div>
+      <div class="row" style="margin-top:10px;padding:8px 10px;border:1px dashed var(--line);border-radius:10px">
+        <label class="small"><input type="checkbox" id="fbRoomOn"> <b>Raum-Klavier</b></label>
+        <span class="small mut">Position im Raum (links ↔ rechts) spielt die Tonleiter</span>
+        <label class="small mut">Lage <select id="fbRoomOct"><option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option></select></label>
+        <label class="small mut">Töne <select id="fbRoomN"></select></label>
+        <button id="fbRoomCal">Raum-Bereich anlernen</button>
+        <span style="position:relative;height:18px;min-width:140px;flex:1;background:var(--card2);border:1px solid var(--line);border-radius:9px;overflow:hidden;display:block">
+          <i id="fbRoomM" style="position:absolute;top:0;bottom:0;width:4px;margin-left:-2px;left:0;background:var(--on)"></i>
+          <b id="fbRoomT" class="small" style="position:absolute;right:6px;top:0;line-height:18px;font-weight:600"></b></span>
+      </div>
+      <div id="fbParts" style="display:grid;grid-template-columns:auto minmax(170px,auto) auto auto auto minmax(160px,1fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
+      <div class="hint" style="margin-top:8px">Bewegung macht Klang, Stillstand ist Stille: Bewegt sich ein Körperteil schnell genug, erklingt ein Ton. Bei den Händen und beim Kopf bestimmt die <b>Höhe</b> (Hände) bzw. die Stellung links ↔ rechts (Kopf) den Ton, die <b>Geschwindigkeit</b> die Lautstärke. Die Füße spielen tiefe Töne (Grundton und Quinte) wie ein Bass. <b>Empfindlichkeit</b>: wie viel Bewegung nötig ist. <b>Tondichte</b>: wie schnell Töne aufeinander folgen dürfen. Mit <b>anlernen</b> bewegt das Kind einen Körperteil 6 Sekunden lang so, wie es kann (Hände hoch und runter, Kopf hin und her, Füße stampfen): Danach passen Tonbereich und Empfindlichkeit genau zu diesem Kind – der Regler Empfindlichkeit wirkt dann nur noch als Feinregler. Die Höhe wird am eigenen Körper gemessen – das funktioniert auch im Sitzen oder im Rollstuhl (dann Füße ausschalten). Für den ganzen Körper etwa 2–3 m Abstand zur Kamera. <b>Raum-Klavier</b> (eigener Schalter): Wer durch den Raum geht oder fährt, spielt die Tonleiter wie auf einer riesigen Klaviatur am Boden; mit <b>Raum-Bereich anlernen</b> einmal von ganz links nach ganz rechts bewegen.</div>
+    </div>
+    <div id="bodyPanel" hidden style="margin-top:12px">
+      <div class="row">
+        <button id="bodyCalib">&#127919; Ruhe-Position anlernen</button>
+        <span class="small mut" id="bodyCalibInfo">noch nicht angelernt – Bewegungen werden von einer Standard-Haltung aus gemessen</span>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="small"><input type="checkbox" id="bodyMulti"> mehrere Auslöser gleichzeitig</label>
+        <label class="small mut">Haltezeit <input type="range" id="bodyHold" min="0" max="1500" step="50" value="400" style="width:140px"> <span id="bodyHoldVal" style="display:inline-block;min-width:4em">400 ms</span></label>
+      </div>
+      <div id="bodyTrig" style="display:grid;grid-template-columns:minmax(150px,auto) auto minmax(90px,1fr) minmax(100px,2fr) auto;gap:6px 12px;align-items:center;margin-top:10px"></div>
+      <div class="hint" style="margin-top:8px">Das Kind sitzt entspannt vor der Kamera, dann <b>Ruhe-Position anlernen</b>. Jeder Auslöser misst ab dieser Haltung. Ordne jedem Auslöser einen Loop-Kanal oder ein Feld aus <b>Akkord</b>, <b>Ton</b> oder <b>Improvisieren</b> zu (oder „–“ für aus). Mit <b>anlernen</b> neben einem Auslöser macht das Kind die Bewegung 2–3 Sekunden lang vor (z.&nbsp;B. nach links schauen), danach passt die Schwelle genau zu diesem Kind. <b>Augensteuerung:</b> Die Kamera erkennt grob, wohin die Augen schauen (links, rechts, oben, unten) – für Blick-Auslöser die Ruhe-Position mit Blick geradeaus in die Kamera anlernen, Kamera möglichst auf Augenhöhe, Gesicht gut beleuchtet; eine längere <b>Haltezeit</b> (z.&nbsp;B. 600–800 ms) verhindert, dass kurzes Umherschauen auslöst. „Augen zu“ mit Haltezeit ignoriert normales Blinzeln. Der Regler <b>Schwelle</b> legt fest, wie deutlich die Bewegung sein muss: weiter links = schon kleine Bewegungen lösen aus. Der Balken zeigt live den aktuellen Wert, der Strich die Schwelle. Normalerweise zählt nur ein Auslöser (der deutlichste). Mit <b>mehrere Auslöser gleichzeitig</b> wirkt jeder Auslöser für sich, z.&nbsp;B. Kopf links (Kanal 1) und Mund auf (Kanal 2) zusammen. Ein Kanal klingt, solange seine Bewegung gehalten wird. Die <b>Haltezeit</b> verhindert, dass kurze, unwillkürliche Bewegungen etwas auslösen. Für die Arme muss der Oberkörper mit Schultern und Händen im Bild sein. „Links“ und „rechts“ sind aus Sicht des Kindes gemeint.</div>
+    </div>
+    <video id="gesVideo" playsinline muted style="display:none"></video>
+  </details>
+
+  <div class="bar row">
+    <b>Preset</b>
+    <select id="presetSel" style="min-width:180px"><option value="">– kein Preset –</option></select>
+    <button id="presetLoad">Laden</button>
+    <button id="presetSave">Speichern …</button>
+    <button id="presetDel">Löschen</button>
+    <button id="clearAllBtn" title="Alle WAV-Dateien aus den Kanälen entfernen (Presets bleiben erhalten)">Alle Kanäle leeren</button>
+    <button id="presetExport" title="Alle Presets als eine Datei sichern (Backup, Umzug zwischen PC und iPad)">Presets sichern</button>
+    <button id="presetImport" title="Eine gesicherte Preset-Datei wieder einspielen">Presets einspielen</button>
+    <button id="presetShare" class="start" hidden>Datei jetzt teilen</button>
+    <span class="small mut" id="presetInfo"></span>
+  </div>
+
+  <div class="bar row" id="offBar">
+    <b>Offline</b>
+    <button id="offPrep" title="Lädt einmalig alles herunter, was die Kamera-App braucht – danach läuft sie auch ohne Internet">&#128229; Für offline vorbereiten</button>
+    <span class="small mut" id="offInfo"></span>
+  </div>
+
+  <details class="bar" id="sfBox">
+    <summary style="cursor:pointer"><b>SoundFont</b> <span class="small mut">&ndash; Instrumente für Melodie- und Ganzkörper-Modus sowie für Akkord, Ton und Improvisieren</span></summary>
+    <div class="row" style="margin-top:12px">
+      <span class="small mut">SoundFont</span>
+      <button id="sfFileBtn">&#128193; Eigene SoundFont laden (.sf2)</button>
+      <button id="sfBuiltinBtn" title="Die mitgelieferte Instrumenten-Auswahl verwenden">Eingebaute verwenden</button>
+      <span class="small" id="sfName">keine geladen</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut">Instrument <select id="sfPreset" style="min-width:220px" disabled><option>– erst SoundFont laden –</option></select></label>
+      <label class="small mut">Hall: trocken <input type="range" id="sfRev" min="0" max="100" value="30" style="width:140px"> viel <span id="sfRevVal" style="display:inline-block;min-width:3.2em">30 %</span></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span class="small mut" id="sfInfo"></span>
+    </div>
+    <div class="hint" style="margin-top:8px">Eingebaut ist eine Auswahl von 45 Instrumenten und 3 Schlagzeug-Kits aus <b>GeneralUser GS</b> (S. Christian Collins, frei nutzbar; Lizenz im Ordner <code>soundfonts</code>). Sie wird beim ersten Gebrauch einmal geladen (ca. 21 MB) und bleibt dann im Browser gespeichert – auch auf dem iPad. Eine eigene SoundFont ersetzt sie und bleibt ebenfalls gespeichert; mit <b>Eingebaute verwenden</b> geht es zurück. Alle fünf Loops nutzen dasselbe Instrument und Muster, Kanal 1–5 bekommt jeweils den eingestellten Akkord. Mit den Kanal-Tasten (1–5 oder angelernte Tasten), SWs oder MIDI schaltest du dann zwischen den Akkorden um.</div>
+  </details>
+
+  <details class="bar" id="chordBox">
+    <summary style="cursor:pointer"><b>Akkord</b> <span class="small mut">&ndash; Tasten (z.&nbsp;B. vom SW über Bluetooth) spielen Akkorde, solange sie gehalten werden</span></summary>
+    <div class="row" style="margin-top:12px">
+      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpA"> <b>Tasten spielen Akkorde</b> (statt Loops)</label>
+      <span class="small mut" id="chInfoA"></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetA" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
+      <label class="small mut">Lautstärke <input type="range" id="chVolA" min="0" max="100" value="80" style="width:110px"></label>
+      <label class="small mut">Hall <input type="range" id="chRevA" min="0" max="100" value="30" style="width:110px"></label>
+    </div>
+    <div id="chFieldsA" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+    <div class="hint" style="margin-top:8px">Jedes der fünf Felder spielt einen <b>Akkord</b> (Dur, Moll oder Dur7) – oder einen einzelnen Ton –, so lange, wie seine Taste gedrückt bleibt; danach klingt er kurz aus. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
+  </details>
+
+  <details class="bar" id="tonBox">
+    <summary style="cursor:pointer"><b>Ton</b> <span class="small mut">&ndash; Tasten spielen einzelne Töne, solange sie gehalten werden</span></summary>
+    <div class="row" style="margin-top:12px">
+      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpB"> <b>Tasten spielen Töne</b> (statt Loops)</label>
+      <span class="small mut" id="chInfoB"></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetB" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
+      <label class="small mut">Lautstärke <input type="range" id="chVolB" min="0" max="100" value="80" style="width:110px"></label>
+      <label class="small mut">Hall <input type="range" id="chRevB" min="0" max="100" value="30" style="width:110px"></label>
+    </div>
+    <div id="chFieldsB" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+    <div class="hint" style="margin-top:8px">Jedes der fünf Felder spielt einen einzelnen <b>Ton</b> (Grundton und Lage), so lange, wie seine Taste gedrückt bleibt. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
+  </details>
+
+  <details class="bar" id="improBox">
+    <summary style="cursor:pointer"><b>Improvisieren</b> <span class="small mut">&ndash; wie im SW-HUB: jeder Druck spielt einen zufälligen Ton der Skala</span></summary>
+    <div class="row" style="margin-top:12px">
+      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpC"> <b>Tasten improvisieren</b> (statt Loops)</label>
+      <span class="small mut" id="chInfoC"></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetC" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
+      <label class="small mut">Lautstärke <input type="range" id="chVolC" min="0" max="100" value="80" style="width:110px"></label>
+      <label class="small mut">Hall <input type="range" id="chRevC" min="0" max="100" value="30" style="width:110px"></label>
+    </div>
+    <div id="chFieldsC" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+    <div class="hint" style="margin-top:8px">Wie im SW-HUB: jeder Druck spielt einen <b>zufälligen Ton</b> aus Tonart und Skala des Feldes (nie zweimal derselbe hintereinander), so lange, wie die Taste gedrückt bleibt. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
+  </details>
+
+
+  <div id="status" class="small mut" style="margin:-4px 0 12px"></div>
+
+  <details class="bar" id="loopBox" open>
+    <summary style="cursor:pointer"><b>Looper</b> <span class="small mut">&ndash; die 5 Loop-Kanäle: WAV laden, Taste/SW anlernen, Start</span></summary>
+    <div class="grid" id="channels" style="margin-top:12px"></div>
+  </details>
+
+  <div class="bar hint" style="margin-top:14px">
+    <b>So geht's:</b> <b>Kamera starten</b> und die <b>Erkennung</b> wählen: <b>Hände</b> (1–5 Finger oder eigene Gesten), <b>Kopf, Gesicht, Augen &amp; Arme</b>,
+    <b>Melodie</b> (Kopf, Mund und Arme spielen Töne einer Skala) oder <b>Ganzkörper</b> (Bewegung spielt Töne, Raum-Klavier).
+    Hände und Kopf/Gesicht/Augen/Arme schalten die Loop-Kanäle (WAV-Dateien auf die Kanäle ziehen, dann <b>Start</b>) oder spielen Felder aus Akkord, Ton und Improvisieren.
+    Dazu virtueller Hintergrund und Video-Aufnahme. Diese App ist unabhängig vom SoundWhacker Looper; Presets (WAV-Dateien) und die SoundFont teilen sich beide Apps auf demselben Gerät.
+  </div>
+</div>
+
+<div class="modal" id="askModal" hidden style="z-index:80;align-items:center">
+  <div class="modalBox" style="width:min(420px,100%)">
+    <div id="askMsg"></div>
+    <input id="askInput" type="text" style="width:100%">
+    <div class="row" style="justify-content:flex-end">
+      <button id="askNo">Abbrechen</button><button id="askYes" class="start">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const N = 5;
+  const STORE = 'swcam.v1';
+  try {   // einmalig: Einstellungen aus dem Looper (gleiche Adresse) übernehmen – Gesten, Profile, Kamera-Modi, Felder
+    if (!localStorage.getItem(STORE + '.migrated')) {
+      Object.keys(localStorage).filter(k => (k === 'swlooper.v1' || k.startsWith('swlooper.v1.')) && !/\.(swmel|log)$/.test(k)).forEach(k => {
+        const nk = STORE + k.slice('swlooper.v1'.length);
+        if (localStorage.getItem(nk) == null) localStorage.setItem(nk, localStorage.getItem(k));
+      });
+      localStorage.setItem(STORE + '.migrated', '1');
+    }
+  } catch (e) {}
+  const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','H'];
+  const noteName = n => NOTE_NAMES[n % 12] + (Math.floor(n / 12) - 1);
+
+  let ctx = null, master = null, recDest = null;   // recDest: Looper-Ton für Video-Aufnahmen
+  let playing = false, startTime = 0;
+  let previewAll = false;
+
+  const chans = Array.from({ length: N }, (_, i) => ({
+    idx: i, buffer: null, fileName: '', source: null, gain: null,
+    vol: 0.9, mode: 'hold', key: null, gesture: null, fingerOn: true, open: false, keyHeld: false, el: {}
+  }));
+  // Angelernte Geste = 20 Handform-Merkmale (normierte Abstände), siehe gesFeat()
+  const validGes = g => Array.isArray(g) && g.length === 20 && g.every(Number.isFinite);
+
+  const $ = id => document.getElementById(id);
+  const status = (msg, err) => { $('status').textContent = msg || ''; $('status').className = 'small ' + (err ? 'err' : 'mut'); };
+
+  // ---------- Speicher ----------
+  function save() {
+    try {
+      localStorage.setItem(STORE, JSON.stringify({
+        master: +$('master').value,
+        ch: chans.map(c => ({ vol: c.vol, mode: c.mode, key: c.key, gesture: c.gesture, fingerOn: c.fingerOn }))
+      }));
+    } catch (e) {}
+  }
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(STORE) || 'null');
+      if (!s) return null;
+      if (typeof s.master === 'number') $('master').value = s.master;
+      (s.ch || []).forEach((d, i) => {
+        if (!chans[i] || !d) return;
+        if (typeof d.vol === 'number') chans[i].vol = d.vol;
+        if (d.mode === 'hold' || d.mode === 'toggle') chans[i].mode = d.mode;
+        if (d.key && typeof d.key.code === 'string') chans[i].key = { code: d.key.code, label: String(d.key.label || d.key.code) };
+        if (validGes(d.gesture)) chans[i].gesture = d.gesture;
+        if (d.fingerOn === false) chans[i].fingerOn = false;
+      });
+      return s;
+    } catch (e) { return null; }
+  }
+
+  // ---------- Audio ----------
+  function ensureAudio() {
+    if (ctx) return ctx;
+    // iOS: Ton auch bei aktivem Stumm-Schalter und im Hintergrund-Modus der Seite erlauben
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+    master = ctx.createGain();
+    master.gain.value = $('master').value / 100;
+    // Summen-Limiter: mehrere Loops gleichzeitig dürfen nicht übersteuern (Chrome-Kompressor hebt um ~1,7 dB an, daher 6 dB Vorabsenkung)
+    const pre = ctx.createGain(), lim = ctx.createDynamicsCompressor();
+    pre.gain.value = 0.5;
+    lim.threshold.value = -8; lim.knee.value = 2; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.12;
+    master.connect(pre); pre.connect(lim); lim.connect(ctx.destination);
+    try { recDest = ctx.createMediaStreamDestination(); lim.connect(recDest); } catch (e) { recDest = null; }
+    chans.forEach(c => { c.gain = ctx.createGain(); c.gain.gain.value = 0; c.gain.connect(master); });
+    return ctx;
+  }
+
+  function startSource(c, when, offset) {
+    if (!c.buffer) return;
+    stopSource(c);
+    const src = ctx.createBufferSource();
+    src.buffer = c.buffer;
+    src.loop = true;
+    src.connect(c.gain);
+    src.start(when, offset);
+    c.source = src;
+  }
+  function stopSource(c) {
+    if (!c.source) return;
+    try { c.source.stop(); } catch (e) {}
+    c.source.disconnect();
+    c.source = null;
+  }
+
+  async function start() {
+    ensureAudio();
+    await ctx.resume();
+    if (playing) return;
+    if (!chans.some(c => c.buffer)) { status('Erst mindestens eine WAV-Datei laden.', true); return; }
+    startTime = ctx.currentTime + 0.1;
+    chans.forEach(c => startSource(c, startTime, 0));
+    playing = true;
+    status('');
+  }
+  function stop() {
+    if (!ctx) return;
+    chans.forEach(stopSource);
+    playing = false;
+    previewAll = false;
+    chans.forEach(c => { setOpen(c, false); if (c.holders) c.holders.clear(); });
+    updateAllBtn();
+    $('clock').textContent = 'gestoppt';
+  }
+
+  function updateAllBtn() {
+    const b = $('allBtn');
+    b.classList.toggle('learning', previewAll);
+    b.innerHTML = previewAll ? '&#128263; Vorhören aus' : '&#128266; Alle vorhören';
+  }
+  async function togglePreviewAll() {
+    ensureAudio();
+    await ctx.resume();
+    if (!previewAll) {
+      if (!playing) await start();
+      if (!playing) return;
+      previewAll = true;
+      chans.forEach(c => { if (c.buffer) setOpen(c, true); });
+    } else {
+      previewAll = false;
+      chans.forEach(c => setOpen(c, false));
+    }
+    updateAllBtn();
+  }
+
+  // Kanal, der während der Wiedergabe geladen wird, phasengleich zum gemeinsamen Start einsetzen
+  function joinRunning(c) {
+    if (!playing || !c.buffer) return;
+    const when = ctx.currentTime + 0.05;
+    const dur = c.buffer.duration;
+    const offset = (((when - startTime) % dur) + dur) % dur;
+    startSource(c, when, offset);
+  }
+
+  function setOpen(c, open) {
+    c.open = open;
+    if (c.gain) c.gain.gain.setTargetAtTime(open ? c.vol : 0, ctx.currentTime, 0.006);
+    c.el.lamp.classList.toggle('on', open);
+    c.el.card.classList.toggle('open', open);
+    if (c.el.holdBtn) c.el.holdBtn.classList.toggle('learning', open);
+  }
+
+  async function setSample(c, bytes, name, bpm) {
+    ensureAudio();
+    const copy = bytes.slice(0); // decodeAudioData leert den übergebenen Puffer
+    const buf = await ctx.decodeAudioData(bytes);
+    c.buffer = buf;
+    c.bytes = copy;
+    c.fileName = name;
+    if (bpm) { c.bpm = bpm; c.bpmGuess = false; } else { c.bpm = guessBpm(buf.duration); c.bpmGuess = true; }
+    updateBpmTag(c);
+    c.el.fname.textContent = name + ' (' + buf.duration.toFixed(2) + ' s)';
+    c.el.fname.className = 'fname ok';
+    joinRunning(c);
+  }
+  function clearSample(c) {
+    stopSource(c);
+    setOpen(c, false);
+    c.buffer = null; c.bytes = null; c.fileName = ''; c.bpm = null;
+    updateBpmTag(c);
+    c.el.fname.textContent = 'keine Datei – hierher ziehen';
+    c.el.fname.className = 'fname';
+  }
+  async function loadFile(c, file) {
+    try {
+      await setSample(c, await file.arrayBuffer(), file.name);
+      status('');
+    } catch (e) {
+      status('"' + file.name + '" konnte nicht gelesen werden (nur Audiodateien wie WAV, MP3, OGG).', true);
+    }
+  }
+
+  // ---------- Presets (IndexedDB: Einstellungen + WAV-Daten) ----------
+  const DB = 'swlooper-presets', PS = 'presets';
+  function dbOpen() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(PS, { keyPath: 'name' });
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function dbDo(mode, fn) {
+    const db = await dbOpen();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(PS, mode);
+      const req = fn(tx.objectStore(PS));
+      tx.oncomplete = () => { db.close(); res(req && req.result); };
+      tx.onerror = tx.onabort = () => { db.close(); rej(tx.error); };
+    });
+  }
+  // Eigene Abfragefenster: prompt()/confirm() werden in iPad-Browser-Apps oft stumm unterdrückt
+  function ask(msg, def) {
+    return new Promise(res => {
+      const m = $('askModal'), inp = $('askInput');
+      const text = def !== undefined;
+      $('askMsg').textContent = msg;
+      inp.hidden = !text; inp.value = text ? def : '';
+      m.hidden = false;
+      if (text) { inp.focus(); inp.select(); }
+      const done = v => { m.hidden = true; $('askYes').onclick = $('askNo').onclick = inp.onkeydown = null; res(v); };
+      $('askYes').onclick = () => done(text ? inp.value : true);
+      $('askNo').onclick = () => done(text ? null : false);
+      inp.onkeydown = e => { if (e.key === 'Enter') $('askYes').click(); else if (e.key === 'Escape') $('askNo').click(); };
+    });
+  }
+  const presetInfo = (m, err) => { $('presetInfo').textContent = m || ''; $('presetInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+
+  async function refreshPresets(select) {
+    const names = ((await dbDo('readonly', s => s.getAllKeys())) || []).sort((a, b) => a.localeCompare(b, 'de'));
+    const sel = $('presetSel');
+    sel.innerHTML = '<option value="">– kein Preset –</option>';
+    names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+    if (select && names.includes(select)) sel.value = select;
+  }
+
+  async function savePreset() {
+    if (!chans.some(c => c.buffer)) { presetInfo('Erst WAV-Dateien laden.', true); return; }
+    const name = ((await ask('Name des Presets:', $('presetSel').value || '')) || '').trim();
+    if (!name) return;
+    const existing = [...$('presetSel').options].some(o => o.value === name);
+    if (existing && !(await ask('Preset "' + name + '" überschreiben?'))) return;
+    try {
+      await dbDo('readwrite', s => s.put({
+        name, master: +$('master').value,
+        projBpm,
+        ch: chans.map(c => ({ fileName: c.fileName, bytes: c.bytes || null, vol: c.vol, mode: c.mode, key: c.key, gesture: c.gesture, fingerOn: c.fingerOn, bpm: c.bpm || null, bpmGuess: !!c.bpmGuess }))
+      }));
+      await refreshPresets(name);
+      try { localStorage.setItem(STORE + '.preset', name); } catch (e) {}
+      presetInfo('Gespeichert: ' + name);
+    } catch (e) { presetInfo('Speichern fehlgeschlagen: ' + ((e && (e.name || e.message)) || 'unbekannter Fehler') + ' (Speicher voll oder vom Browser gesperrt?)', true); }
+  }
+
+  async function loadPreset(name) {
+    if (!name) return;
+    presetInfo('Lade …');
+    try {
+      const p = await dbDo('readonly', s => s.get(name));
+      if (!p) { presetInfo('Preset nicht gefunden.', true); return; }
+      $('master').value = p.master; $('master').oninput();
+      for (let i = 0; i < N; i++) {
+        const c = chans[i], d = p.ch[i] || {};
+        if (d.bytes) {
+          await setSample(c, d.bytes, d.fileName || ('Kanal ' + (i + 1)), d.bpm || null);
+          if (d.bpm && d.bpmGuess) { c.bpmGuess = true; updateBpmTag(c); }
+        } else clearSample(c);
+        c.vol = typeof d.vol === 'number' ? d.vol : 0.9;
+        c.mode = d.mode === 'toggle' ? 'toggle' : 'hold';
+        c.key = d.key && typeof d.key.code === 'string' ? d.key : null;
+        c.gesture = validGes(d.gesture) ? d.gesture : null;
+        c.fingerOn = d.fingerOn !== false;
+        c.el.vol.value = Math.round(c.vol * 100);
+        c.el.modeSel.value = c.mode;
+        setOpen(c, false);
+        renderAssign(c);
+      }
+      if (p.projBpm) setProjBpm(p.projBpm);
+      $('presetSel').value = name;
+      try { localStorage.setItem(STORE + '.preset', name); } catch (e) {}
+      save();
+      presetInfo('Geladen: ' + name + (playing ? '' : ' – jetzt Start drücken'));
+    } catch (e) { presetInfo('Laden fehlgeschlagen.', true); }
+  }
+
+  async function deletePreset() {
+    const name = $('presetSel').value;
+    if (!name || !(await ask('Preset "' + name + '" löschen?'))) return;
+    await dbDo('readwrite', s => s.delete(name));
+    try { if (localStorage.getItem(STORE + '.preset') === name) localStorage.removeItem(STORE + '.preset'); } catch (e) {}
+    await refreshPresets();
+    presetInfo('Gelöscht: ' + name);
+  }
+
+  // ---------- Presets sichern / einspielen (eine Datei, Aufbau: "SWPRE001" + Länge + JSON-Kopf + rohe WAV-Daten) ----------
+  const PRE_MAGIC = 'SWPRE001';
+  let pendingShare = null;
+
+  async function exportPresets() {
+    $('presetShare').hidden = true; pendingShare = null;
+    let list;
+    try { list = (await dbDo('readonly', s => s.getAll())) || []; } catch (e) { presetInfo('Lesen der Presets fehlgeschlagen.', true); return; }
+    if (!list.length) { presetInfo('Es gibt noch keine gespeicherten Presets.', true); return; }
+    list.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    const parts = [];
+    const head = {
+      version: 1,
+      presets: list.map(p => ({
+        name: p.name, master: p.master, projBpm: p.projBpm || null,
+        ch: (p.ch || []).map(d => {
+          const len = d.bytes ? d.bytes.byteLength : 0;
+          if (len) parts.push(d.bytes);
+          return { fileName: d.fileName || '', vol: d.vol, mode: d.mode, learn: d.learn || null, key: d.key || null, gesture: d.gesture || null, fingerOn: d.fingerOn !== false, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess, len };
+        })
+      }))
+    };
+    const json = new TextEncoder().encode(JSON.stringify(head));
+    const lenBuf = new DataView(new ArrayBuffer(4)); lenBuf.setUint32(0, json.length, true);
+    const blob = new Blob([PRE_MAGIC, lenBuf.buffer, json, ...parts], { type: 'application/octet-stream' });
+    const d = new Date(), pad = n => String(n).padStart(2, '0');
+    const name = 'SoundWhacker_Presets_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.swpresets';
+    const msg = list.length + ' Presets (' + (blob.size / 1048576).toFixed(1) + ' MB)';
+    if (!window.showDirectoryPicker && navigator.share) {
+      const file = { name, bytes: blob, type: 'application/octet-stream' };
+      if (await shareFiles([file])) { presetInfo(msg + ': Teilen-Menü geöffnet – „In Dateien sichern“ wählen.'); return; }
+      // Die Berührung ist nach dem Lesen evtl. abgelaufen: ein zweiter Tipp öffnet das Teilen-Menü sicher
+      pendingShare = file; $('presetShare').hidden = false;
+      presetInfo(msg + ' sind bereit – bitte „Datei jetzt teilen“ tippen.');
+      return;
+    }
+    downloadBlob(blob, name);
+    presetInfo(msg + ' gesichert (siehe Downloads-Ordner).');
+  }
+  $('presetShare').onclick = async () => {
+    if (!pendingShare) return;
+    const file = pendingShare;
+    try {
+      await navigator.share({ files: [new File([file.bytes], file.name, { type: file.type })] });
+      $('presetShare').hidden = true; pendingShare = null;
+      presetInfo('Teilen-Menü geöffnet – „In Dateien sichern“ wählen.');
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      presetInfo('Teilen nicht möglich: ' + ((e && (e.name + ': ' + e.message)) || 'unbekannt'), true);
+    }
+  };
+
+  async function importPresets(file) {
+    try {
+      const buf = await file.arrayBuffer();
+      const magic = new TextDecoder().decode(new Uint8Array(buf, 0, Math.min(8, buf.byteLength)));
+      if (magic !== PRE_MAGIC) { presetInfo('Das ist keine Preset-Datei von diesem Looper.', true); return; }
+      const hl = new DataView(buf).getUint32(8, true);
+      if (12 + hl > buf.byteLength) { presetInfo('Preset-Datei ist beschädigt (unvollständig).', true); return; }
+      const head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 12, hl)));
+      let pos = 12 + hl;
+      const presets = (head.presets || []).map(p => ({
+        name: String(p.name), master: p.master, projBpm: p.projBpm || null,
+        ch: (p.ch || []).map(d => {
+          let bytes = null;
+          if (d.len) {
+            if (pos + d.len > buf.byteLength) throw new Error('Datei abgeschnitten');
+            bytes = buf.slice(pos, pos + d.len); pos += d.len;
+          }
+          return { fileName: d.fileName || '', bytes, vol: d.vol, mode: d.mode, learn: d.learn || null, key: d.key || null, gesture: validGes(d.gesture) ? d.gesture : null, fingerOn: d.fingerOn !== false, bpm: d.bpm || null, bpmGuess: !!d.bpmGuess };
+        })
+      })).filter(p => p.name);
+      if (!presets.length) { presetInfo('Die Datei enthält keine Presets.', true); return; }
+      const have = new Set([...$('presetSel').options].map(o => o.value));
+      const clash = presets.filter(p => have.has(p.name));
+      let use = presets;
+      if (clash.length && !(await ask(clash.length + ' von ' + presets.length + ' Presets gibt es schon (' + clash.map(p => p.name).slice(0, 3).join(', ') + (clash.length > 3 ? ' …' : '') + '). Überschreiben?'))) {
+        use = presets.filter(p => !have.has(p.name));
+      }
+      if (!use.length) { presetInfo('Nichts eingespielt.'); return; }
+      await dbDo('readwrite', s => { let r; use.forEach(p => { r = s.put(p); }); return r; });
+      await refreshPresets(use[0].name);
+      presetInfo(use.length + ' Presets eingespielt' + (use.length < presets.length ? ' (' + (presets.length - use.length) + ' übersprungen)' : '') + '.');
+    } catch (e) {
+      presetInfo('Einspielen fehlgeschlagen: ' + ((e && (e.message || e.name)) || 'unbekannt'), true);
+    }
+  }
+  $('presetExport').onclick = exportPresets;
+  $('presetImport').onclick = () => {
+    const fi = document.createElement('input');
+    fi.type = 'file';   // ohne accept (iOS graut sonst Dateien aus)
+    fi.onchange = () => { if (fi.files[0]) importPresets(fi.files[0]); };
+    fi.click();
+  };
+
+  // ---------- Eingaben (Tastatur + Kamera) ----------
+  // src = wer drückt (Taste, linke/rechte Hand, Kopf/Körper). Im Modus „gedrückt halten“ bleibt ein Kanal hörbar,
+  // solange irgendeine Quelle ihn hält – Tasten und Gesten stören sich so nicht gegenseitig.
+  function press(c, on, src) {
+    if (previewAll) return;
+    const h = c.holders || (c.holders = new Set());
+    src = src || 'x';
+    if (c.mode === 'hold') {
+      if (on) { h.add(src); if (!c.open) setOpen(c, true); }
+      else { h.delete(src); if (!h.size && c.open) setOpen(c, false); }
+    } else if (on) setOpen(c, !c.open);
+  }
+
+  function renderAssign(c) {
+    c.el.keyTag.textContent = 'Taste ' + (c.key ? c.key.label + ' / ' : '') + (c.idx + 1);
+    c.el.keyShow.textContent = c.key ? 'Taste: ' + c.key.label + ' (und ' + (c.idx + 1) + ')' : '';
+    c.el.keyClr.hidden = !c.key;
+    const gr = $('gesRowInfo' + c.idx);
+    if (gr) {
+      gr.textContent = c.gesture ? 'eigene Geste ✓' : (c.fingerOn ? '' : '– keine Geste –');
+      $('gesRowClr' + c.idx).hidden = !c.gesture;
+      $('gesRowFing' + c.idx).checked = c.fingerOn;
+    }
+  }
+
+  // ---------- Tasten anlernen (PC-Tastatur, zusätzlich zu den Ziffern 1–5) ----------
+  let learnKeyIdx = -1;
+  const MODIFIER_CODES = ['Tab', 'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'CapsLock', 'NumLock', 'ScrollLock', 'ContextMenu', 'AltGraph', 'Fn'];
+  function keyLabel(e) {
+    if (e.code === 'Space') return 'Leertaste';
+    if (/^Numpad/.test(e.code)) return 'Num ' + (e.key && e.key.length === 1 ? e.key : e.code.slice(6));
+    return e.key && e.key.length === 1 ? e.key.toUpperCase() : (e.key || e.code);
+  }
+  function startKeyLearn(i) {
+    stopKeyLearn();
+    learnKeyIdx = i;
+    const b = chans[i].el.keyBtn;
+    b.classList.add('learning');
+    b.textContent = 'Taste drücken … (Esc = Abbruch)';
+  }
+  function stopKeyLearn() {
+    if (learnKeyIdx >= 0) {
+      const b = chans[learnKeyIdx].el.keyBtn;
+      b.classList.remove('learning');
+      b.textContent = 'Taste anlernen';
+    }
+    learnKeyIdx = -1;
+  }
+  function learnKeyFrom(e) {
+    const c = chans[learnKeyIdx];
+    if (e.code === 'Escape') { stopKeyLearn(); return; }
+    if (MODIFIER_CODES.includes(e.code)) return;
+    if (e.code === 'Digit0' || e.code === 'Numpad0') { status('Die Taste 0 ist für „Alle vorhören“ reserviert.', true); return; }
+    chans.forEach(o => { if (o !== c && o.key && o.key.code === e.code) { o.key = null; renderAssign(o); status('Taste ' + keyLabel(e) + ' gehörte zu Kanal ' + (o.idx + 1) + ' und ist jetzt bei Kanal ' + (c.idx + 1) + '.'); } });
+    c.key = { code: e.code, label: keyLabel(e) };
+    stopKeyLearn();
+    renderAssign(c);
+    save();
+  }
+
+  // ---------- Oberfläche ----------
+  function buildChannel(c) {
+    const card = document.createElement('div');
+    card.className = 'ch';
+    card.innerHTML =
+      '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '<span class="keyTag small mut" style="font-weight:400;margin-left:auto" title="Tasten auf der PC-Tastatur"></span></h2>' +
+      '<div class="row" style="gap:6px"><button class="fileBtn">WAV laden</button><button class="delBtn" title="Datei aus diesem Kanal entfernen">&#128465; Entfernen</button><button class="dlBtn" title="Datei dieses Kanals speichern">&#11015;</button><input type="file" hidden></div>' +
+      '<div class="fname">keine Datei – hierher ziehen</div>' +
+      '<div class="row small"><span class="bpmTag mut">Tempo –</span></div>' +
+      '<div class="row small" style="gap:6px"><button class="keyBtn" title="Eine Taste der PC-Tastatur für diesen Kanal festlegen (gilt zusätzlich zur Ziffer)">Taste anlernen</button><button class="keyClr" title="Angelernte Taste entfernen" hidden>&#10005;</button><span class="keyShow mut"></span></div>' +
+      '<select class="modeSel"><option value="hold">Hörbar solange berührt</option><option value="toggle">Umschalten bei Berührung</option></select>' +
+      '<div><div class="small mut">Lautstärke</div><input type="range" class="vol" min="0" max="100"></div>' +
+      '<button class="hold">&#128266; Vorhören</button>';
+    const q = s => card.querySelector(s);
+    c.el = { card, lamp: q('.lamp'), fname: q('.fname'), bpmTag: q('.bpmTag'),
+      keyTag: q('.keyTag'), keyBtn: q('.keyBtn'), keyClr: q('.keyClr'), keyShow: q('.keyShow') };
+    c.el.keyBtn.onclick = () => (learnKeyIdx === c.idx ? stopKeyLearn() : startKeyLearn(c.idx));
+    c.el.keyClr.onclick = () => { c.key = null; renderAssign(c); save(); };
+    c.el.bpmTag.onclick = async () => {
+      if (!c.buffer) return;
+      const v = +((await ask('Tempo dieses Loops in BPM:', c.bpm ? String(+c.bpm.toFixed(2)) : '')) || 0);
+      if (v >= 40 && v <= 240) { c.bpm = v; c.bpmGuess = false; updateBpmTag(c); }
+    };
+
+    const fileIn = q('input[type=file]');
+    q('.fileBtn').onclick = () => fileIn.click();
+    q('.delBtn').onclick = () => { if (c.buffer) { clearSample(c); status('Kanal ' + (c.idx + 1) + ' geleert.'); } };
+    fileIn.onchange = () => { if (fileIn.files[0]) loadFile(c, fileIn.files[0]); fileIn.value = ''; };
+
+    card.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); card.classList.add('drag'); });
+    card.addEventListener('dragleave', () => card.classList.remove('drag'));
+    card.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation(); card.classList.remove('drag');
+      const files = [...e.dataTransfer.files];
+      if (files.length === 1) loadFile(c, files[0]); else distribute(files, c.idx);
+    });
+
+    q('.dlBtn').onclick = async () => {
+      if (!c.bytes) { status('Kanal ' + (c.idx + 1) + ' hat noch keine Datei.', true); return; }
+      if (!window.showDirectoryPicker && await shareFiles([{ name: c.fileName || ('kanal' + (c.idx + 1) + '.wav'), bytes: c.bytes }])) return;
+      downloadBlob(new Blob([c.bytes], { type: 'audio/wav' }), c.fileName || ('kanal' + (c.idx + 1) + '.wav'));
+    };
+
+    const modeSel = q('.modeSel');
+    c.el.modeSel = modeSel;
+    modeSel.value = c.mode;
+    modeSel.onchange = () => { c.mode = modeSel.value; if (c.mode === 'hold' && c.gain) setOpen(c, false); save(); };
+
+    const vol = q('.vol');
+    c.el.vol = vol;
+    vol.value = Math.round(c.vol * 100);
+    vol.oninput = () => { c.vol = vol.value / 100; if (c.open && c.gain) c.gain.gain.setTargetAtTime(c.vol, ctx.currentTime, 0.01); };
+    vol.onchange = save;
+
+    const hold = q('.hold');
+    c.el.holdBtn = hold;
+    hold.onclick = async () => {
+      ensureAudio();
+      await ctx.resume();
+      if (!c.buffer) { status('Kanal ' + (c.idx + 1) + ' hat noch keine Datei.', true); return; }
+      if (!playing) await start();
+      if (!playing) return;
+      setOpen(c, !c.open);
+      if (previewAll && chans.every(x => !x.buffer || x.open) === false) { previewAll = false; updateAllBtn(); }
+    };
+
+    renderAssign(c);
+    $('channels').appendChild(card);
+  }
+
+  function distribute(files, fromIdx) {
+    let i = fromIdx || 0;
+    const free = chans.filter(c => !c.buffer).map(c => c.idx);
+    files.forEach((f, k) => {
+      const target = free.length ? free.shift() : (i + k) % N;
+      loadFile(chans[target], f);
+    });
+  }
+
+  // Dateien, die neben die Kanäle fallen, auf freie Kanäle verteilen
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => { e.preventDefault(); distribute([...e.dataTransfer.files], 0); });
+
+  // PC-Tastatur: 1–5 = Kanäle (Hauptreihe oder Ziffernblock), 0 = alle vorhören. Der SW-HUB sendet im Bluetooth-Tastatur-Modus genau diese Tasten.
+  // Angelernte Taste hat Vorrang; sonst gelten die Ziffern 1–5. Ergebnis: Kanal-Index oder -1
+  const keyChan = e => {
+    const code = e.code || '';
+    const i = chans.findIndex(c => c.key && c.key.code === code);
+    if (i >= 0) return i;
+    const m = /^(?:Digit|Numpad)([1-9])$/.exec(code);
+    return m && +m[1] <= N ? +m[1] - 1 : -1;
+  };
+  const isZeroKey = e => e.code === 'Digit0' || e.code === 'Numpad0';
+  const typingIn = t => t.tagName === 'TEXTAREA' ||
+    (t.tagName === 'INPUT' && !['range', 'checkbox', 'button'].includes(t.type));
+  function releaseKeys() { chans.forEach(c => { if (c.keyHeld) { c.keyHeld = false; press(c, false, 'key'); } }); }
+  document.addEventListener('keydown', e => {
+    if (!$('askModal').hidden) return;
+    if (learnKeyIdx >= 0) { e.preventDefault(); if (!e.repeat) learnKeyFrom(e); return; }
+    if (e.repeat || e.ctrlKey || e.altKey || e.metaKey || typingIn(e.target)) { if (e.repeat && chFieldForKey(e) >= 0) e.preventDefault(); return; }
+    // Bereiche „Akkord“, „Ton“, „Improvisieren“ und „Melodie“ haben Vorrang, wenn eingeschaltet (beide dürfen auf derselben Taste klingen)
+    if (chordKeyDown(e)) { e.preventDefault(); return; }
+    const i = keyChan(e);
+    if (i < 0) { if (isZeroKey(e)) togglePreviewAll(); return; }
+    e.preventDefault();
+    const c = chans[i];
+    ensureAudio(); ctx.resume();
+    if (!playing && chans.some(x => x.buffer)) start();   // wie „Vorhören“: Taste startet die Wiedergabe von selbst
+    c.keyHeld = true;
+    press(c, true, 'key');
+  });
+  document.addEventListener('keyup', e => {
+    if (chordKeyUp(e)) return;
+    const i = keyChan(e);
+    if (i < 0 || !chans[i].keyHeld) return;
+    chans[i].keyHeld = false;
+    press(chans[i], false, 'key');
+  });
+  window.addEventListener('blur', releaseKeys);   // Fenster verliert den Fokus: keine hängenden Tasten
+
+  // ---------- Gesten-Steuerung (Kamera, Google MediaPipe Hand Landmarker; Fingerzählung aus „handklang“) ----------
+  const MP_BASE = new URL('./', location.href).href;   // MediaPipe-Bibliothek und Modelle liegen im Looper selbst (vendor/, models/) – auch offline
+  // Zwei Hände, gleichberechtigt: jede Hand („Slot“) schaltet unabhängig einen Kanal
+  const ges = { on: false, mode: 'hands', lm: null, stream: null, lastVT: -1, learn: null,
+    slots: [{ name: 'Links', color: '#4ea3ff' }, { name: 'Rechts', color: '#4dff87' }].map(x => Object.assign(x, { hand: null, cand: 'x', k: 0, cur: -1, how: '' })) };
+  const gesInfo = (m, err) => { $('gesInfo').textContent = m || ''; $('gesInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  const gdist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  function countFingers(lm) {
+    const palm = gdist(lm[0], lm[9]);
+    const ext = (tip, pip) => gdist(lm[tip], lm[0]) > gdist(lm[pip], lm[0]) * 1.12;
+    const thumb = gdist(lm[4], lm[5]) > palm * 0.62 && gdist(lm[4], lm[0]) > gdist(lm[3], lm[0]);
+    return thumb + ext(8, 6) + ext(12, 10) + ext(16, 14) + ext(20, 18);
+  }
+  // Handform-Merkmale für angelernte Gesten: 20 Abstände (Fingerspitzen, Daumen, Handgelenk), geteilt durch die Handflächengröße.
+  // Dadurch egal: Abstand zur Kamera, Drehung in der Bildebene, linke oder rechte Hand.
+  const GPAIRS = [[4, 0], [8, 0], [12, 0], [16, 0], [20, 0], [4, 8], [4, 12], [4, 16], [4, 20], [8, 12], [8, 16], [8, 20], [12, 16], [12, 20], [16, 20], [4, 2], [8, 5], [12, 9], [16, 13], [20, 17]];
+  const GES_TH = 0.22;   // maximale Abweichung (RMS) für „erkannt“: gleiche Geste gemessen ≤ 0,13, verschiedene Gesten ≥ 0,5
+  function gesFeat(lm, asp) {
+    const d = (a, b) => Math.hypot((lm[a].x - lm[b].x) * asp, lm[a].y - lm[b].y);
+    const palm = d(0, 9) || 1e-6;
+    return GPAIRS.map(([a, b]) => d(a, b) / palm);
+  }
+  function gesMatch(f) {
+    let best = -1, bd = Infinity;
+    chans.forEach((c, i) => {
+      if (!c.gesture) return;
+      let s = 0;
+      for (let k = 0; k < f.length; k++) s += (f[k] - c.gesture[k]) ** 2;
+      const dd = Math.sqrt(s / f.length);
+      if (dd < bd) { bd = dd; best = i; }
+    });
+    return { idx: bd < GES_TH ? best : -1, d: bd };
+  }
+  // Erkanntes Ziel einer Hand übernehmen: ihr alter Kanal aus (falls die andere Hand ihn nicht hält), neuer an.
+  // Verhalten je Kanal wie beim SW. target = Kanal-Index oder -1
+  function gesApply(slot, target) {
+    const S = ges.slots[slot], O = ges.slots[1 - slot];
+    // Gleiches Ziel: nichts tun – außer der Kanal wurde inzwischen gestoppt (dann wieder einschalten wie eine Taste)
+    if (target === S.cur && (target < 0 || chans[target].open || chans[target].mode === 'toggle')) return;
+    const old = S.cur;
+    S.cur = target;
+    if (old >= 0 && old !== target) press(chans[old], false, 'ges' + slot);
+    if (target < 0) return;
+    if (chans[target].mode === 'toggle' && O.cur === target && chans[target].open) return;   // Umschalten: nicht doppelt auslösen
+    if (!playing && chans.some(x => x.buffer)) start();
+    press(chans[target], true, 'ges' + slot);
+  }
+  const gesReleaseAll = () => { gesApply(0, -1); gesApply(1, -1); };
+
+  // Anlernen: kurz vorbereiten, dann 15 Bilder mit Hand mitteln
+  function gesLearnStep(f) {
+    const L = ges.learn, c = chans[L.idx], now = performance.now();
+    if (now < L.until) { L.msg = 'Geste für Kanal ' + (L.idx + 1) + ' zeigen … ' + Math.ceil((L.until - now) / 1000); return; }
+    if (!f) { L.msg = 'Hand nicht erkannt – Geste deutlich zeigen'; return; }
+    L.buf.push(f);
+    L.msg = 'Lerne Kanal ' + (L.idx + 1) + ' … ' + Math.round(L.buf.length / 15 * 100) + ' %';
+    if (L.buf.length < 15) return;
+    c.gesture = f.map((_, k) => Math.round(L.buf.reduce((s, x) => s + x[k], 0) / L.buf.length * 1000) / 1000);
+    ges.learn = null;
+    renderAssign(c); save(); gesLearnUi();
+    gesInfo('Geste für Kanal ' + (c.idx + 1) + ' gespeichert.');
+  }
+  async function gesLearnStart(i) {
+    if (ges.learn) return;
+    if (!ges.on) { await gesStart(); if (!ges.on) return; }
+    gesReleaseAll();
+    ges.learn = { idx: i, until: performance.now() + 2500, buf: [], msg: '' };
+    gesLearnUi();
+  }
+  function gesLearnUi() {
+    chans.forEach((c, i) => { const b = $('gesRowBtn' + i); if (b) { b.classList.toggle('learning', !!ges.learn && ges.learn.idx === i); b.disabled = !!ges.learn && ges.learn.idx !== i; } });
+  }
+  (function buildGesLearnList() {
+    const box = $('gesLearnList');
+    chans.forEach((c, i) => {
+      box.insertAdjacentHTML('beforeend', '<div class="row" style="gap:8px"><b style="min-width:64px;color:var(--fg)">Kanal ' + (i + 1) + '</b>' +
+        '<label class="small" style="min-width:78px" title="Standard-Geste: ' + (i + 1) + ' Finger schaltet diesen Kanal"><input type="checkbox" id="gesRowFing' + i + '" checked> ' + (i + 1) + ' Finger</label>' +
+        '<button id="gesRowBtn' + i + '">Geste anlernen</button><button id="gesRowClr' + i + '" title="Angelernte Geste löschen" hidden>&#10005;</button>' +
+        '<span id="gesRowInfo' + i + '"></span></div>');
+      $('gesRowBtn' + i).onclick = () => (ges.learn && ges.learn.idx === i ? (ges.learn = null, gesLearnUi(), gesInfo('Anlernen abgebrochen.')) : gesLearnStart(i));
+      $('gesRowClr' + i).onclick = () => { chans[i].gesture = null; renderAssign(chans[i]); save(); };
+      $('gesRowFing' + i).onchange = () => { chans[i].fingerOn = $('gesRowFing' + i).checked; renderAssign(chans[i]); save(); };
+    });   // Anzeige füllt renderAssign(), sobald die Kanäle gebaut sind
+  })();
+
+  // ---------- Virtueller Hintergrund (MediaPipe Selfie Segmenter, wie in „handklang“) ----------
+  const BG = { mode: 'none', seg: null, loading: false, failed: false, mask: false, img: null, maskImg: null };
+  const segC = document.createElement('canvas'), segG = segC.getContext('2d');
+  const maskC = document.createElement('canvas'), maskG = maskC.getContext('2d');
+  const persC = document.createElement('canvas'), persG = persC.getContext('2d');
+  const blurC = document.createElement('canvas'), blurG = blurC.getContext('2d');
+  let stageC = null;
+  const bgNote = t => { $('bgNote').textContent = t || ''; };
+  async function bgEnsureSeg() {
+    if (BG.seg || BG.loading || BG.failed || !ges.vision) return;
+    BG.loading = true; bgNote('Hintergrund-Erkennung wird geladen …');
+    const opts = d => ({ baseOptions: { modelAssetPath: MP_BASE + 'models/selfie_segmenter.tflite', delegate: d }, runningMode: 'VIDEO', outputCategoryMask: false, outputConfidenceMasks: true });
+    try { BG.seg = await ges.vision.ImageSegmenter.createFromOptions(ges.fs, opts('GPU')); }
+    catch (e) {
+      try { BG.seg = await ges.vision.ImageSegmenter.createFromOptions(ges.fs, opts('CPU')); }
+      catch (e2) { BG.failed = true; bgNote('Hintergrund-Erkennung konnte nicht geladen werden.'); }
+    }
+    BG.loading = false;
+    if (BG.seg) bgNote('Funktioniert ohne Greenscreen, am besten mit gutem Licht.');
+  }
+  function bgSegment(v) {
+    const sw = 256, sh = Math.round(256 * (v.videoHeight || 480) / (v.videoWidth || 640));
+    if (segC.width !== sw || segC.height !== sh) { segC.width = sw; segC.height = sh; }
+    segG.save(); segG.translate(sw, 0); segG.scale(-1, 1); segG.drawImage(v, 0, 0, sw, sh); segG.restore();
+    BG.seg.segmentForVideo(segC, performance.now(), res => {
+      const m = res.confidenceMasks && res.confidenceMasks[0];
+      if (!m) return;
+      const data = m.getAsFloat32Array(), mw = m.width, mh = m.height;
+      if (maskC.width !== mw || maskC.height !== mh || !BG.maskImg) { maskC.width = mw; maskC.height = mh; BG.maskImg = maskG.createImageData(mw, mh); BG.maskImg.data.fill(255); }
+      const px = BG.maskImg.data;
+      for (let i = 0, j = 3; i < data.length; i++, j += 4) { const a = (data[i] - 0.25) / 0.5; px[j] = a <= 0 ? 0 : a >= 1 ? 255 : a * 255; }
+      maskG.putImageData(BG.maskImg, 0, 0);
+      BG.mask = true;
+    });
+  }
+  function bgStage(W, H) {
+    if (stageC && stageC.width === W && stageC.height === H) return stageC;
+    stageC = document.createElement('canvas'); stageC.width = W; stageC.height = H;
+    const g = stageC.getContext('2d');
+    const base = g.createLinearGradient(0, 0, 0, H); base.addColorStop(0, '#14102a'); base.addColorStop(1, '#06070d');
+    g.fillStyle = base; g.fillRect(0, 0, W, H);
+    const spot = (x, col) => { const r = g.createRadialGradient(x, -H * 0.1, 0, x, H * 0.6, H * 0.9); r.addColorStop(0, col); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, W, H); };
+    spot(W * 0.22, 'rgba(255,181,71,0.35)'); spot(W * 0.78, 'rgba(63,224,197,0.32)'); spot(W * 0.5, 'rgba(170,120,255,0.22)');
+    return stageC;
+  }
+  function bgDrawBack(g, v, W, H) {
+    if (BG.mode === 'blur') {
+      const bw = 48, bh = Math.round(48 * H / W);
+      if (blurC.width !== bw || blurC.height !== bh) { blurC.width = bw; blurC.height = bh; }
+      blurG.save(); blurG.translate(bw, 0); blurG.scale(-1, 1); blurG.drawImage(v, 0, 0, bw, bh); blurG.restore();
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(blurC, 0, 0, W, H);
+    } else if (BG.mode === 'image' && BG.img) {
+      const r = Math.max(W / BG.img.width, H / BG.img.height), w = BG.img.width * r, h = BG.img.height * r;
+      g.drawImage(BG.img, (W - w) / 2, (H - h) / 2, w, h);
+    } else g.drawImage(bgStage(W, H), 0, 0);
+  }
+  function bgDrawPerson(g, v, W, H) {
+    if (persC.width !== W || persC.height !== H) { persC.width = W; persC.height = H; }
+    persG.globalCompositeOperation = 'source-over'; persG.clearRect(0, 0, W, H);
+    persG.imageSmoothingEnabled = true; persG.imageSmoothingQuality = 'high';
+    persG.drawImage(maskC, 0, 0, W, H);
+    persG.globalCompositeOperation = 'source-in';
+    persG.save(); persG.translate(W, 0); persG.scale(-1, 1); persG.drawImage(v, 0, 0, W, H); persG.restore();
+    persG.globalCompositeOperation = 'source-over';
+    g.drawImage(persC, 0, 0);
+  }
+
+  function gesDraw() {
+    const cv = $('gesCv'), g = cv.getContext('2d'), v = $('gesVideo'), W = cv.width, H = cv.height, u = W / 320;
+    g.fillStyle = '#0c0e18'; g.fillRect(0, 0, W, H);
+    if (v.readyState >= 2 && BG.mode !== 'none' && BG.seg && BG.mask) { bgDrawBack(g, v, W, H); bgDrawPerson(g, v, W, H); }
+    else if (v.readyState >= 2) { g.save(); g.translate(W, 0); g.scale(-1, 1); g.drawImage(v, 0, 0, W, H); g.restore(); }   // gespiegelt wie ein Spiegel
+    if (recState.rec) {   // roter Punkt in der Vorschau (nur Anzeige, wird mit aufgenommen – bewusst klein)
+      g.fillStyle = '#ff4d4d'; g.beginPath(); g.arc(W - 14 * u, 14 * u, 5 * u, 0, 7); g.fill();
+    }
+    if (!$('gesOverlay').checked && !ges.learn && !body.calib && !melCal && !fbCal && !fbPartCal) return;
+    if (ges.mode !== 'hands') { bodyDraw(g, W, H, u); return; }
+    g.save(); g.translate(W, 0); g.scale(-1, 1);
+    ges.slots.forEach(S => {
+      if (!S.hand) return;
+      g.fillStyle = ges.learn ? '#ffcc4d' : S.color;
+      S.hand.forEach(p => { g.beginPath(); g.arc(p.x * W, p.y * H, 3 * u, 0, 7); g.fill(); });
+    });
+    g.restore();
+    g.fillStyle = 'rgba(5,8,14,.65)'; g.fillRect(0, 0, W, 34 * u);
+    g.font = '600 ' + Math.round(15 * u) + 'px Segoe UI, Arial, sans-serif';
+    if (ges.learn) { g.fillStyle = '#ffcc4d'; g.fillText(ges.learn.msg, 10 * u, 22 * u); return; }
+    if (!ges.slots.some(S => S.hand)) { g.fillStyle = '#e8edf6'; g.fillText('keine Hand', 10 * u, 22 * u); return; }
+    let x = 10 * u;
+    ges.slots.forEach(S => {
+      if (!S.hand) return;
+      const t = S.name + ': ' + (S.cur >= 0 ? 'Kanal ' + (S.cur + 1) : 'stumm') + '   ';
+      g.fillStyle = S.color; g.fillText(t, x, 22 * u); x += g.measureText(t).width;
+    });
+  }
+  function gesTarget(hand, asp) {
+    const f = gesFeat(hand, asp), m = gesMatch(f);
+    if (m.idx >= 0) return { f, target: m.idx, how: 'eigene Geste' };
+    const n = countFingers(hand);
+    return { f, target: n >= 1 && n <= N && chans[n - 1].fingerOn ? n - 1 : -1, how: n + ' Finger' };
+  }
+  // ---------- Modus „Kopf, Gesicht & Arme“ (MediaPipe Face Landmarker + Pose Landmarker, Modelle liegen in ./models) ----------
+  // Gedacht für Kinder, die Kopf und Gesicht gezielt bewegen können (z. B. im Rollstuhl). Immer nur ein Auslöser, Kanal klingt solange gehalten.
+  const BODY_TRIG = [
+    { id: 'kopfL', label: 'Kopf nach links', max: 0.35, th: 25, ch: 0 },
+    { id: 'kopfR', label: 'Kopf nach rechts', max: 0.35, th: 25, ch: 1 },
+    { id: 'kopfH', label: 'Kopf nach oben', max: 0.35, th: 25, ch: 2 },
+    { id: 'kopfU', label: 'Kopf nach unten', max: 0.35, th: 25, ch: 3 },
+    { id: 'neigL', label: 'Kopf zur linken Schulter', max: 30, th: 40, ch: -1 },
+    { id: 'neigR', label: 'Kopf zur rechten Schulter', max: 30, th: 40, ch: -1 },
+    { id: 'mund', label: 'Mund auf', max: 1, th: 35, ch: 4 },
+    { id: 'laecheln', label: 'Lächeln', max: 1, th: 30, ch: -1 },
+    { id: 'brauen', label: 'Augenbrauen hoch', max: 1, th: 45, ch: -1 },
+    { id: 'augen', label: 'Augen zu', max: 1, th: 70, ch: -1 },
+    { id: 'blickL', label: 'Augen schauen nach links', max: 0.3, th: 35, ch: -1 },
+    { id: 'blickR', label: 'Augen schauen nach rechts', max: 0.3, th: 35, ch: -1 },
+    { id: 'blickH', label: 'Augen schauen nach oben', max: 0.6, th: 35, ch: -1 },
+    { id: 'blickU', label: 'Augen schauen nach unten', max: 0.6, th: 35, ch: -1 },
+    { id: 'armLH', label: 'Linker Arm hoch', max: 1.5, th: 25, ch: -1 },
+    { id: 'armRH', label: 'Rechter Arm hoch', max: 1.5, th: 25, ch: -1 },
+    { id: 'armLS', label: 'Linker Arm zur Seite', max: 1.5, th: 45, ch: -1 },
+    { id: 'armRS', label: 'Rechter Arm zur Seite', max: 1.5, th: 45, ch: -1 },
+    { id: 'arme', label: 'Beide Arme hoch', max: 1.5, th: 25, ch: -1 }
+  ];
+  const BODY_NEUTRAL0 = { yaw: 0, pitch: 0.55, roll: 0, jaw: 0, smile: 0, brow: 0, blink: 0, gazeX: 0, lookUp: 0.05, lookDown: 0.15, armLU: 0, armRU: 0, armLS: 0, armRS: 0 };
+  // Ziel eines Auslösers: 0–4 = Loop-Kanal, ab BODY_FLD = Feld in „Akkord“/„Ton“/„Improvisieren“ (15 Felder)
+  const BODY_FLD = 100, BODY_FLD_N = 15;
+  const bodyTgt = ch => (ch >= BODY_FLD ? chFieldName(ch - BODY_FLD) : 'Kanal ' + (ch + 1));
+  const body = {
+    face: null, pose: null, loading: false, faceLm: null, poseLm: null, raw: null, vals: {},
+    active: null, cand: null, candSince: 0, relSince: 0, calib: null, tlearn: null, fld: -1, ms: {}, held: new Set(),
+    cfg: { neutral: Object.assign({}, BODY_NEUTRAL0), calibrated: false, hold: 400, multi: false, trig: {} }
+  };
+  BODY_TRIG.forEach(t => { body.cfg.trig[t.id] = { ch: t.ch, th: t.th }; });
+  const BODY_KEY = STORE + '.body', BODY_PROF = STORE + '.bodyProfiles';
+  function bodyCfgClean(c) {
+    const out = { neutral: Object.assign({}, BODY_NEUTRAL0), calibrated: !!(c && c.calibrated), hold: 400, multi: !!(c && c.multi), trig: {} };
+    if (c && c.neutral) Object.keys(BODY_NEUTRAL0).forEach(k => { if (Number.isFinite(c.neutral[k])) out.neutral[k] = c.neutral[k]; });
+    if (c && Number.isFinite(c.hold)) out.hold = Math.max(0, Math.min(1500, c.hold));
+    BODY_TRIG.forEach(t => {
+      const s = c && c.trig && c.trig[t.id];
+      out.trig[t.id] = { ch: s && Number.isInteger(s.ch) && ((s.ch >= -1 && s.ch < N) || (s.ch >= BODY_FLD && s.ch < BODY_FLD + BODY_FLD_N)) ? s.ch : t.ch, th: s && Number.isFinite(s.th) ? Math.max(5, Math.min(100, s.th)) : t.th };
+    });
+    return out;
+  }
+  function bodySave() { try { localStorage.setItem(BODY_KEY, JSON.stringify(body.cfg)); } catch (e) {} }
+  try { const c = JSON.parse(localStorage.getItem(BODY_KEY) || 'null'); if (c) body.cfg = bodyCfgClean(c); } catch (e) {}
+
+  async function bodyEnsure() {
+    if ((body.face && body.pose) || body.loading || !ges.vision) return;
+    body.loading = true;
+    gesInfo('Gesichts- und Körpererkennung wird geladen …');
+    const base = new URL('models/', location.href).href;
+    const mk = async (Task, file, extra) => {
+      const opts = d => Object.assign({ baseOptions: { modelAssetPath: base + file, delegate: d }, runningMode: 'VIDEO' }, extra);
+      try { return await Task.createFromOptions(ges.fs, opts('GPU')); } catch (e) { return await Task.createFromOptions(ges.fs, opts('CPU')); }
+    };
+    try {
+      if (!body.face) body.face = await mk(ges.vision.FaceLandmarker, 'face_landmarker.task', { numFaces: 1, outputFaceBlendshapes: true });
+      if (!body.pose) body.pose = await mk(ges.vision.PoseLandmarker, 'pose_landmarker_lite.task', { numPoses: 1 });
+      gesInfo('läuft – Kopf, Gesicht, Augen und Arme werden erkannt');
+    } catch (e) { gesInfo('Gesichts-/Körpererkennung konnte nicht geladen werden: ' + ((e && e.message) || e), true); }
+    body.loading = false;
+  }
+
+  // Rohwerte messen. Kamera ungespiegelt: die linke Seite des Kindes ist im Bild rechts (größeres x).
+  function bodyMeasure(face, shapes, pose, asp) {
+    const r = {};
+    if (face) {
+      const e1 = face[33], e2 = face[263];
+      const ang = Math.atan2(e2.y - e1.y, (e2.x - e1.x) * asp);
+      r.roll = ang * 180 / Math.PI;                                                          // + = Kopf zur linken Schulter
+      // Punkte in die Gesichtsebene drehen (Neigung herausrechnen), damit Neigen nicht als Drehen/Nicken zählt
+      const cs = Math.cos(-ang), sn = Math.sin(-ang);
+      const P = i => { const x = face[i].x * asp, y = face[i].y; return { x: x * cs - y * sn, y: x * sn + y * cs }; };
+      const nose = P(1), c1 = P(234), c2 = P(454), a1 = P(33), a2 = P(263), m1 = P(13), m2 = P(14);
+      const eyeY = (a1.y + a2.y) / 2, mouthY = (m1.y + m2.y) / 2;
+      if (Math.abs(c2.x - c1.x) > 1e-4) r.yaw = (nose.x - c1.x) / (c2.x - c1.x) - 0.5;      // + = Kopf nach links (aus Sicht des Kindes)
+      if (Math.abs(mouthY - eyeY) > 1e-4) r.pitch = (nose.y - eyeY) / (mouthY - eyeY);       // größer = Kopf nach unten
+      if (face.length > 477) {   // Blick links/rechts: Lage der Pupille im Auge (Augenwinkel 33/133 und 362/263, Iris 468 und 473)
+        const eye = (ia, ib, ic) => { const a = P(ia), b = P(ib), c = P(ic), w = Math.abs(b.x - a.x); return w > 1e-4 ? (c.x - (a.x + b.x) / 2) / w : null; };
+        const g = [eye(33, 133, 468), eye(362, 263, 473)].filter(x => x != null);
+        if (g.length) r.gazeX = g.reduce((s, x) => s + x, 0) / g.length;                   // + = Blick nach links (aus Sicht des Kindes)
+      }
+    }
+    if (shapes) {
+      const s = {}; shapes.forEach(c => { s[c.categoryName] = c.score; });
+      r.jaw = s.jawOpen || 0;
+      r.smile = ((s.mouthSmileLeft || 0) + (s.mouthSmileRight || 0)) / 2;
+      r.brow = s.browInnerUp || 0;
+      r.blink = ((s.eyeBlinkLeft || 0) + (s.eyeBlinkRight || 0)) / 2;
+      r.lookUp = ((s.eyeLookUpLeft || 0) + (s.eyeLookUpRight || 0)) / 2;
+      r.lookDown = ((s.eyeLookDownLeft || 0) + (s.eyeLookDownRight || 0)) / 2;
+    }
+    if (pose) {
+      const ok = p => p && (p.visibility == null || p.visibility > 0.5);
+      const sL = pose[11], sR = pose[12], wL = pose[15], wR = pose[16];
+      if (ok(sL) && ok(sR)) {
+        const sw = Math.hypot((sR.x - sL.x) * asp, sR.y - sL.y) || 1e-6;
+        if (ok(wL)) { r.armLU = (sL.y - wL.y) / sw; r.armLS = (wL.x - sL.x) * asp / sw; }
+        if (ok(wR)) { r.armRU = (sR.y - wR.y) / sw; r.armRS = (sR.x - wR.x) * asp / sw; }
+      }
+    }
+    return r;
+  }
+  function bodyValues(r) {
+    const n = body.cfg.neutral, v = {}, pos = (a, b) => (a == null ? 0 : Math.max(0, a - b));
+    v.kopfL = pos(r.yaw, n.yaw); v.kopfR = r.yaw == null ? 0 : Math.max(0, n.yaw - r.yaw);
+    v.kopfU = pos(r.pitch, n.pitch); v.kopfH = r.pitch == null ? 0 : Math.max(0, n.pitch - r.pitch);
+    v.neigL = pos(r.roll, n.roll); v.neigR = r.roll == null ? 0 : Math.max(0, n.roll - r.roll);
+    v.mund = pos(r.jaw, n.jaw); v.laecheln = pos(r.smile, n.smile); v.brauen = pos(r.brow, n.brow); v.augen = pos(r.blink, n.blink);
+    const open = !((r.blink || 0) > 0.45);   // bei geschlossenen Augen zählt kein Blick (sonst wirkt Blinzeln wie „nach unten“)
+    v.blickL = open ? pos(r.gazeX, n.gazeX) : 0; v.blickR = open && r.gazeX != null ? Math.max(0, n.gazeX - r.gazeX) : 0;
+    v.blickH = open ? pos(r.lookUp, n.lookUp) : 0; v.blickU = open ? pos(r.lookDown, n.lookDown) : 0;
+    v.armLH = pos(r.armLU, n.armLU); v.armRH = pos(r.armRU, n.armRU);
+    v.armLS = pos(r.armLS, n.armLS); v.armRS = pos(r.armRS, n.armRS);
+    v.arme = Math.min(v.armLH, v.armRH);
+    return v;
+  }
+  const bodyTh = t => body.cfg.trig[t.id].th / 100 * t.max;
+
+  function bodyDetect(v, asp, now) {
+    let fr = null, pr = null;
+    try { if (body.face) fr = body.face.detectForVideo(v, now); } catch (e) {}
+    try { if (body.pose) pr = body.pose.detectForVideo(v, now + 0.001); } catch (e) {}
+    body.faceLm = fr && fr.faceLandmarks && fr.faceLandmarks[0] || null;
+    const shapes = fr && fr.faceBlendshapes && fr.faceBlendshapes[0] ? fr.faceBlendshapes[0].categories : null;
+    body.poseLm = pr && pr.landmarks && pr.landmarks[0] || null;
+    return (body.raw = bodyMeasure(body.faceLm, body.faceLm ? shapes : null, body.poseLm, asp));
+  }
+  function bodyStep(v, asp) {
+    const now = performance.now();
+    const r = bodyDetect(v, asp, now);
+
+    if (body.calib) {   // Ruhe-Position: kurz warten, dann 20 Bilder mitteln
+      const C = body.calib;
+      if (now < C.until) { C.msg = 'Ruhig halten … ' + Math.ceil((C.until - now) / 1000); return; }
+      if (r.yaw == null && r.armLU == null) { C.msg = 'Kein Gesicht erkannt – bitte in die Kamera schauen'; return; }
+      C.buf.push(r); C.msg = 'Lerne Ruhe-Position … ' + Math.round(C.buf.length / 20 * 100) + ' %';
+      if (C.buf.length < 20) return;
+      const n = Object.assign({}, BODY_NEUTRAL0);
+      Object.keys(n).forEach(k => { const xs = C.buf.map(b => b[k]).filter(Number.isFinite); if (xs.length >= 10) n[k] = xs.reduce((a, b) => a + b, 0) / xs.length; });
+      body.cfg.neutral = n; body.cfg.calibrated = true; body.calib = null;
+      bodySave(); bodyCalibUi();
+      gesInfo('Ruhe-Position gespeichert.');
+      return;
+    }
+
+    const vals = body.vals = bodyValues(r);
+    if (body.tlearn) {   // einen Auslöser anlernen: 1,5 s vorbereiten, 2,5 s messen, Schwelle = 60 % des typischen Werts
+      const L = body.tlearn, t = BODY_TRIG.find(x => x.id === L.id);
+      if (now < L.until) { L.msg = t.label + ' – gleich vormachen … ' + Math.ceil((L.until - now) / 1000); return; }
+      if (r.yaw == null && r.armLU == null) { L.msg = 'Kein Gesicht erkannt – bitte in die Kamera schauen'; return; }
+      L.buf.push(vals[L.id] || 0);
+      L.msg = t.label + ' – jetzt halten … ' + Math.max(0, Math.ceil((L.end - now) / 1000));
+      if (now < L.end) return;
+      const xs = L.buf.slice().sort((a, b) => a - b), typ = xs[Math.floor(xs.length * 0.7)] || 0;
+      body.tlearn = null;
+      if (typ < t.max * 0.06) { gesInfo(t.label + ': keine deutliche Bewegung gemessen – Schwelle bleibt. Evtl. vorher Ruhe-Position neu anlernen.', true); }
+      else { body.cfg.trig[L.id].th = Math.max(5, Math.min(100, Math.round(typ * 0.6 / t.max * 100))); bodySave(); gesInfo(t.label + ' angelernt ✓ (Schwelle ' + body.cfg.trig[L.id].th + ')'); }
+      bodyUi();
+      return;
+    }
+    if (body.cfg.multi) { bodyMultiStep(vals, now); return; }
+    // Stärksten Auslöser über seiner Schwelle wählen (Beide Arme hat Vorrang vor einem Arm)
+    let best = null, bestRatio = 1;
+    BODY_TRIG.forEach(t => {
+      const c = body.cfg.trig[t.id];
+      if (c.ch < 0) return;
+      const ratio = vals[t.id] / Math.max(1e-6, bodyTh(t)) * (t.id === 'arme' ? 1.5 : 1);
+      if (ratio >= bestRatio) { bestRatio = ratio; best = t.id; }
+    });
+    const hold = body.cfg.hold;
+    if (best && best !== body.active) {
+      if (body.cand !== best) { body.cand = best; body.candSince = now; }
+      if (now - body.candSince >= hold) bodyActivate(best);
+    } else if (!best) body.cand = null;
+    if (body.active) {   // Loslassen erst, wenn der Wert 150 ms unter 80 % der Schwelle liegt (kein Flackern)
+      const t = BODY_TRIG.find(x => x.id === body.active);
+      if (body.cfg.trig[t.id].ch < 0 || vals[t.id] < bodyTh(t) * 0.8) {
+        if (!body.relSince) body.relSince = now;
+        else if (now - body.relSince >= 150) bodyActivate(null);
+      } else body.relSince = 0;
+    }
+  }
+  // Mehrere Auslöser: jeder hat eigene Haltezeit und eigenes Loslassen; es klingen alle Kanäle aktiver Auslöser
+  function bodyMultiStep(vals, now) {
+    const hold = body.cfg.hold;
+    BODY_TRIG.forEach(t => {
+      const c = body.cfg.trig[t.id], st = body.ms[t.id] || (body.ms[t.id] = { on: false, since: 0, rel: 0 });
+      if (c.ch < 0) { st.on = false; st.since = 0; st.rel = 0; return; }
+      const th = bodyTh(t), v = vals[t.id];
+      if (!st.on) {
+        if (v >= th) { if (!st.since) st.since = now; if (now - st.since >= hold) { st.on = true; st.rel = 0; } }
+        else st.since = 0;
+      } else if (v < th * 0.8) { if (!st.rel) st.rel = now; else if (now - st.rel >= 150) { st.on = false; st.since = 0; } }
+      else st.rel = 0;
+    });
+    bodySyncHeld(new Set(BODY_TRIG.filter(t => body.ms[t.id] && body.ms[t.id].on).map(t => body.cfg.trig[t.id].ch).filter(ch => ch >= 0)));
+  }
+  function bodySyncHeld(want) {
+    body.held.forEach(ch => { if (!want.has(ch)) { body.held.delete(ch); if (ch >= BODY_FLD) chStop(ch - BODY_FLD); else press(chans[ch], false, 'body'); } });
+    want.forEach(ch => {
+      if (ch >= BODY_FLD) { if (!body.held.has(ch)) { body.held.add(ch); chStart(ch - BODY_FLD); } return; }   // Feld aus Akkord/Ton/Improvisieren
+      // neu – oder nach „Stopp“ wieder einschalten wie eine gehaltene Taste
+      if (!body.held.has(ch) || (!chans[ch].open && chans[ch].mode !== 'toggle')) {
+        if (!playing && chans.some(x => x.buffer)) start();
+        press(chans[ch], true, 'body'); body.held.add(ch);
+      }
+    });
+  }
+  function bodyReleaseAll() { bodyActivate(null); body.ms = {}; bodySyncHeld(new Set()); }
+  function bodyActivate(id) {
+    body.active = id; body.relSince = 0;
+    if (id) body.cand = null;
+    const tg = id ? body.cfg.trig[id].ch : -1, f = tg >= BODY_FLD ? tg - BODY_FLD : -1;
+    gesApply(0, tg >= BODY_FLD ? -1 : tg);
+    if (body.fld !== f) { if (body.fld >= 0) chStop(body.fld); body.fld = f; if (f >= 0) chStart(f); }
+  }
+
+  function bodyDraw(g, W, H, u) {
+    g.save(); g.translate(W, 0); g.scale(-1, 1);
+    if (body.faceLm) {
+      g.fillStyle = '#ffcc4d';
+      [1, 33, 263, 13, 14, 61, 291, 234, 454, 10, 152].forEach(i => { const p = body.faceLm[i]; g.beginPath(); g.arc(p.x * W, p.y * H, 3 * u, 0, 7); g.fill(); });
+    }
+    if (body.poseLm) {
+      const P = body.poseLm;
+      g.strokeStyle = '#4ea3ff'; g.lineWidth = 3 * u;
+      [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16]].forEach(([a, b]) => {
+        if ((P[a].visibility || 1) < 0.5 || (P[b].visibility || 1) < 0.5) return;
+        g.beginPath(); g.moveTo(P[a].x * W, P[a].y * H); g.lineTo(P[b].x * W, P[b].y * H); g.stroke();
+      });
+    }
+    if (ges.mode === 'fullbody') fbDrawExtra(g, W, H, u);
+    g.restore();
+    g.fillStyle = 'rgba(5,8,14,.65)'; g.fillRect(0, 0, W, 34 * u);
+    g.font = '600 ' + Math.round(15 * u) + 'px Segoe UI, Arial, sans-serif';
+    let t, col = '#e8edf6';
+    if (ges.mode === 'fullbody') { t = fbHeader(); col = fbCal || fbPartCal ? '#ffcc4d' : '#4dff87'; }
+    else if (ges.mode === 'melody') { t = melHeader(); col = melCal ? '#ffcc4d' : '#4dff87'; }
+    else if (body.calib) { t = body.calib.msg; col = '#ffcc4d'; }
+    else if (body.tlearn) { t = body.tlearn.msg || ''; col = '#ffcc4d'; }
+    else if (body.cfg.multi && body.held.size) {
+      t = BODY_TRIG.filter(x => body.ms[x.id] && body.ms[x.id].on).map(x => bodyTgt(body.cfg.trig[x.id].ch) + ' ' + x.label).join(' + '); col = '#4dff87';
+    }
+    else if (!body.cfg.multi && body.active) { const tr = BODY_TRIG.find(x => x.id === body.active); t = bodyTgt(body.cfg.trig[tr.id].ch) + ' · ' + tr.label; col = '#4dff87'; }
+    else t = body.faceLm || body.poseLm ? 'Ruhe · stumm' : 'kein Gesicht erkannt';
+    g.fillStyle = col; g.fillText(t || '', 10 * u, 22 * u);
+  }
+
+  // Oberfläche: Auslöser-Tabelle mit Kanal, Schwelle und Live-Balken
+  (function bodyBuildUi() {
+    const box = $('bodyTrig');
+    box.innerHTML = '<b class="small mut">Auslöser</b><b class="small mut">spielt</b><b class="small mut">Schwelle</b><b class="small mut">aktuell</b><span></span>';
+    BODY_TRIG.forEach(t => {
+      box.insertAdjacentHTML('beforeend',
+        '<span id="btL_' + t.id + '">' + t.label + '</span>' +
+        '<select id="btC_' + t.id + '" style="max-width:150px"><option value="-1">–</option><optgroup label="Loop-Kanal">' + chans.map((c, i) => '<option value="' + i + '">Kanal ' + (i + 1) + '</option>').join('') + '</optgroup>' +
+        ['Akkord', 'Ton', 'Improvisieren'].map((lab, g) => '<optgroup label="' + lab + '">' + [0, 1, 2, 3, 4].map(k => '<option value="' + (BODY_FLD + g * 5 + k) + '">' + chFieldName(g * 5 + k) + '</option>').join('') + '</optgroup>').join('') + '</select>' +
+        '<input type="range" id="btT_' + t.id + '" min="5" max="100" step="1">' +
+        '<span style="position:relative;height:14px;background:var(--card2);border:1px solid var(--line);border-radius:7px;overflow:hidden;display:block">' +
+        '<b id="btB_' + t.id + '" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc)"></b>' +
+        '<i id="btM_' + t.id + '" style="position:absolute;top:0;bottom:0;width:2px;background:var(--warn)"></i></span>' +
+        '<button id="btA_' + t.id + '" class="small" title="Das Kind macht die Bewegung 2–3 Sekunden lang vor – die Schwelle wird passend eingestellt">anlernen</button>');
+      $('btA_' + t.id).onclick = async () => {
+        if (body.tlearn) { const same = body.tlearn.id === t.id; body.tlearn = null; bodyUi(); if (same) return; }
+        if (ges.mode !== 'body') return;
+        if (!ges.on) { await gesStart(); if (!ges.on) return; }
+        bodyReleaseAll();
+        const now = performance.now();
+        body.tlearn = { id: t.id, until: now + 1500, end: now + 4000, buf: [], msg: '' };
+        bodyUi();
+      };
+      $('btC_' + t.id).onchange = () => { body.cfg.trig[t.id].ch = +$('btC_' + t.id).value; if (body.active === t.id) bodyActivate(null); bodySave(); bodyUi(); };
+      $('btT_' + t.id).oninput = () => { body.cfg.trig[t.id].th = +$('btT_' + t.id).value; bodyUi(); };
+      $('btT_' + t.id).onchange = bodySave;
+    });
+    $('bodyMulti').onchange = () => { bodyReleaseAll(); body.cfg.multi = $('bodyMulti').checked; bodySave(); };
+    $('bodyHold').oninput = () => { body.cfg.hold = +$('bodyHold').value; $('bodyHoldVal').textContent = body.cfg.hold + ' ms'; };
+    $('bodyHold').onchange = bodySave;
+    $('bodyCalib').onclick = async () => {
+      if (body.calib) { body.calib = null; bodyCalibUi(); return; }
+      if (ges.mode !== 'body') return;
+      if (!ges.on) { await gesStart(); if (!ges.on) return; }
+      bodyReleaseAll();
+      body.calib = { until: performance.now() + 2000, buf: [], msg: '' };
+      bodyCalibUi();
+    };
+  })();
+  function bodyCalibUi() {
+    $('bodyCalib').classList.toggle('learning', !!body.calib);
+    $('bodyCalib').innerHTML = body.calib ? 'Abbrechen' : '&#127919; Ruhe-Position anlernen';
+    $('bodyCalibInfo').textContent = body.calib ? 'Kind entspannt und ruhig in die Kamera schauen lassen …'
+      : body.cfg.calibrated ? 'angelernt ✓ – bei neuer Sitzposition einfach neu anlernen' : 'noch nicht angelernt – Bewegungen werden von einer Standard-Haltung aus gemessen';
+  }
+  function bodyUi() {   // Einstellungen in die Bedienelemente schreiben
+    BODY_TRIG.forEach(t => {
+      const c = body.cfg.trig[t.id];
+      $('btC_' + t.id).value = c.ch; $('btT_' + t.id).value = c.th;
+      $('btM_' + t.id).style.left = Math.min(99, c.th) + '%';
+      $('btL_' + t.id).style.opacity = c.ch < 0 ? 0.55 : 1;
+      const lb = $('btA_' + t.id), on = !!(body.tlearn && body.tlearn.id === t.id);
+      lb.textContent = on ? 'Abbrechen' : 'anlernen'; lb.classList.toggle('learning', on);
+    });
+    $('bodyHold').value = body.cfg.hold; $('bodyHoldVal').textContent = body.cfg.hold + ' ms';
+    $('bodyMulti').checked = !!body.cfg.multi;
+    bodyCalibUi();
+  }
+  setInterval(() => {   // Live-Balken (10× pro Sekunde reicht)
+    if (ges.mode !== 'body' || !ges.on) return;
+    BODY_TRIG.forEach(t => {
+      const v = body.vals[t.id] || 0, b = $('btB_' + t.id);
+      b.style.width = Math.min(100, v / t.max * 100) + '%';
+      const on = body.cfg.multi ? !!(body.ms[t.id] && body.ms[t.id].on) : body.active === t.id;
+      b.style.background = on ? 'var(--on)' : (v >= bodyTh(t) ? 'var(--warn)' : 'var(--acc)');
+    });
+  }, 100);
+
+  // Profile pro Kind (nur Einstellungen, keine Bilder)
+  function bodyProfiles() { try { return JSON.parse(localStorage.getItem(BODY_PROF) || '{}') || {}; } catch (e) { return {}; } }
+  function bodyProfList(sel) {
+    const p = bodyProfiles(), s = $('bodyProf');
+    s.innerHTML = '<option value="">– Profil wählen –</option>';
+    Object.keys(p).sort((a, b) => a.localeCompare(b, 'de')).forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; s.appendChild(o); });
+    if (sel) s.value = sel;
+  }
+  $('bodyProfSave').onclick = async () => {
+    const name = ((await ask('Name des Profils (z. B. Name des Kindes):', $('bodyProf').value || '')) || '').trim();
+    if (!name) return;
+    const p = bodyProfiles();
+    if (p[name] && !(await ask('Profil "' + name + '" überschreiben?'))) return;
+    p[name] = JSON.parse(JSON.stringify(Object.assign({}, body.cfg, { mel, fb })));
+    try { localStorage.setItem(BODY_PROF, JSON.stringify(p)); } catch (e) { gesInfo('Profil konnte nicht gespeichert werden.', true); return; }
+    bodyProfList(name); gesInfo('Profil gespeichert: ' + name);
+  };
+  $('bodyProfLoad').onclick = () => {
+    const name = $('bodyProf').value, p = bodyProfiles();
+    if (!name || !p[name]) return;
+    bodyReleaseAll();
+    body.cfg = bodyCfgClean(p[name]); bodySave(); bodyUi();
+    if (p[name].mel) { mel = melClean(p[name].mel); melSave(); MEL_CTRL.forEach(m => { melSt[m.id].idx = -1; }); melUi(); if (ges.mode === 'melody') melPrepare(); }
+    if (p[name].fb) { fb = fbClean(p[name].fb); fbSave(); fbUi(); if (ges.mode === 'fullbody') melPrepare(); }
+    gesInfo('Profil geladen: ' + name);
+  };
+  $('bodyProfDel').onclick = async () => {
+    const name = $('bodyProf').value, p = bodyProfiles();
+    if (!name || !p[name] || !(await ask('Profil "' + name + '" löschen?'))) return;
+    delete p[name];
+    try { localStorage.setItem(BODY_PROF, JSON.stringify(p)); } catch (e) {}
+    bodyProfList(); gesInfo('Profil gelöscht: ' + name);
+  };
+  bodyProfList(); bodyUi();
+
+  // Modus-Umschaltung Hände / Kopf, Gesicht & Arme
+  // ---------- Modus „Melodie“: Kopf, Mund und Arme spielen Töne einer Skala (Instrument aus der SoundFont) ----------
+  const MEL_SCALES = {
+    dur: { label: 'Dur-Tonleiter', st: [0, 2, 4, 5, 7, 9, 11] },
+    moll: { label: 'Moll-Tonleiter', st: [0, 2, 3, 5, 7, 8, 10] },
+    durpenta: { label: 'Dur-Pentatonik', st: [0, 2, 4, 7, 9] },
+    mollpenta: { label: 'Moll-Pentatonik', st: [0, 3, 5, 7, 10] },
+    blues: { label: 'Blues', st: [0, 3, 5, 6, 7, 10] },
+    arabisch: { label: 'Arabisch (Hijaz)', st: [0, 1, 4, 5, 7, 8, 10] }
+  };
+  const MEL_NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
+  // raw(): aus den gemessenen Werten eine Größe, die „tief → hoch“ wächst
+  const MEL_CTRL = [
+    { id: 'yaw', label: 'Kopf drehen (links tief, rechts hoch)', raw: r => r.yaw == null ? null : -r.yaw, def: { on: true, oct: 4, n: 8, min: -0.12, max: 0.12 } },
+    { id: 'pitch', label: 'Kopf runter / hoch', raw: r => r.pitch == null ? null : -r.pitch, def: { on: true, oct: 4, n: 6, min: -0.75, max: -0.4 } },
+    { id: 'mund', label: 'Mund zu / auf', raw: r => r.jaw == null ? null : r.jaw, def: { on: true, oct: 3, n: 5, min: 0.03, max: 0.6 } },
+    { id: 'armL', label: 'Linker Arm senken / heben', raw: r => r.armLU == null ? null : r.armLU, def: { on: true, oct: 5, n: 8, min: -1.2, max: 0.8 } },
+    { id: 'armR', label: 'Rechter Arm senken / heben', raw: r => r.armRU == null ? null : r.armRU, def: { on: true, oct: 5, n: 8, min: -1.2, max: 0.8 } }
+  ];
+  const MEL_KEY = STORE + '.mel';
+  function melClean(c) {
+    const o = { preset: c && typeof c.preset === 'string' ? c.preset : '0:0:0', key: c && c.key >= 0 && c.key < 12 ? c.key | 0 : 9,
+      scale: c && MEL_SCALES[c.scale] ? c.scale : 'mollpenta', vol: c && Number.isFinite(c.vol) ? c.vol : 80, quant: !!(c && c.quant), ctrl: {} };
+    MEL_CTRL.forEach(m => {
+      const s = (c && c.ctrl && c.ctrl[m.id]) || {}, d = m.def;
+      o.ctrl[m.id] = { on: s.on == null ? d.on : !!s.on, oct: [2, 3, 4, 5, 6].includes(s.oct) ? s.oct : d.oct,
+        n: Number.isInteger(s.n) && s.n >= 2 && s.n <= 15 ? s.n : d.n,
+        min: Number.isFinite(s.min) ? s.min : d.min, max: Number.isFinite(s.max) && s.max > (Number.isFinite(s.min) ? s.min : d.min) ? s.max : d.max };
+    });
+    return o;
+  }
+  let mel = melClean(null);
+  try { const c = JSON.parse(localStorage.getItem(MEL_KEY) || 'null'); if (c) mel = melClean(c); } catch (e) {}
+  const melSave = () => { try { localStorage.setItem(MEL_KEY, JSON.stringify(mel)); } catch (e) {} };
+  const melInfo = (m, err) => { $('melInfo').textContent = m || ''; $('melInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  const melSt = {};   // Laufzeit je Steuerung: idx, cand, k, t, note, voice
+  MEL_CTRL.forEach(m => { melSt[m.id] = { idx: -1, cand: -1, k: 0, t: 0, note: null, voice: null }; });
+  let melCal = null, melOut = null;
+  const melCache = new Map();   // "preset|hall|midi" -> AudioBuffer
+  let melBusy = false, melAgain = false;
+
+  function melMidi(m, k) {
+    const st = MEL_SCALES[mel.scale].st, c = mel.ctrl[m.id];
+    return 12 * (c.oct + 1) + mel.key + 12 * Math.floor(k / st.length) + st[k % st.length];
+  }
+  const melName = midi => MEL_NOTE[midi % 12] + (Math.floor(midi / 12) - 1);
+  const melCacheKey = midi => mel.preset + '|' + $('sfRev').value + '|' + midi;
+  function melNeeded() {
+    if (ges.mode === 'fullbody') return fbNeeded();
+    const set = new Set();
+    MEL_CTRL.forEach(m => { if (mel.ctrl[m.id].on) for (let k = 0; k < mel.ctrl[m.id].n; k++) set.add(melMidi(m, k)); });
+    return [...set];
+  }
+
+  // Einzelne Töne einmal mit dem Instrument rendern (danach Abspielen ohne Verzögerung)
+  async function melPrepare() {
+    if (melBusy) { melAgain = true; return; }
+    if (!sfBank) {
+      if (typeof sfRestore === 'function') await sfRestore();
+      if (!sfBank) { melInfo('Erst im Bereich „SoundFont-Arpeggio“ eine SoundFont laden.', true); return; }
+    }
+    melBusy = true;
+    try {
+      const lib = await sfLib();
+      ensureAudio();
+      const [msb, lsb, program] = (mel.preset || '0:0:0').split(':').map(Number);
+      const todo = melNeeded().filter(n => !melCache.has(melCacheKey(n)));
+      const sr = ctx.sampleRate, rev = +$('sfRev').value / 100;
+      for (let i = 0; i < todo.length; i++) {
+        melInfo('Bereite Töne vor … ' + (i + 1) + ' / ' + todo.length);
+        const midi = todo[i];
+        const synth = new lib.SpessaSynthProcessor(sr, { eventsEnabled: false });
+        synth.soundBankManager.addSoundBank(sfBank, 'main');
+        await synth.processorInitialized;
+        synth.controllerChange(0, 0, msb); synth.controllerChange(0, 32, lsb); synth.programChange(0, program);
+        synth.controllerChange(0, 91, Math.round(rev * 127)); synth.controllerChange(0, 93, 0);
+        const len = Math.round(sr * 2.8), off = Math.round(sr * 1.6), L = new Float32Array(len), R = new Float32Array(len);
+        synth.noteOn(0, midi, 100);
+        for (let pos = 0; pos < len;) {
+          if (pos === off) synth.noteOff(0, midi);
+          const n = Math.min(128, len - pos, pos < off ? off - pos : len);
+          synth.process(L, R, pos, n); pos += n;
+        }
+        synth.stopAllChannels(true);
+        for (let k = 0; k < 256; k++) { const g = k / 256; L[len - 256 + k] *= 1 - g; R[len - 256 + k] *= 1 - g; }   // weiches Ende
+        let pk = 0; for (let k = 0; k < len; k++) pk = Math.max(pk, Math.abs(L[k]), Math.abs(R[k]));
+        if (pk > 1e-5) { const gn = 0.7 / pk; for (let k = 0; k < len; k++) { L[k] *= gn; R[k] *= gn; } }   // alle Töne gleich laut, gut hörbar neben den Loops
+        const b = ctx.createBuffer(2, len, sr); b.copyToChannel(L, 0); b.copyToChannel(R, 1);
+        melCache.set(melCacheKey(midi), b);
+        if (i % 3 === 2) await new Promise(r => setTimeout(r, 0));
+      }
+      melInfo(todo.length ? 'Töne bereit.' : '');
+    } catch (e) { melInfo('Töne konnten nicht vorbereitet werden: ' + ((e && e.message) || e), true); }
+    melBusy = false;
+    if (melAgain) { melAgain = false; melPrepare(); }
+  }
+
+  function melPlay(m, midi, gain, st) {
+    const buf = melCache.get(melCacheKey(midi));
+    if (!buf) return;
+    ensureAudio();
+    if (!melOut) { melOut = ctx.createGain(); melOut.connect(master); }
+    melOut.gain.value = mel.vol / 100;
+    let when = ctx.currentTime;
+    if (mel.quant && playing && projBpm) {   // auf die nächste Achtel im Tempo der Loops
+      const step = 60 / projBpm / 2, t = Math.max(0, when - startTime);
+      when = startTime + Math.ceil(t / step - 1e-6) * step;
+    }
+    const S = st || melSt[m.id];
+    if (S.voice) { const v = S.voice; v.g.gain.setTargetAtTime(0, when, 0.08); try { v.src.stop(when + 0.6); } catch (e) {} }   // vorherigen Ton derselben Steuerung ausblenden
+    const src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = buf; src.connect(g); g.connect(melOut);
+    g.gain.value = gain == null ? 1 : gain;
+    src.start(when);
+    S.voice = { src, g }; S.note = midi;
+    src.onended = () => { if (S.voice && S.voice.src === src) S.voice = null; };
+  }
+  function melStopAll() {
+    MEL_CTRL.forEach(m => { const S = melSt[m.id]; if (S.voice) { try { S.voice.g.gain.setTargetAtTime(0, ctx.currentTime, 0.05); S.voice.src.stop(ctx.currentTime + 0.3); } catch (e) {} S.voice = null; } S.idx = -1; S.note = null; });
+  }
+
+  // Pro Kamerabild: Stellung -> Stufe der Skala; neue Stufe (2 Bilder stabil) spielt ihren Ton
+  function melStep(r) {
+    const now = performance.now();
+    if (melCal) {
+      const m = MEL_CTRL.find(x => x.id === melCal.id), x = m.raw(r);
+      if (now < melCal.start) { melCal.msg = 'Gleich: ' + m.label.split(' (')[0] + ' – ' + Math.ceil((melCal.start - now) / 1000); return; }
+      if (x != null) { melCal.min = Math.min(melCal.min, x); melCal.max = Math.max(melCal.max, x); }
+      melCal.msg = 'Jetzt so weit wie möglich bewegen … ' + Math.ceil((melCal.end - now) / 1000);
+      if (now >= melCal.end) {
+        const c = mel.ctrl[m.id], span = melCal.max - melCal.min;
+        if (Number.isFinite(span) && span > 1e-3) {
+          c.min = melCal.min + span * 0.05; c.max = melCal.max - span * 0.05;   // Ränder etwas nach innen: Endstellungen sicher erreichbar
+          melInfo('Bereich für „' + m.label.split(' (')[0] + '“ gespeichert.');
+        } else melInfo('Keine Bewegung erkannt – bitte noch einmal.', true);
+        melCal = null; melSave(); melUi();
+      }
+      return;
+    }
+    MEL_CTRL.forEach(m => {
+      const c = mel.ctrl[m.id], S = melSt[m.id];
+      if (!c.on) return;
+      const x = m.raw(r);
+      if (x == null) return;
+      const t = Math.max(0, Math.min(1, (x - c.min) / (c.max - c.min)));
+      S.t = t;
+      const pos = t * c.n;
+      let nIdx = Math.min(c.n - 1, Math.floor(pos));
+      if (S.idx >= 0 && pos > S.idx - 0.2 && pos < S.idx + 1.2) nIdx = S.idx;   // kleine Zone um die Grenze: kein Flattern
+      if (nIdx === S.idx) { S.cand = -1; S.k = 0; return; }
+      if (nIdx === S.cand) S.k++; else { S.cand = nIdx; S.k = 1; }
+      if (S.k >= 2) {
+        const first = S.idx < 0;
+        S.idx = nIdx; S.cand = -1; S.k = 0;
+        const midi = melMidi(m, nIdx);
+        if (first) S.note = midi; else melPlay(m, midi);   // erste Erkennung nur merken, nicht spielen
+      }
+    });
+  }
+  function melHeader() {
+    if (melCal) return melCal.msg;
+    const parts = MEL_CTRL.filter(m => mel.ctrl[m.id].on && melSt[m.id].note != null).map(m => m.label.split(' ')[0] + (m.id === 'armL' ? ' L' : m.id === 'armR' ? ' R' : m.id === 'pitch' ? ' ↕' : '') + ' ' + melName(melSt[m.id].note));
+    return parts.length ? parts.join(' · ') : (body.faceLm || body.poseLm ? 'bereit' : 'kein Gesicht erkannt');
+  }
+
+  // Oberfläche
+  function melFillPresets() {
+    const src = $('sfPreset'), dst = $('melPreset');
+    if (!src || src.disabled) return;
+    dst.innerHTML = src.innerHTML; dst.disabled = false;
+    if ([...dst.options].some(o => o.value === mel.preset)) dst.value = mel.preset; else mel.preset = dst.value;
+  }
+  (function melBuildUi() {
+    MEL_NOTE.forEach((n, i) => { const o = document.createElement('option'); o.value = i; o.textContent = n; $('melKey').appendChild(o); });
+    Object.entries(MEL_SCALES).forEach(([id, s]) => { const o = document.createElement('option'); o.value = id; o.textContent = s.label; $('melScale').appendChild(o); });
+    const box = $('melCtrl');
+    box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><span></span><b class="small mut">aktuell</b>';
+    MEL_CTRL.forEach(m => {
+      box.insertAdjacentHTML('beforeend',
+        '<input type="checkbox" id="mcOn_' + m.id + '" title="ein/aus">' +
+        '<span id="mcL_' + m.id + '">' + m.label + '</span>' +
+        '<select id="mcO_' + m.id + '"><option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option></select>' +
+        '<select id="mcN_' + m.id + '">' + Array.from({ length: 14 }, (_, i) => '<option>' + (i + 2) + '</option>').join('') + '</select>' +
+        '<button id="mcC_' + m.id + '">Bereich anlernen</button>' +
+        '<span style="position:relative;height:18px;background:var(--card2);border:1px solid var(--line);border-radius:9px;overflow:hidden;display:block">' +
+        '<i id="mcM_' + m.id + '" style="position:absolute;top:0;bottom:0;width:4px;margin-left:-2px;left:0;background:var(--on)"></i>' +
+        '<b id="mcT_' + m.id + '" class="small" style="position:absolute;right:6px;top:0;line-height:18px;font-weight:600"></b></span>');
+      $('mcOn_' + m.id).onchange = () => { mel.ctrl[m.id].on = $('mcOn_' + m.id).checked; melSave(); melUi(); melPrepare(); };
+      $('mcO_' + m.id).onchange = () => { mel.ctrl[m.id].oct = +$('mcO_' + m.id).value; melSt[m.id].idx = -1; melSave(); melPrepare(); };
+      $('mcN_' + m.id).onchange = () => { mel.ctrl[m.id].n = +$('mcN_' + m.id).value; melSt[m.id].idx = -1; melSave(); melPrepare(); };
+      $('mcC_' + m.id).onclick = async () => {
+        if (melCal && melCal.id === m.id) { melCal = null; melUi(); return; }
+        if (!ges.on) { await gesStart(); if (!ges.on) return; }
+        const now = performance.now();
+        melCal = { id: m.id, start: now + 1500, end: now + 5500, min: Infinity, max: -Infinity, msg: '' };
+        melUi();
+      };
+    });
+    $('melKey').onchange = () => { mel.key = +$('melKey').value; MEL_CTRL.forEach(m => { melSt[m.id].idx = -1; }); melSave(); melPrepare(); };
+    $('melScale').onchange = () => { mel.scale = $('melScale').value; MEL_CTRL.forEach(m => { melSt[m.id].idx = -1; }); melSave(); melPrepare(); };
+    $('melPreset').onchange = () => { mel.preset = $('melPreset').value; melSave(); melPrepare(); };
+    $('melVol').oninput = () => { mel.vol = +$('melVol').value; if (melOut) melOut.gain.setTargetAtTime(mel.vol / 100, ctx.currentTime, 0.03); };
+    $('melVol').onchange = melSave;
+    $('melQuant').onchange = () => { mel.quant = $('melQuant').checked; melSave(); };
+  })();
+  function melUi() {
+    $('melKey').value = mel.key; $('melScale').value = mel.scale; $('melVol').value = mel.vol; $('melQuant').checked = mel.quant;
+    if (!$('melPreset').disabled && [...$('melPreset').options].some(o => o.value === mel.preset)) $('melPreset').value = mel.preset;
+    MEL_CTRL.forEach(m => {
+      const c = mel.ctrl[m.id];
+      $('mcOn_' + m.id).checked = c.on; $('mcO_' + m.id).value = c.oct; $('mcN_' + m.id).value = c.n;
+      $('mcL_' + m.id).style.opacity = c.on ? 1 : 0.5;
+      const b = $('mcC_' + m.id);
+      b.classList.toggle('learning', !!melCal && melCal.id === m.id);
+      b.textContent = melCal && melCal.id === m.id ? 'Abbrechen' : 'Bereich anlernen';
+    });
+  }
+  melUi();
+  setInterval(() => {   // Live-Anzeige der Stellung und des Tons
+    if (ges.mode !== 'melody' || !ges.on) return;
+    MEL_CTRL.forEach(m => {
+      const S = melSt[m.id];
+      $('mcM_' + m.id).style.left = (S.t * 100) + '%';
+      $('mcT_' + m.id).textContent = mel.ctrl[m.id].on && S.note != null ? melName(S.note) : '';
+    });
+  }, 100);
+  $('sfRev').addEventListener('change', () => { if (ges.mode === 'melody' || ges.mode === 'fullbody') melPrepare(); });
+
+  // ---------- Modus „Ganzkörper“: Bewegung spielt Töne der Skala (wie beim MotionComposer), dazu Raum-Klavier ----------
+  // Pose-Punkte: 0 Nase, 11/12 Schultern, 15/16 Handgelenke, 23/24 Hüften, 27/28 Knöchel (links/rechts aus Sicht der Person)
+  const FB_PARTS = [
+    { id: 'handL', label: 'Linke Hand', lm: 15, kind: 'height', def: { on: true, oct: 5, n: 8 } },
+    { id: 'handR', label: 'Rechte Hand', lm: 16, kind: 'height', def: { on: true, oct: 5, n: 8 } },
+    { id: 'head', label: 'Kopf (links ↔ rechts)', lm: 0, kind: 'side', def: { on: false, oct: 4, n: 5 } },
+    { id: 'footL', label: 'Linker Fuß (Bass: Grundton)', lm: 27, kind: 'bass', step: 0, def: { on: true, oct: 2, n: 1 } },
+    { id: 'footR', label: 'Rechter Fuß (Bass: Quinte)', lm: 28, kind: 'bass', step: 7, def: { on: true, oct: 2, n: 1 } }
+  ];
+  const FB_KEY = STORE + '.fb';
+  function fbClean(c) {
+    const o = { sens: c && Number.isFinite(c.sens) ? c.sens : 50, dens: c && Number.isFinite(c.dens) ? c.dens : 50, parts: {},
+      room: { on: !!(c && c.room && c.room.on), oct: 4, n: 8, min: 0.12, max: 0.88 } };
+    if (c && c.room) {
+      if ([2, 3, 4, 5, 6].includes(c.room.oct)) o.room.oct = c.room.oct;
+      if (Number.isInteger(c.room.n) && c.room.n >= 2 && c.room.n <= 15) o.room.n = c.room.n;
+      if (Number.isFinite(c.room.min) && Number.isFinite(c.room.max) && c.room.max > c.room.min) { o.room.min = c.room.min; o.room.max = c.room.max; }
+    }
+    FB_PARTS.forEach(p => {
+      const s = (c && c.parts && c.parts[p.id]) || {}, d = p.def;
+      o.parts[p.id] = { on: s.on == null ? d.on : !!s.on, oct: [1, 2, 3, 4, 5, 6].includes(s.oct) ? s.oct : d.oct,
+        n: p.kind === 'bass' ? 1 : (Number.isInteger(s.n) && s.n >= 2 && s.n <= 15 ? s.n : d.n),
+        min: Number.isFinite(s.min) && Number.isFinite(s.max) && s.max > s.min ? s.min : null,
+        max: Number.isFinite(s.min) && Number.isFinite(s.max) && s.max > s.min ? s.max : null,
+        thr: Number.isFinite(s.thr) && s.thr > 0 ? s.thr : null };
+    });
+    return o;
+  }
+  let fb = fbClean(null);
+  try { const c = JSON.parse(localStorage.getItem(FB_KEY) || 'null'); if (c) fb = fbClean(c); } catch (e) {}
+  const fbSave = () => { try { localStorage.setItem(FB_KEY, JSON.stringify(fb)); } catch (e) {} };
+  const fbSt = {};
+  FB_PARTS.concat([{ id: 'room' }]).forEach(p => { fbSt[p.id] = { prev: null, v: 0, last: 0, note: null, voice: null, flash: 0, idx: -1, cand: -1, k: 0, t: 0 }; });
+  let fbCal = null;
+
+  function scaleMidi(oct, k) {
+    const st = MEL_SCALES[mel.scale].st;
+    return 12 * (oct + 1) + mel.key + 12 * Math.floor(k / st.length) + st[k % st.length];
+  }
+  function fbPartMidi(p, k) {
+    const c = fb.parts[p.id];
+    return p.kind === 'bass' ? 12 * (c.oct + 1) + mel.key + p.step : scaleMidi(c.oct, k);
+  }
+  function fbNeeded() {
+    const set = new Set();
+    FB_PARTS.forEach(p => { const c = fb.parts[p.id]; if (c.on) for (let k = 0; k < c.n; k++) set.add(fbPartMidi(p, k)); });
+    if (fb.room.on) for (let k = 0; k < fb.room.n; k++) set.add(scaleMidi(fb.room.oct, k));
+    return [...set];
+  }
+  const fbThr = () => 0.15 + 3 * Math.pow(1 - fb.sens / 100, 1.5);   // Rumpflängen pro Sekunde
+  const fbMinInt = () => 650 - fb.dens * 5.6;
+  const fbPartThr = id => { const c = fb.parts[id]; return c.thr != null ? c.thr * Math.pow(2, (50 - fb.sens) / 50) : fbThr(); };
+  let fbPartCal = null;   // Körperteil anlernen: { id, start, end, min, max, speeds, msg }                          // ms zwischen zwei Tönen eines Körperteils
+  const fbVis = p => p && (p.visibility == null || p.visibility > 0.5);
+
+  function fbStep(v, asp) {
+    const now = performance.now();
+    let pr = null;
+    try { if (body.pose) pr = body.pose.detectForVideo(v, now); } catch (e) {}
+    const P = body.poseLm = pr && pr.landmarks && pr.landmarks[0] || null;
+    body.faceLm = null;
+    if (!P || !fbVis(P[11]) || !fbVis(P[12])) { Object.values(fbSt).forEach(S => { S.prev = null; S.v = 0; }); return; }
+    const shX = (P[11].x + P[12].x) / 2, shY = (P[11].y + P[12].y) / 2;
+    let T;   // Rumpflänge als Maßstab (sitzend ohne Hüfte: über die Schulterbreite)
+    if (fbVis(P[23]) && fbVis(P[24])) T = Math.hypot(((P[23].x + P[24].x) / 2 - shX) * asp, (P[23].y + P[24].y) / 2 - shY);
+    else T = Math.hypot((P[12].x - P[11].x) * asp, P[12].y - P[11].y) * 1.6;
+    T = Math.max(T, 0.02);
+
+    if (fbCal) {   // Raum-Bereich anlernen
+      const tx = 1 - shX;
+      if (now < fbCal.start) fbCal.msg = 'Gleich: einmal von ganz links nach ganz rechts … ' + Math.ceil((fbCal.start - now) / 1000);
+      else {
+        fbCal.min = Math.min(fbCal.min, tx); fbCal.max = Math.max(fbCal.max, tx);
+        fbCal.msg = 'Jetzt durch den ganzen Raum bewegen … ' + Math.ceil((fbCal.end - now) / 1000);
+        if (now >= fbCal.end) {
+          const span = fbCal.max - fbCal.min;
+          if (span > 0.05) { fb.room.min = fbCal.min + span * 0.04; fb.room.max = fbCal.max - span * 0.04; melInfo('Raum-Bereich gespeichert.'); }
+          else melInfo('Zu wenig Bewegung im Raum erkannt – bitte noch einmal.', true);
+          fbCal = null; fbSave(); fbUi();
+        }
+      }
+      return;
+    }
+
+    const minInt = fbMinInt();
+    const cal = fbPartCal;
+    if (cal && now < cal.start) cal.msg = 'Gleich: ' + FB_PARTS.find(x => x.id === cal.id).label.split(' (')[0] + ' bewegen … ' + Math.ceil((cal.start - now) / 1000);
+    FB_PARTS.forEach(p => {
+      const c = fb.parts[p.id], S = fbSt[p.id], q = P[p.lm], learning = cal && cal.id === p.id;
+      if ((!c.on && !learning) || !fbVis(q)) { S.prev = null; S.v = 0; return; }
+      const thr = fbPartThr(p.id);
+      if (S.prev) {
+        const dt = Math.max(0.016, (now - S.prev.t) / 1000);
+        const sp = Math.hypot((q.x - S.prev.x) * asp, q.y - S.prev.y) / T / dt;
+        S.v = S.v * 0.5 + sp * 0.5;
+      }
+      S.prev = { x: q.x, y: q.y, t: now };
+      // Stellungswert: Hände = Höhe (in Rumpflängen über/unter der Schulter), Kopf = links/rechts
+      const pv = p.kind === 'height' ? (shY - q.y) / T : p.kind === 'side' ? (shX - q.x) * asp / T : 0;
+      if (learning && now >= cal.start) {
+        cal.min = Math.min(cal.min, pv); cal.max = Math.max(cal.max, pv);
+        if (S.v > 0) cal.speeds.push(S.v);
+        cal.msg = 'Jetzt ' + p.label.split(' (')[0] + ' bewegen, so wie es geht … ' + Math.ceil((cal.end - now) / 1000);
+        return;
+      }
+      if (cal) return;   // während des Anlernens spielt nichts
+      let k = 0;
+      const lo = c.min != null ? c.min : (p.kind === 'height' ? -1.0 : -0.5), hi = c.max != null ? c.max : (p.kind === 'height' ? 1.2 : 0.5);
+      if (p.kind !== 'bass') { const t = (pv - lo) / (hi - lo); S.t = t; k = Math.floor(Math.max(0, Math.min(0.999, t)) * c.n); }
+      if (S.v > thr && now - S.last >= minInt) {
+        S.last = now;
+        const gain = Math.max(0.25, Math.min(1, 0.25 + 0.75 * (S.v - thr) / (2 * thr)));
+        const midi = fbPartMidi(p, k);
+        melPlay(null, midi, gain, S);
+        S.flash = now;
+      }
+    });
+
+    if (cal && now >= cal.end) {   // Anlernen auswerten
+      const p = FB_PARTS.find(x => x.id === cal.id), c = fb.parts[p.id];
+      const sp = cal.speeds.slice().sort((a, b) => a - b), top = sp.length ? sp[Math.floor(sp.length * 0.9)] : 0;
+      if (top > 0.05) {
+        c.thr = Math.max(0.08, top * 0.35);   // ein gutes Drittel der typischen schnellen Bewegung des Kindes
+        if (p.kind !== 'bass' && cal.max - cal.min > 0.05) { const span = cal.max - cal.min; c.min = cal.min + span * 0.05; c.max = cal.max - span * 0.05; }
+        melInfo(p.label.split(' (')[0] + ' angelernt.');
+      } else melInfo('Keine Bewegung von „' + p.label.split(' (')[0] + '“ erkannt – bitte noch einmal.', true);
+      fbPartCal = null; fbSave(); fbUi();
+      return;
+    }
+    if (cal) return;
+
+    if (fb.room.on) {   // Raum-Klavier: Position (gespiegelt wie die Vorschau) -> Stufe; neue Stufe spielt
+      const S = fbSt.room, tx = 1 - shX, n = fb.room.n;
+      const t = Math.max(0, Math.min(1, (tx - fb.room.min) / (fb.room.max - fb.room.min)));
+      S.t = t;
+      const pos = t * n;
+      let nIdx = Math.min(n - 1, Math.floor(pos));
+      if (S.idx >= 0 && pos > S.idx - 0.2 && pos < S.idx + 1.2) nIdx = S.idx;
+      if (nIdx !== S.idx) {
+        if (nIdx === S.cand) S.k++; else { S.cand = nIdx; S.k = 1; }
+        if (S.k >= 3) {
+          const first = S.idx < 0;
+          S.idx = nIdx; S.cand = -1; S.k = 0;
+          const midi = scaleMidi(fb.room.oct, nIdx);
+          if (first) S.note = midi; else { melPlay(null, midi, 0.9, S); S.flash = now; }
+        }
+      } else { S.cand = -1; S.k = 0; }
+    }
+  }
+  function fbStopAll() {
+    Object.values(fbSt).forEach(S => {
+      if (S.voice) { try { S.voice.g.gain.setTargetAtTime(0, ctx.currentTime, 0.05); S.voice.src.stop(ctx.currentTime + 0.3); } catch (e) {} S.voice = null; }
+      S.prev = null; S.v = 0; S.idx = -1; S.note = null;
+    });
+  }
+  function fbHeader() {
+    if (fbCal) return fbCal.msg;
+    if (fbPartCal) return fbPartCal.msg || 'Gleich geht es los …';
+    if (!body.poseLm) return 'kein Körper erkannt – ca. 2–3 m Abstand';
+    const now = performance.now();
+    const act = FB_PARTS.filter(p => fb.parts[p.id].on && fbSt[p.id].note != null && now - fbSt[p.id].flash < 600).map(p => p.label.split(' (')[0] + ' ' + melName(fbSt[p.id].note));
+    if (fb.room.on && fbSt.room.note != null) act.push('Raum ' + melName(fbSt.room.note));
+    return act.length ? '♪ ' + act.join(' · ') : 'Bewegung macht Klang';
+  }
+  function fbDrawExtra(g, W, H, u) {   // ganzes Skelett + aufleuchtende Körperteile (im gespiegelten Koordinatensystem aufrufen)
+    const P = body.poseLm; if (!P) return;
+    g.strokeStyle = '#4ea3ff'; g.lineWidth = 3 * u;
+    [[11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [0, 11], [0, 12]].forEach(([a, b]) => {
+      if (!fbVis(P[a]) || !fbVis(P[b])) return;
+      g.beginPath(); g.moveTo(P[a].x * W, P[a].y * H); g.lineTo(P[b].x * W, P[b].y * H); g.stroke();
+    });
+    const now = performance.now();
+    FB_PARTS.forEach(p => {
+      if (!fb.parts[p.id].on || !fbVis(P[p.lm])) return;
+      const age = now - fbSt[p.id].flash, on = age < 300;
+      g.fillStyle = on ? '#4dff87' : 'rgba(255,204,77,.8)';
+      g.beginPath(); g.arc(P[p.lm].x * W, P[p.lm].y * H, (on ? 14 : 7) * u, 0, 7); g.fill();
+    });
+  }
+
+  // Oberfläche
+  (function fbBuildUi() {
+    $('fbRoomN').innerHTML = Array.from({ length: 14 }, (_, i) => '<option>' + (i + 2) + '</option>').join('');
+    const box = $('fbParts');
+    box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><b class="small mut">an das Kind anpassen</b><b class="small mut">Bewegung (Strich = Schwelle)</b>';
+    FB_PARTS.forEach(p => {
+      box.insertAdjacentHTML('beforeend',
+        '<input type="checkbox" id="fpOn_' + p.id + '">' +
+        '<span id="fpL_' + p.id + '">' + p.label + '</span>' +
+        '<select id="fpO_' + p.id + '">' + (p.kind === 'bass' ? '<option value="1">sehr tief</option><option value="2">tief</option><option value="3">mittel</option>'
+          : '<option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option>') + '</select>' +
+        (p.kind === 'bass' ? '<span class="small mut">Bass</span>' : '<select id="fpN_' + p.id + '">' + Array.from({ length: 14 }, (_, i) => '<option>' + (i + 2) + '</option>').join('') + '</select>') +
+        '<span class="row" style="gap:6px;flex-wrap:nowrap"><button id="fpC_' + p.id + '">anlernen</button><button id="fpX_' + p.id + '" title="Angelerntes zurücksetzen" hidden>&#10005;</button><span id="fpI_' + p.id + '" class="small mut"></span></span>' +
+        '<span style="position:relative;height:18px;background:var(--card2);border:1px solid var(--line);border-radius:9px;overflow:hidden;display:block">' +
+        '<b id="fpB_' + p.id + '" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc)"></b>' +
+        '<i id="fpM_' + p.id + '" style="position:absolute;top:0;bottom:0;width:2px;background:var(--warn)"></i>' +
+        '<b id="fpT_' + p.id + '" class="small" style="position:absolute;right:6px;top:0;line-height:18px;font-weight:600"></b></span>');
+      $('fpOn_' + p.id).onchange = () => { fb.parts[p.id].on = $('fpOn_' + p.id).checked; fbSave(); fbUi(); melPrepare(); };
+      $('fpO_' + p.id).onchange = () => { fb.parts[p.id].oct = +$('fpO_' + p.id).value; fbSave(); melPrepare(); };
+      if (p.kind !== 'bass') $('fpN_' + p.id).onchange = () => { fb.parts[p.id].n = +$('fpN_' + p.id).value; fbSave(); melPrepare(); };
+      $('fpC_' + p.id).onclick = async () => {
+        if (fbPartCal && fbPartCal.id === p.id) { fbPartCal = null; fbUi(); return; }
+        if (!ges.on) { await gesStart(); if (!ges.on) return; }
+        const now = performance.now();
+        fbPartCal = { id: p.id, start: now + 2000, end: now + 8000, min: Infinity, max: -Infinity, speeds: [], msg: '' };
+        fbUi();
+      };
+      $('fpX_' + p.id).onclick = () => { const c = fb.parts[p.id]; c.min = c.max = c.thr = null; fbSave(); fbUi(); };
+    });
+    $('fbSens').oninput = () => { fb.sens = +$('fbSens').value; fbUi(); };
+    $('fbSens').onchange = fbSave;
+    $('fbDens').oninput = () => { fb.dens = +$('fbDens').value; };
+    $('fbDens').onchange = fbSave;
+    $('fbRoomOn').onchange = () => { fb.room.on = $('fbRoomOn').checked; fbSt.room.idx = -1; fbSave(); fbUi(); melPrepare(); };
+    $('fbRoomOct').onchange = () => { fb.room.oct = +$('fbRoomOct').value; fbSt.room.idx = -1; fbSave(); melPrepare(); };
+    $('fbRoomN').onchange = () => { fb.room.n = +$('fbRoomN').value; fbSt.room.idx = -1; fbSave(); melPrepare(); };
+    $('fbRoomCal').onclick = async () => {
+      if (fbCal) { fbCal = null; fbUi(); return; }
+      if (!ges.on) { await gesStart(); if (!ges.on) return; }
+      const now = performance.now();
+      fbCal = { start: now + 2000, end: now + 9000, min: Infinity, max: -Infinity, msg: '' };
+      fbUi();
+    };
+  })();
+  function fbUi() {
+    $('fbSens').value = fb.sens; $('fbDens').value = fb.dens;
+    $('fbRoomOn').checked = fb.room.on; $('fbRoomOct').value = fb.room.oct; $('fbRoomN').value = fb.room.n;
+    $('fbRoomCal').classList.toggle('learning', !!fbCal); $('fbRoomCal').textContent = fbCal ? 'Abbrechen' : 'Raum-Bereich anlernen';
+
+    FB_PARTS.forEach(p => {
+      const c = fb.parts[p.id];
+      $('fpOn_' + p.id).checked = c.on; $('fpO_' + p.id).value = c.oct;
+      if (p.kind !== 'bass') $('fpN_' + p.id).value = c.n;
+      $('fpL_' + p.id).style.opacity = c.on ? 1 : 0.5;
+      $('fpM_' + p.id).style.left = Math.min(99, fbPartThr(p.id) / 4 * 100) + '%';
+      const learned = c.thr != null, now = fbPartCal && fbPartCal.id === p.id;
+      $('fpC_' + p.id).textContent = now ? 'Abbrechen' : 'anlernen';
+      $('fpC_' + p.id).classList.toggle('learning', !!now);
+      $('fpC_' + p.id).disabled = !!fbPartCal && !now;
+      $('fpX_' + p.id).hidden = !learned;
+      $('fpI_' + p.id).textContent = learned ? '✓' : '';
+    });
+  }
+  fbUi();
+  setInterval(() => {   // Live-Anzeige
+    if (ges.mode !== 'fullbody' || !ges.on) return;
+    const now = performance.now();
+    FB_PARTS.forEach(p => {
+      const S = fbSt[p.id], b = $('fpB_' + p.id);
+      b.style.width = Math.min(100, S.v / 4 * 100) + '%';
+      b.style.background = now - S.flash < 300 ? 'var(--on)' : (S.v > fbPartThr(p.id) ? 'var(--warn)' : 'var(--acc)');
+      $('fpT_' + p.id).textContent = fb.parts[p.id].on && S.note != null ? melName(S.note) : '';
+    });
+    $('fbRoomM').style.left = (fbSt.room.t * 100) + '%';
+    $('fbRoomT').textContent = fb.room.on && fbSt.room.note != null ? melName(fbSt.room.note) : '';
+  }, 100);
+
+  function gesSetMode(m) {
+    ges.mode = ['body', 'melody', 'fullbody'].includes(m) ? m : 'hands';
+    $('gesMode').value = ges.mode;
+    gesReleaseAll(); bodyReleaseAll(); body.cand = null; body.calib = null;
+    if (ges.learn) { ges.learn = null; gesLearnUi(); }
+    $('handPanel').hidden = ges.mode !== 'hands';
+    $('bodyPanel').hidden = ges.mode !== 'body';
+    $('melPanel').hidden = ges.mode !== 'melody' && ges.mode !== 'fullbody';
+    $('melOnly').hidden = ges.mode !== 'melody';
+    $('fbPanel').hidden = ges.mode !== 'fullbody';
+    $('profRow').hidden = ges.mode === 'hands';
+    melStopAll(); melCal = null; melUi(); fbStopAll(); fbCal = null; fbPartCal = null; fbUi();
+    if (ges.mode === 'melody' || ges.mode === 'fullbody') { melFillPresets(); setTimeout(melPrepare, 0); }
+    bodyCalibUi();
+    try { localStorage.setItem(STORE + '.gesMode', ges.mode); } catch (e) {}
+    if (ges.on) gesEnsureModels();
+  }
+  async function gesEnsureModels() {
+    if (!ges.vision) return;
+    if (ges.mode !== 'hands') {
+      await bodyEnsure();
+      if (ges.mode === 'melody' && (body.face || body.pose)) { gesInfo('läuft – Kopf, Mund und Arme spielen Töne'); melPrepare(); }
+      if (ges.mode === 'fullbody' && body.pose) { gesInfo('läuft – Bewegung macht Klang'); melPrepare(); }
+      return;
+    }
+    if (!ges.lm) {
+      gesInfo('Handerkennung wird geladen …');
+      const opts = d => ({ baseOptions: { modelAssetPath: MP_BASE + 'models/hand_landmarker.task', delegate: d }, runningMode: 'VIDEO', numHands: 2,
+        minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5 });
+      try { ges.lm = await ges.vision.HandLandmarker.createFromOptions(ges.fs, opts('GPU')); }
+      catch (e) { ges.lm = await ges.vision.HandLandmarker.createFromOptions(ges.fs, opts('CPU')); }
+    }
+    gesInfo('läuft – zeig 1 bis 5 Finger');
+  }
+  $('gesMode').onchange = () => gesSetMode($('gesMode').value);
+
+  function gesLoop() {
+    if (!ges.on) return;
+    try { gesTick(); }
+    catch (e) {   // nie stehen bleiben – Fehler einmal melden, dann weiterlaufen
+      if (!ges.loopErr) { ges.loopErr = true; console.error(e); gesInfo('Hinweis: kurzer Fehler in der Erkennung (' + ((e && e.message) || e) + ') – läuft weiter.', true); }
+    }
+    requestAnimationFrame(gesLoop);
+  }
+  function gesTick() {
+    const v = $('gesVideo');
+    if (v.readyState >= 2 && v.currentTime !== ges.lastVT && (ges.mode !== 'hands' ? (body.face || body.pose) : ges.lm)) {
+      ges.lastVT = v.currentTime;
+      if (ges.mode !== 'hands') {
+        if (BG.mode !== 'none' && BG.seg) { try { bgSegment(v); } catch (e) {} }
+        const asp = (v.videoWidth || 4) / (v.videoHeight || 3);
+        if (ges.mode === 'melody') melStep(bodyDetect(v, asp, performance.now()));
+        else if (ges.mode === 'fullbody') fbStep(v, asp);
+        else bodyStep(v, asp);
+      } else {
+      let lms = [], hd = [];
+      try {
+        const res = ges.lm.detectForVideo(v, performance.now());
+        lms = res.landmarks || []; hd = res.handedness || res.handednesses || [];
+      } catch (e) {}
+      // Hände den Slots zuordnen. MediaPipe geht von gespiegeltem Bild aus: „Right“ = deine linke Hand.
+      ges.slots.forEach(S => { S.hand = null; });
+      let idx = lms.map((lm, i) => ((hd[i] && hd[i][0] && hd[i][0].categoryName) === 'Right' ? 0 : 1));
+      if (lms.length === 2 && idx[0] === idx[1]) idx = lms[0][0].x > lms[1][0].x ? [0, 1] : [1, 0];   // beide gleich erkannt: nach Lage im Bild
+      lms.forEach((lm, i) => { ges.slots[idx[i]].hand = lm; });
+      const asp = (v.videoWidth || 4) / (v.videoHeight || 3);
+      if (BG.mode !== 'none' && BG.seg) { try { bgSegment(v); } catch (e) {} }
+      if (ges.learn) {
+        const H = ges.slots.find(S => S.hand);
+        gesLearnStep(H ? gesFeat(H.hand, asp) : null);
+      } else {
+        ges.slots.forEach((S, si) => {
+          const r = S.hand ? gesTarget(S.hand, asp) : { target: -1, how: '' };
+          // Erst übernehmen, wenn das Ziel 3 Bilder hintereinander gleich ist (Hand weg: 6 Bilder)
+          const key = S.hand ? r.target : 'none';
+          if (key === S.cand) S.k++; else { S.cand = key; S.k = 1; }
+          if (S.k >= (S.hand ? 3 : 6)) { S.how = r.how; gesApply(si, r.target); }
+        });
+      }
+      }   // Ende Hände-Modus
+    }
+    gesDraw();
+  }
+  async function gesStart() {
+    ensureAudio(); ctx.resume();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { gesInfo('Dieser Browser gibt die Kamera für Webseiten nicht frei.', true); return; }
+    $('gesBtn').disabled = true;
+    try {
+      gesInfo('Kamera wird gestartet …');
+      ges.stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: false });
+      const v = $('gesVideo');
+      v.srcObject = ges.stream; await v.play();
+      const cv = $('gesCv');
+      cv.width = Math.min(1280, v.videoWidth || 640);                 // volle Auflösung, damit Aufnahmen scharf sind
+      cv.height = Math.round(cv.width * (v.videoHeight || 480) / (v.videoWidth || 640));
+      cv.hidden = false;
+      if (!ges.vision) {
+        gesInfo('Erkennung wird geladen (einmalig ca. 17 MB) …');
+        ges.vision = await import(MP_BASE + 'vendor/mediapipe/vision_bundle.mjs');
+        ges.fs = await ges.vision.FilesetResolver.forVisionTasks(MP_BASE + 'vendor/mediapipe/wasm');
+      }
+      await gesEnsureModels();
+      ges.on = true; ges.slots.forEach(S => { S.cand = 'x'; S.k = 0; });
+      if (BG.mode !== 'none') bgSetMode(BG.mode);   // lädt auch ein gespeichertes Foto
+      $('gesBtn').innerHTML = '&#9632; Kamera aus'; $('gesBtn').classList.add('learning');
+      requestAnimationFrame(gesLoop);
+    } catch (e) {
+      const map = { NotAllowedError: 'Kamerazugriff wurde abgelehnt. Bitte die Kamera für diese Seite erlauben.', NotFoundError: 'Keine Kamera gefunden.', NotReadableError: 'Die Kamera wird gerade von einer anderen App benutzt.' };
+      gesInfo(map[e && e.name] || ('Gesten-Steuerung konnte nicht starten: ' + ((e && e.message) || e)), true);
+      gesStop(true);
+    }
+    $('gesBtn').disabled = false;
+  }
+  function gesStop(keepMsg) {
+    ges.on = false;
+    if (ges.learn) { ges.learn = null; gesLearnUi(); }
+    if (recState.rec) recStop();
+    gesReleaseAll();
+    bodyReleaseAll(); body.cand = null; if (body.calib) { body.calib = null; bodyCalibUi(); }
+    melStopAll(); if (melCal) { melCal = null; melUi(); }
+    fbStopAll(); if (fbCal || fbPartCal) { fbCal = null; fbPartCal = null; fbUi(); }
+    if (ges.stream) { ges.stream.getTracks().forEach(t => t.stop()); ges.stream = null; }
+    $('gesVideo').srcObject = null;
+    $('gesCv').hidden = true; ges.slots.forEach(S => { S.hand = null; });
+    $('gesBtn').innerHTML = '&#128247; Kamera starten'; $('gesBtn').classList.remove('learning');
+    if (!keepMsg) gesInfo('aus');
+  }
+  $('gesBtn').onclick = () => (ges.on ? gesStop() : gesStart());
+  try { const gm = localStorage.getItem(STORE + '.gesMode'); if (gm === 'body' || gm === 'melody' || gm === 'fullbody') gesSetMode(gm); } catch (e) {}
+
+  // ---------- Hintergrund wählen (Foto bleibt im Browser gespeichert) ----------
+  async function bgLoadImage(blob, persist) {
+    const url = URL.createObjectURL(blob), img = new Image();
+    img.src = url; await img.decode();
+    BG.img = img;
+    if (persist) { try { const bytes = await blob.arrayBuffer(); await sfDb('readwrite', s => s.put({ bytes }, 'bgimg')); } catch (e) {} }
+  }
+  async function bgSetMode(m) {
+    BG.mode = m; BG.mask = false;
+    $('bgSel').value = m;
+    $('bgFileBtn').hidden = m !== 'image';
+    try { localStorage.setItem(STORE + '.bg', m); } catch (e) {}
+    if (m === 'none') { bgNote(''); return; }
+    if (m === 'image' && !BG.img) {
+      try { const r = await sfDb('readonly', s => s.get('bgimg')); if (r && r.bytes) await bgLoadImage(new Blob([r.bytes])); } catch (e) {}
+      if (!BG.img) bgNote('Wähle ein Foto. Bis dahin wird die Bühne gezeigt.');
+    }
+    if (ges.on) bgEnsureSeg(); else if (!BG.seg) bgNote('Wird beim Kamerastart aktiv.');
+  }
+  $('bgSel').onchange = () => bgSetMode($('bgSel').value);
+  $('bgFileBtn').onclick = () => {
+    const fi = document.createElement('input');
+    fi.type = 'file';   // ohne accept (iOS graut sonst Dateien aus)
+    fi.onchange = async () => {
+      const f = fi.files[0]; if (!f) return;
+      try { await bgLoadImage(f, true); bgNote('Foto geladen. Es bleibt auf deinem Gerät.'); }
+      catch (e) { bgNote('Dieses Bild konnte nicht geöffnet werden.'); }
+    };
+    fi.click();
+  };
+  try { const m = localStorage.getItem(STORE + '.bg'); if (m && m !== 'none') { BG.mode = m; $('bgSel').value = m; $('bgFileBtn').hidden = m !== 'image'; } } catch (e) {}
+  try { if (localStorage.getItem(STORE + '.overlay') === '0') $('gesOverlay').checked = false; } catch (e) {}
+  $('gesOverlay').onchange = () => { try { localStorage.setItem(STORE + '.overlay', $('gesOverlay').checked ? '1' : '0'); } catch (e) {} };
+
+  // ---------- Video-Aufnahme (Kamerabild + Looper-Ton, möglichst als MP4) ----------
+  const REC_MAX = 300;   // Sekunden
+  const recState = { rec: null, start: 0, timer: 0, n: 0 };
+  const recTime = t => { $('recTime').textContent = t; };
+  function recMime() {
+    const list = ['video/mp4;codecs=avc1.64001F,mp4a.40.2', 'video/mp4;codecs=avc1.4D401F,mp4a.40.2', 'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+      'video/mp4;codecs=avc1.42E01E,opus', 'video/mp4;codecs=avc1', 'video/mp4',
+      'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+    return list.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+  }
+  async function recStart() {
+    if (!window.MediaRecorder || !$('gesCv').captureStream) { recTime('Aufnahme wird von diesem Browser nicht unterstützt.'); return; }
+    if (!ges.on) { await gesStart(); if (!ges.on) return; }
+    ensureAudio(); ctx.resume();
+    const stream = $('gesCv').captureStream(30);
+    if (recDest) recDest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+    const mime = recMime(), opts = mime ? { mimeType: mime } : {};
+    opts.videoBitsPerSecond = 5000000; opts.audioBitsPerSecond = 192000;
+    let r;
+    try { r = new MediaRecorder(stream, opts); }
+    catch (e) { try { r = new MediaRecorder(stream); } catch (e2) { recTime('Aufnahme konnte nicht starten: ' + e2.message); return; } }
+    const type = r.mimeType || mime || 'video/webm', parts = [];
+    r.ondataavailable = e => { if (e.data && e.data.size) parts.push(e.data); };
+    r.onstop = () => { if (parts.length) recAddTake(new Blob(parts, { type })); else recTime('Die Aufnahme ist leer. Bitte noch einmal versuchen.'); };
+    r.onerror = e => recTime('Fehler bei der Aufnahme: ' + (e.error ? e.error.message : 'unbekannt'));
+    recState.rec = r;
+    r.start(500); recState.start = Date.now();
+    $('recBtn').classList.add('stop'); $('recBtn').innerHTML = '&#9632; Aufnahme beenden';
+    const max = Math.floor(REC_MAX / 60) + ':' + String(REC_MAX % 60).padStart(2, '0');
+    recState.timer = setInterval(() => {
+      const s = Math.floor((Date.now() - recState.start) / 1000);
+      recTime('● ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ' / ' + max);
+      if (s >= REC_MAX) recStop();
+    }, 250);
+  }
+  function recStop() {
+    const r = recState.rec; if (!r) return;
+    recState.rec = null; clearInterval(recState.timer);
+    try { r.stop(); } catch (e) {}
+    $('recBtn').classList.remove('stop'); $('recBtn').innerHTML = '&#9679; Video aufnehmen';
+    recTime('max. ' + Math.floor(REC_MAX / 60) + ':' + String(REC_MAX % 60).padStart(2, '0'));
+  }
+  function recAddTake(blob) {
+    const n = ++recState.n, url = URL.createObjectURL(blob);
+    const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const d = new Date(), pad = x => String(x).padStart(2, '0');
+    const name = 'SoundWhacker_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + '.' + ext;
+    const box = document.createElement('div');
+    box.style.cssText = 'display:flex;flex-direction:column;gap:6px;width:min(320px,100%)';
+    const vid = document.createElement('video');
+    vid.src = url; vid.controls = true; vid.playsInline = true;
+    vid.style.cssText = 'width:100%;border-radius:8px;border:1px solid var(--line);background:#000';
+    const row = document.createElement('div'); row.className = 'row'; row.style.gap = '8px';
+    const save = document.createElement('button'); save.textContent = '💾 Speichern (.' + ext + ')';
+    const del = document.createElement('button'); del.textContent = 'Löschen';
+    const hint = document.createElement('div'); hint.className = 'small mut';
+    hint.textContent = 'Aufnahme ' + n + ' · ' + (blob.size / 1048576).toFixed(1) + ' MB' + (ext === 'webm' ? ' · dieser Browser kann kein MP4 aufnehmen, daher .webm' : '') + ' · geht beim Neuladen verloren, wenn nicht gespeichert';
+    save.onclick = async () => {
+      if (!window.showDirectoryPicker && await shareFiles([{ name, bytes: blob, type: blob.type }])) return;   // iPad: Teilen-Menü
+      downloadBlob(blob, name);
+    };
+    del.onclick = async () => {
+      if (!(await ask('Aufnahme ' + n + ' löschen?'))) return;
+      vid.pause(); vid.removeAttribute('src'); vid.load(); URL.revokeObjectURL(url); box.remove();
+    };
+    row.append(save, del);
+    box.append(vid, row, hint);
+    $('takes').prepend(box);
+  }
+  $('recBtn').onclick = () => (recState.rec ? recStop() : recStart());
+
+  // ---------- Mikrofon für die Aufnahme (geht nur ins Video, nicht auf die Lautsprecher – keine Rückkopplung) ----------
+  const mic = { stream: null, src: null, gain: null, an: null, buf: null, timer: 0 };
+  const micNote = t => { $('micNote').textContent = t || ''; };
+  async function micEnable() {
+    ensureAudio(); ctx.resume();
+    micDisable();
+    if (!recDest) { $('micOn').checked = false; micNote('Dieser Browser kann den Ton nicht aufnehmen.'); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('micOn').checked = false; micNote('Dieser Browser gibt das Mikrofon für Webseiten nicht frei.'); return; }
+    const id = $('micSel').value;
+    try {
+      mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: id ? { exact: id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    } catch (e) {
+      $('micOn').checked = false;
+      micNote(e && e.name === 'NotAllowedError' ? 'Mikrofon wurde nicht erlaubt. Bitte für diese Seite freigeben und erneut anhaken.' : 'Mikrofon konnte nicht gestartet werden.');
+      return;
+    }
+    mic.src = ctx.createMediaStreamSource(mic.stream);
+    mic.gain = ctx.createGain(); mic.gain.gain.value = $('micVol').value / 100;
+    mic.an = ctx.createAnalyser(); mic.an.fftSize = 512; mic.buf = new Uint8Array(mic.an.fftSize);
+    mic.src.connect(mic.gain); mic.gain.connect(recDest); mic.src.connect(mic.an);
+    $('micMix').hidden = false;
+    micNote('Tipp: Mit Kopfhörern klingt es am saubersten, sonst nimmt das Mikrofon die Lautsprecher mit auf.');
+    mic.timer = setInterval(() => {
+      if (!mic.an) return;
+      mic.an.getByteTimeDomainData(mic.buf);
+      let peak = 0; for (let i = 0; i < mic.buf.length; i++) peak = Math.max(peak, Math.abs(mic.buf[i] - 128));
+      $('micLvl').style.width = Math.min(100, peak / 128 * 160) + '%';
+    }, 80);
+    try {   // Mikrofon-Auswahl, wenn mehrere da sind
+      const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+      const sel = $('micSel'), cur = mic.stream.getAudioTracks()[0].getSettings().deviceId;
+      sel.innerHTML = '';
+      devs.forEach((d, i) => { const o = document.createElement('option'); o.value = d.deviceId; o.textContent = d.label || ('Mikrofon ' + (i + 1)); sel.appendChild(o); });
+      if (cur) sel.value = cur;
+      sel.hidden = devs.length < 2;
+    } catch (e) {}
+  }
+  function micDisable() {
+    clearInterval(mic.timer);
+    ['src', 'gain', 'an'].forEach(k => { if (mic[k]) { try { mic[k].disconnect(); } catch (e) {} mic[k] = null; } });
+    if (mic.stream) { mic.stream.getTracks().forEach(t => t.stop()); mic.stream = null; }
+    mic.buf = null; $('micMix').hidden = true; $('micLvl').style.width = '0';
+  }
+  $('micOn').onchange = () => { if ($('micOn').checked) micEnable(); else { micDisable(); micNote(''); } };
+  $('micSel').onchange = () => { if ($('micOn').checked) micEnable(); };
+  try { const v = localStorage.getItem(STORE + '.micVol'); if (v != null) $('micVol').value = v; } catch (e) {}
+  $('micVol').oninput = () => { if (mic.gain) mic.gain.gain.setTargetAtTime($('micVol').value / 100, ctx.currentTime, 0.03); };
+  $('micVol').onchange = () => { try { localStorage.setItem(STORE + '.micVol', $('micVol').value); } catch (e) {} };
+
+
+  // iOS/Safari: Audio wird erst nach einer echten Berührung freigegeben – mit der ersten Berührung entsperren
+  const unlockAudio = () => {
+    try {
+      ensureAudio();
+      ctx.resume();
+      const b = ctx.createBuffer(1, 1, ctx.sampleRate), s = ctx.createBufferSource();
+      s.buffer = b; s.connect(ctx.destination); s.start(0);
+    } catch (e) {}
+    ['touchend', 'pointerup', 'click'].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+  };
+  ['touchend', 'pointerup', 'click'].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+
+  $('startBtn').onclick = start;
+  $('stopBtn').onclick = stop;
+  $('allBtn').onclick = togglePreviewAll;
+  $('master').oninput = () => { if (master) master.gain.setTargetAtTime($('master').value / 100, ctx.currentTime, 0.01); };
+  $('master').onchange = save;
+
+  // Laufzeit-Anzeige
+  setInterval(() => {
+    if (!playing || !ctx) return;
+    const t = Math.max(0, ctx.currentTime - startTime);
+    $('clock').textContent = 'läuft ' + Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
+  }, 250);
+
+  // ---------- WAV schreiben und Dateien speichern ----------
+  function encodeWav(L, R, sr) {   // 16 Bit Stereo
+    const n = L.length, buf = new ArrayBuffer(44 + n * 4), v = new DataView(buf);
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    const c1 = x => Math.max(-1, Math.min(1, x));
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 4, true); w(8, 'WAVE'); w(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 2, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr * 4, true); v.setUint16(32, 4, true); v.setUint16(34, 16, true);
+    w(36, 'data'); v.setUint32(40, n * 4, true);
+    let o = 44;
+    for (let i = 0; i < n; i++) {
+      v.setInt16(o, Math.round(c1(L[i]) * 32767), true);
+      v.setInt16(o + 2, Math.round(c1(R[i]) * 32767), true);
+      o += 4;
+    }
+    return buf;
+  }
+  function downloadBlob(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  }
+  // iPad/iPhone: Teilen-Menü („In Dateien sichern“), weil Downloads per Link dort oft ins Leere laufen.
+  // Gibt true zurück, wenn das Menü geöffnet wurde (auch bei Abbruch), false wenn es nicht verfügbar ist.
+  async function shareFiles(list) {
+    try {
+      if (!navigator.canShare || !navigator.share) return false;
+      const files = list.map(f => new File([f.bytes], f.name, { type: f.type || 'audio/wav' }));
+      if (!navigator.canShare({ files })) return false;
+      await navigator.share({ files });
+      return true;
+    } catch (e) {
+      return !!(e && e.name === 'AbortError');
+    }
+  }
+
+  // ---------- SoundFont-Arpeggio (SpessaSynth, Apache-2.0, wird erst bei Bedarf geladen) ----------
+  const SF_LIB = new URL('vendor/spessasynth/spessasynth_core.mjs', location.href).href;   // spessasynth_core 4.3.22 (Apache-2.0), lokale Kopie – auch offline
+  const SF_DB = 'swlooper-soundfont', SF_ST = 'sf';
+  const SF_SET = STORE + '.sf';
+  let sfLibMod = null, sfBank = null, sfFileName = '', sfBusy = false;
+  const sfInfo = (m, err) => { $('sfInfo').textContent = m || ''; $('sfInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+
+  function sfDb(mode, fn) {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(SF_DB, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(SF_ST);
+      r.onerror = () => rej(r.error);
+      r.onsuccess = () => {
+        const db = r.result, tx = db.transaction(SF_ST, mode), req = fn(tx.objectStore(SF_ST));
+        tx.oncomplete = () => { db.close(); res(req && req.result); };
+        tx.onerror = tx.onabort = () => { db.close(); rej(tx.error); };
+      };
+    });
+  }
+  async function sfLib() {
+    if (!sfLibMod) sfLibMod = await import(SF_LIB);
+    return sfLibMod;
+  }
+
+  // Einstellungen merken (ohne SoundFont-Daten)
+  function sfSave() {
+    try {
+      localStorage.setItem(SF_SET, JSON.stringify({
+        preset: $('sfPreset').value, rev: +$('sfRev').value
+      }));
+    } catch (e) {}
+  }
+  function sfLoadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SF_SET) || 'null');
+      if (!s) return null;
+      if (typeof s.rev === 'number') $('sfRev').value = s.rev;
+      $('sfRevVal').textContent = $('sfRev').value + ' %';
+      return s;
+    } catch (e) { return null; }
+  }
+
+  ['sfPreset', 'sfRev'].forEach(id => $(id).addEventListener('change', sfSave));
+  $('sfRev').addEventListener('input', () => { $('sfRevVal').textContent = $('sfRev').value + ' %'; });
+
+  async function sfUse(bytes, name) {
+    const lib = await sfLib();
+    const bank = lib.SoundBankLoader.fromArrayBuffer(bytes);
+    const list = bank.presets.filter(p => !p.isGMGSDrum && !p.isDrum)
+      .sort((a, b) => a.bankMSB - b.bankMSB || a.program - b.program || a.bankLSB - b.bankLSB);
+    if (!list.length) throw new Error('keine Instrumente gefunden');
+    sfBank = bank; sfFileName = name;
+    melCache.clear();   // Töne der vorigen SoundFont verwerfen
+    if (!sfRestoringNow) chReloadBank();     // Echtzeit-Klang ebenfalls umstellen – nicht beim bloßen Wiederherstellen derselben SoundFont (spart Speicher)
+    const sel = $('sfPreset'), want = (sfLoadSettings() || {}).preset;
+    sel.innerHTML = '';
+    list.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.bankMSB + ':' + p.bankLSB + ':' + p.program;
+      o.textContent = (p.bankMSB || p.bankLSB ? p.bankMSB + '/' : '') + (p.program + 1) + ' ' + p.name.trim();
+      sel.appendChild(o);
+    });
+    if (want && [...sel.options].some(o => o.value === want)) sel.value = want;
+    sel.disabled = false;
+    melFillPresets(); chFillPresets();
+    $('sfName').textContent = name + ' (' + (bytes.byteLength / 1048576).toFixed(1) + ' MB, ' + list.length + ' Instrumente)';
+  }
+
+  async function sfLoadFile(file) {
+    if (sfBusy) return;
+    sfBusy = true;
+    try {
+      sfInfo('Lade SoundFont …');
+      const bytes = await file.arrayBuffer();
+      await sfUse(bytes.slice(0), file.name);
+      try { await sfDb('readwrite', s => s.put({ name: file.name, bytes }, 'main')); sfInfo('SoundFont geladen und gespeichert.'); }
+      catch (e) { sfInfo('SoundFont geladen, aber nicht dauerhaft gespeichert (Browser-Speicher voll oder gesperrt).', true); }
+      if (ges.mode === 'melody' || ges.mode === 'fullbody') melPrepare();
+    } catch (e) {
+      sfInfo('SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e) + '. Ist das eine .sf2-Datei, und besteht eine Internetverbindung?', true);
+    }
+    sfBusy = false;
+  }
+  $('sfFileBtn').onclick = () => {
+    const fi = document.createElement('input');
+    fi.type = 'file';   // ohne accept (iOS graut sonst Dateien aus)
+    fi.onchange = () => { if (fi.files[0]) sfLoadFile(fi.files[0]); };
+    fi.click();
+  };
+
+  // Gespeicherte SoundFont erst laden, wenn der Bereich geöffnet wird (spart Speicher und Ladezeit)
+  // Eingebaute SoundFont (Auswahl aus GeneralUser GS) – wird erst bei Bedarf geladen und dann im Browser gespeichert
+  const SF_BUILTIN_URL = new URL('soundfonts/SoundWhacker-Auswahl.sf2', location.href).href, SF_BUILTIN_VER = 2;   // 2 = mit Drum-Kits (Standard, 808/909, Brush)
+  async function sfLoadBuiltin() {
+    sfInfo('Lade eingebaute SoundFont (einmalig ca. 21 MB) …');
+    let rec = null;
+    try { rec = await sfDb('readonly', s => s.get('builtin')); } catch (e) {}
+    let bytes = rec && rec.ver === SF_BUILTIN_VER ? rec.bytes : null;
+    if (!bytes) {
+      const r = await fetch(SF_BUILTIN_URL);
+      if (!r.ok) throw new Error('Download fehlgeschlagen (' + r.status + ')');
+      bytes = await r.arrayBuffer();
+      try { await sfDb('readwrite', s => s.put({ ver: SF_BUILTIN_VER, bytes }, 'builtin')); } catch (e) {}
+    }
+    await sfUse(bytes.slice(0), 'SoundWhacker-Auswahl (eingebaut)');
+    sfInfo('');
+  }
+  let sfRestoring = null, sfRestoringNow = false;
+  function sfRestore() {   // gleichzeitige Aufrufe teilen sich denselben Ladevorgang
+    if (sfBank) return Promise.resolve();
+    if (!sfRestoring) sfRestoring = (async () => {
+      sfRestoringNow = true;
+      try {
+        const rec = await sfDb('readonly', s => s.get('main'));
+        if (rec && rec.bytes) { sfInfo('Lade gespeicherte SoundFont …'); await sfUse(rec.bytes, rec.name || 'SoundFont'); sfInfo(''); return; }
+        await sfLoadBuiltin();
+      } catch (e) { sfInfo('SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e) + ' – besteht eine Internetverbindung?', true); }
+      finally { sfRestoring = null; sfRestoringNow = false; }
+    })();
+    return sfRestoring;
+  }
+  $('sfBuiltinBtn').onclick = async () => {
+    if (sfBusy) return;
+    sfBusy = true;
+    try {
+      try { await sfDb('readwrite', s => s.delete('main')); } catch (e) {}
+      await sfLoadBuiltin();
+      sfInfo('Eingebaute SoundFont aktiv.');
+      if (ges.mode === 'melody' || ges.mode === 'fullbody') melPrepare();
+    } catch (e) { sfInfo('Eingebaute SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e), true); }
+    sfBusy = false;
+  };
+  $('sfBox').addEventListener('toggle', () => { if ($('sfBox').open) { sfRestore(); try { localStorage.setItem(SF_SET + '.open', '1'); } catch (e) {} } else { try { localStorage.removeItem(SF_SET + '.open'); } catch (e) {} } });
+
+  sfLoadSettings();
+  try { if (localStorage.getItem(SF_SET + '.open') === '1') $('sfBox').open = true; } catch (e) {}
+
+  // ---------- Bereiche „Akkord“, „Ton“, „Improvisieren“: Tasten spielen gehaltene Akkorde/Töne (Echtzeit-SoundFont über AudioWorklet) ----------
+  const CH_LIB = new URL('vendor/spessasynth/spessasynth_lib.mjs', location.href).href;          // spessasynth_lib 4.3.14 (Apache-2.0)
+  const CH_PROC = new URL('vendor/spessasynth/spessasynth_processor.min.js', location.href).href;
+  const CH_BOOST = 4;   // Echtzeit-Synth ist leise (~ -30 dB) – angleichen an die Loops (~ -14 dB); der Summen-Limiter fängt Spitzen ab
+  const CH_TYPES = { ton: { label: 'Ton', iv: [0] }, dur: { label: 'Dur', iv: [0, 4, 7] }, moll: { label: 'Moll', iv: [0, 3, 7] }, dur7: { label: 'Dur7', iv: [0, 4, 7, 10] } };
+  const CH_KEY = STORE + '.chord';
+  const CH_N = 15;   // Felder 1–5: Akkord oder Ton, 6–10: nur Töne, 11–15: Improvisieren (zufälliger Skalenton wie im SW-HUB)
+  const chChan = i => (i < 9 ? i : i + 1);   // MIDI-Kanal je Feld: 0–8 und 10–15 (Index 9 = Schlagzeug-Kanal bleibt frei)
+  const chDefKey = i => (i % 5) + 1;       // Standard-Tasten: alle Gruppen 1–5 (der SW-HUB sendet 1–5)
+  // Drei Bereiche mit je 5 Feldern: A = Akkord (0–4), B = Ton (5–9), C = Improvisieren (10–14)
+  const CH_G = ['A', 'B', 'C'], chG = i => CH_G[Math.floor(i / 5)];
+  function chFieldName(i) { return ['Akkord', 'Ton', 'Impro'][Math.floor(i / 5)] + ' ' + (i % 5 + 1); }
+  function chClean(c) {
+    const def = [[0, 'dur'], [5, 'dur'], [7, 'dur'], [9, 'moll'], [7, 'dur7'], [0, 'ton'], [2, 'ton'], [4, 'ton'], [7, 'ton'], [9, 'ton'],
+      [9, 'impro', 3], [9, 'impro', 4], [9, 'impro', 4], [9, 'impro', 5], [9, 'impro', 5]];
+    // Ältere Speicherstände hatten einen gemeinsamen Hauptschalter „on“: war er aus, sind jetzt alle Bereiche aus
+    const v2 = !!(c && c.v === 2), off = !!(c && !v2 && !c.on);
+    const o = { v: 2, grpA: v2 ? !!c.grpA : !!(c && !off && c.grpA !== false), grpB: !off && !!(c && c.grpB), grpC: !off && !!(c && c.grpC),
+      preset: c && typeof c.preset === 'string' ? c.preset : '0:0:0', fields: [] };
+    CH_G.forEach(g => {   // je Bereich eigene Lautstärke, Hall und „Alle Felder auf“
+      o['vol' + g] = c && Number.isFinite(c['vol' + g]) ? c['vol' + g] : c && Number.isFinite(c.vol) ? c.vol : 80;
+      o['rev' + g] = c && Number.isFinite(c['rev' + g]) ? c['rev' + g] : c && Number.isFinite(c.rev) ? c.rev : 30;
+      o['preset' + g] = c && typeof c['preset' + g] === 'string' ? c['preset' + g] : o.preset;
+    });
+    for (let i = 0; i < CH_N; i++) {
+      const f = (c && c.fields && c.fields[i]) || {};
+      o.fields.push({ type: i >= 10 ? 'impro' : i >= 5 ? 'ton' : (CH_TYPES[f.type] ? f.type : def[i][1]), pc: f.pc >= 0 && f.pc < 12 ? f.pc | 0 : def[i][0], oct: [2, 3, 4, 5, 6].includes(f.oct) ? f.oct : (def[i][2] || 4),
+        scale: i >= 10 ? (MEL_SCALES[f.scale] ? f.scale : 'mollpenta') : undefined,
+        key: f.key && typeof f.key.code === 'string' ? { code: f.key.code, label: String(f.key.label || f.key.code) } : null,
+        preset: typeof f.preset === 'string' ? f.preset : o.preset, on: f.on !== false });
+    }
+    return o;
+  }
+  let chCfg = chClean(null);
+  try { const c = JSON.parse(localStorage.getItem(CH_KEY) || 'null'); if (c) chCfg = chClean(c); } catch (e) {}
+  const chSave = () => { try { localStorage.setItem(CH_KEY, JSON.stringify(chCfg)); } catch (e) {} };
+  const chInfo = (m, err) => CH_G.forEach(g => { const el = $('chInfo' + g); el.textContent = m || ''; el.className = 'small ' + (err ? 'err' : 'mut'); });
+  const ch = { synth: null, loading: null, out: null, drumKits: [], playing: new Array(CH_N).fill(null), learn: -1, lastImpro: [], shown: [] };
+
+  async function chSfBytes() {   // Rohdaten der aktiven SoundFont (eigene oder eingebaute) für den Echtzeit-Synth
+    try { const r = await sfDb('readonly', s => s.get('main')); if (r && r.bytes) return r.bytes; } catch (e) {}
+    try { const r = await sfDb('readonly', s => s.get('builtin')); if (r && r.ver === SF_BUILTIN_VER && r.bytes) return r.bytes; } catch (e) {}
+    const res = await fetch(SF_BUILTIN_URL);
+    if (!res.ok) throw new Error('SoundFont-Download fehlgeschlagen (' + res.status + ')');
+    const bytes = await res.arrayBuffer();
+    try { await sfDb('readwrite', s => s.put({ ver: SF_BUILTIN_VER, bytes }, 'builtin')); } catch (e) {}
+    return bytes;
+  }
+  function chEnsure() {
+    if (ch.synth) return Promise.resolve(ch.synth);
+    if (!ch.loading) ch.loading = (async () => {
+      let synth = null;
+      try {
+        ensureAudio();
+        if (!ctx.audioWorklet) throw new Error('Dieser Browser kann keine Echtzeit-Klangerzeugung (AudioWorklet).');
+        chInfo('Klangerzeugung wird geladen …');
+        // Speicher sparen (iPad): die SoundFont nur einmal im Echtzeit-Synth laden – die Instrumentenliste kommt von dort,
+        // die SoundFont wird nicht zusätzlich im Hauptprogramm entpackt (das passiert nur, wenn Arpeggio/Melodie-Modus sie brauchen)
+        await ctx.audioWorklet.addModule(CH_PROC);
+        const lib = await import(CH_LIB);
+        synth = new lib.WorkletSynthesizer(ctx);
+        await synth.soundBankManager.addSoundBank(await chSfBytes(), 'main');
+        await synth.isReady;
+        await chPresetsFromSynth(synth);
+        ch.out = ctx.createGain(); ch.out.gain.value = 0.8 * CH_BOOST; ch.out.connect(master);   // Lautstärke je Bereich über MIDI-Volume (CC7)
+        synth.connect(ch.out);
+        ch.synth = synth;
+        chFillPresets(); chProgram();
+        chInfo('bereit');
+        return synth;
+      } catch (e) {
+        try { if (synth) synth.destroy(); } catch (e2) {}   // halb gestarteten Synth freigeben, damit ein neuer Versuch genug Speicher hat
+        const msg = (e && e.message) || String(e);
+        chInfo(/memory|speicher/i.test(msg) ? 'Zu wenig Speicher für die Klangerzeugung – bitte andere Safari-Tabs schließen, die Kamera ausschalten und die Seite neu laden.'
+          : 'Klangerzeugung konnte nicht starten: ' + msg, true);
+        ch.loading = null; throw e;
+      }
+    })();
+    return ch.loading;
+  }
+  function chProgram() {   // Instrument + Hall auf allen fünf Kanälen (je Feld ein MIDI-Kanal, Kanal 10 = Schlagzeug wird nicht benutzt)
+    if (!ch.synth) return;
+    for (let i = 0; i < CH_N; i++) {
+      const k = chChan(i), [msb, lsb, program] = (chCfg.fields[i].preset || '0:0:0').split(':').map(Number);
+      ch.synth.controllerChange(k, 0, msb); ch.synth.controllerChange(k, 32, lsb); ch.synth.programChange(k, program);
+      ch.synth.controllerChange(k, 7, Math.round(chCfg['vol' + chG(i)] / 100 * 127));
+      ch.synth.controllerChange(k, 91, Math.round(chCfg['rev' + chG(i)] / 100 * 127)); ch.synth.controllerChange(k, 93, 0);
+    }
+  }
+  function chNotes(i) {
+    const f = chCfg.fields[i], root = 12 * (f.oct + 1) + f.pc;
+    if (f.type === 'impro') {   // zufälliger Ton aus einer Oktave der Skala – nie zweimal derselbe hintereinander
+      const pool = MEL_SCALES[f.scale].st.map(x => root + x).filter(n => n !== ch.lastImpro[i]);
+      const n = pool[Math.floor(Math.random() * pool.length)];
+      ch.lastImpro[i] = ch.shown[i] = n;
+      return [n];
+    }
+    return CH_TYPES[f.type].iv.map(x => root + x);
+  }
+  async function chStart(i) {
+    if (ch.playing[i]) return;
+    ch.playing[i] = [];   // sofort belegen, damit Wiederholungen nichts doppelt starten
+    chLamp(i, true);
+    try { await chEnsure(); } catch (e) { ch.playing[i] = null; chLamp(i, false); return; }
+    await ctx.resume();
+    if (!ch.playing[i]) return;   // schon wieder losgelassen, während geladen wurde
+    const notes = chNotes(i);
+    notes.forEach(n => ch.synth.noteOn(chChan(i), n, 100));
+    ch.playing[i] = notes;
+    if (chCfg.fields[i].type === 'impro') chUi();   // gespielten Ton anzeigen
+  }
+  function chStop(i) {
+    const notes = ch.playing[i];
+    ch.playing[i] = null; chLamp(i, false);
+    if (notes && ch.synth) notes.forEach(n => ch.synth.noteOff(chChan(i), n));
+  }
+  async function chPresetsFromSynth(synth) {
+    const sel = $('sfPreset');
+    for (let t = 0; t < 40 && !(synth.presetList && synth.presetList.length); t++) await new Promise(r => setTimeout(r, 50));
+    // Schlagzeug-Sets (nur für den Bereich „Melodie“ – dort wird daraus ein Rhythmus)
+    const seen = new Set();
+    ch.drumKits = (synth.presetList || []).filter(p => (p.isGMGSDrum || p.isDrum) && !seen.has(p.program) && seen.add(p.program))
+      .sort((a, b) => a.program - b.program).map(p => ({ program: p.program, name: String(p.name).trim() }));
+    if (!sel.disabled) return;   // Liste schon da (SoundFont im Hauptprogramm geladen)
+    const list = (synth.presetList || []).filter(p => !p.isGMGSDrum && !p.isDrum)
+      .sort((a, b) => a.bankMSB - b.bankMSB || a.program - b.program || a.bankLSB - b.bankLSB);
+    if (!list.length) return;
+    const want = (sfLoadSettings() || {}).preset;
+    sel.innerHTML = list.map(p => '<option value="' + p.bankMSB + ':' + p.bankLSB + ':' + p.program + '">' + (p.bankMSB || p.bankLSB ? p.bankMSB + '/' : '') + (p.program + 1) + ' ' + String(p.name).trim().replace(/</g, '&lt;') + '</option>').join('');
+    if (want && [...sel.options].some(o => o.value === want)) sel.value = want;
+    sel.disabled = false;
+  }
+  async function chReloadBank() {   // nach Wechsel der SoundFont (eigene ↔ eingebaute)
+    if (!ch.synth) return;
+    chStopAll();
+    try { await ch.synth.soundBankManager.addSoundBank(await chSfBytes(), 'main'); chFillPresets(); chProgram(); }
+    catch (e) { chInfo('Neue SoundFont konnte nicht übernommen werden: ' + ((e && e.message) || e), true); }
+  }
+  const chStopAll = () => { for (let i = 0; i < CH_N; i++) if (ch.playing[i]) chStop(i); };
+  const chLamp = (i, on) => { const l = $('chLamp' + i); if (l) l.classList.toggle('on', on); };
+  const chGrpOn = i => (i < 5 ? chCfg.grpA : i < 10 ? chCfg.grpB : chCfg.grpC);
+  function chFieldsForKey(e) {   // alle Felder (aktiver Gruppen), die auf diese Taste hören
+    const code = e.code || '', out = [];
+    for (let i = 0; i < CH_N; i++) {
+      if (!chGrpOn(i) || !chCfg.fields[i].on) continue;   // Feld aus → die Taste schaltet weiter ihren Loop
+      const k = chCfg.fields[i].key;
+      if (k ? k.code === code : (code === 'Digit' + chDefKey(i) || code === 'Numpad' + chDefKey(i))) out.push(i);
+    }
+    return out;
+  }
+  const chFieldForKey = e => (chFieldsForKey(e).length ? 0 : -1);
+  // Wird vom Tastatur-Handler aufgerufen; true = Taste gehört zu Akkord/Ton/Improvisieren (Loops nicht schalten)
+  function chordKeyDown(e) {
+    if (ch.learn >= 0) {
+      if (e.code === 'Escape') { ch.learn = -1; chUi(); return true; }
+      if (['Tab', 'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'CapsLock', 'NumLock'].includes(e.code)) return true;
+      const label = e.code === 'Space' ? 'Leertaste' : /^Numpad/.test(e.code) ? 'Num ' + (e.key && e.key.length === 1 ? e.key : e.code.slice(6)) : (e.key && e.key.length === 1 ? e.key.toUpperCase() : (e.key || e.code));
+      chCfg.fields[ch.learn].key = { code: e.code, label };
+      ch.learn = -1; chSave(); chUi();
+      return true;
+    }
+    const fs = chFieldsForKey(e);
+    if (!fs.length) return false;
+    if (!e.repeat) fs.forEach(chStart);
+    return true;
+  }
+  function chordKeyUp(e) {
+    const fs = chFieldsForKey(e);
+    if (!fs.length) return false;
+    fs.forEach(chStop);
+    return true;
+  }
+  window.addEventListener('blur', chStopAll);
+
+  function chFillPresets() {
+    const src = $('sfPreset');
+    if (!src || src.disabled) return;
+    CH_G.forEach(g => {
+      const dst = $('chPreset' + g);
+      dst.innerHTML = src.innerHTML; dst.disabled = false;
+      if ([...dst.options].some(o => o.value === chCfg['preset' + g])) dst.value = chCfg['preset' + g]; else chCfg['preset' + g] = dst.value;
+    });
+    for (let i = 0; i < CH_N; i++) {   // Auswahl je Feld
+      const sel = $('chInst' + i), f = chCfg.fields[i];
+      sel.innerHTML = src.innerHTML; sel.disabled = false;
+      if ([...sel.options].some(o => o.value === f.preset)) sel.value = f.preset; else f.preset = sel.value;
+    }
+  }
+  (function chBuildUi() {
+    CH_G.forEach(g => { $('chFields' + g).innerHTML = ''; });
+    const pcOpts = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'].map((n, k) => '<option value="' + k + '">' + n + '</option>').join('');
+    for (let i = 0; i < CH_N; i++) {
+      const box = $('chFields' + chG(i));
+      // Eine Zeile je Feld, die bei wenig Platz (iPad hochkant) umbricht
+      box.insertAdjacentHTML('beforeend', '<div class="row" style="gap:6px 10px;padding:6px 10px;border:1px solid var(--line);border-radius:10px">' +
+        '<label class="row" style="gap:6px;min-width:90px" title="Feld an/aus – ist es aus, schaltet seine Taste wie gewohnt den Loop"><input type="checkbox" id="chFOn' + i + '"><span class="lamp" id="chLamp' + i + '"></span><b>' + chFieldName(i) + '</b></label>' +
+        '<span class="small mut">Taste</span><b id="chKey' + i + '" style="min-width:2.5em;text-align:center"></b>' +
+        '<span class="row" style="gap:4px;flex-wrap:nowrap"><button id="chLearn' + i + '">anlernen</button><button id="chKeyClr' + i + '" title="zurück auf Taste ' + chDefKey(i) + '" hidden>&#10005;</button></span>' +
+        (i < 5 ? '<select id="chType' + i + '" title="Art"><option value="ton">Ton</option><option value="dur">Akkord Dur</option><option value="moll">Akkord Moll</option><option value="dur7">Akkord Dur7</option></select>'
+          : i >= 10 ? '<select id="chScale' + i + '" title="Skala">' + Object.entries(MEL_SCALES).map(([id, sc]) => '<option value="' + id + '">' + (id === 'arabisch' ? 'Phrygisch-Dur / Arabisch' : sc.label) + '</option>').join('') + '</select>'
+          : '<span id="chType' + i + '" class="small mut" style="min-width:5em">Ton</span>') +
+        '<select id="chPc' + i + '" title="Grundton">' + pcOpts + '</select>' +
+        '<select id="chOct' + i + '" title="Lage"><option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option></select>' +
+        '<select id="chInst' + i + '" title="Instrument" style="max-width:230px" disabled><option>…</option></select>' +
+        '<button id="chTry' + i + '" title="gedrückt halten zum Anhören" style="touch-action:none">&#9654;</button>' +
+        '<b class="small" id="chName' + i + '" style="color:var(--acc)"></b></div>');
+      const f = () => chCfg.fields[i];
+      if (i < 5) $('chType' + i).onchange = () => { chStop(i); f().type = $('chType' + i).value; chSave(); chUi(); };
+      if (i >= 10) $('chScale' + i).onchange = () => { chStop(i); f().scale = $('chScale' + i).value; ch.lastImpro[i] = ch.shown[i] = null; chSave(); chUi(); };
+      $('chFOn' + i).onchange = () => { chStop(i); f().on = $('chFOn' + i).checked; chSave(); chUi(); };
+      $('chPc' + i).onchange = () => { chStop(i); f().pc = +$('chPc' + i).value; chSave(); chUi(); };
+      $('chOct' + i).onchange = () => { chStop(i); f().oct = +$('chOct' + i).value; chSave(); chUi(); };
+      $('chInst' + i).onchange = () => { chStop(i); f().preset = $('chInst' + i).value; chProgram(); chSave(); };
+      $('chLearn' + i).onclick = () => { ch.learn = ch.learn === i ? -1 : i; chUi(); };
+      $('chKeyClr' + i).onclick = () => { f().key = null; chSave(); chUi(); };
+      const tb = $('chTry' + i);
+      tb.onpointerdown = ev => { ev.preventDefault(); try { tb.setPointerCapture(ev.pointerId); } catch (e) {} chStart(i); };
+      tb.onpointerup = tb.onpointercancel = () => chStop(i);
+    }
+    CH_G.forEach((g, n) => {
+      const from = n * 5, to = from + 5;
+      $('chGrp' + g).onchange = () => {
+        chCfg['grp' + g] = $('chGrp' + g).checked;
+        for (let i = from; i < to; i++) chStop(i);
+        if (chCfg['grp' + g]) chEnsure().catch(() => {});
+        chSave(); chUi();
+      };
+      $('chPreset' + g).onchange = () => {   // alle fünf Felder dieses Bereichs auf einmal
+        chCfg['preset' + g] = $('chPreset' + g).value;
+        for (let i = from; i < to; i++) { chStop(i); chCfg.fields[i].preset = chCfg['preset' + g]; $('chInst' + i).value = chCfg['preset' + g]; }
+        chProgram(); chSave();
+      };
+      $('chVol' + g).oninput = () => { chCfg['vol' + g] = +$('chVol' + g).value; chProgram(); };
+      $('chVol' + g).onchange = chSave;
+      $('chRev' + g).onchange = () => { chCfg['rev' + g] = +$('chRev' + g).value; chProgram(); chSave(); };
+    });
+    ['chordBox', 'tonBox', 'improBox'].forEach(id => $(id).addEventListener('toggle', () => { if ($(id).open) { chFillPresets(); chEnsure().catch(() => {}); } }));
+  })();
+  function chUi() {
+    CH_G.forEach(g => { $('chGrp' + g).checked = chCfg['grp' + g]; $('chVol' + g).value = chCfg['vol' + g]; $('chRev' + g).value = chCfg['rev' + g]; });
+    const NN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
+    for (let i = 0; i < CH_N; i++) {
+      const f = chCfg.fields[i];
+      if (i < 5) $('chType' + i).value = f.type;
+      if (i >= 10) $('chScale' + i).value = f.scale;
+      $('chPc' + i).value = f.pc; $('chOct' + i).value = f.oct;
+      $('chKey' + i).textContent = f.key ? f.key.label : String(chDefKey(i));
+      $('chKeyClr' + i).hidden = !f.key;
+      const b = $('chLearn' + i);
+      b.textContent = ch.learn === i ? 'Taste drücken … (Esc)' : 'anlernen';
+      b.classList.toggle('learning', ch.learn === i);
+      $('chFOn' + i).checked = f.on;
+      $('chLamp' + i).parentElement.parentElement.style.opacity = chGrpOn(i) && f.on ? 1 : 0.45;
+      $('chName' + i).textContent = f.type === 'impro' ? (ch.shown[i] != null ? '♪ ' + NN[ch.shown[i] % 12] + (Math.floor(ch.shown[i] / 12) - 1) : '')
+        : f.type === 'ton' ? NN[f.pc] + f.oct : NN[f.pc] + (f.type === 'moll' ? 'm' : f.type === 'dur7' ? '7' : '');
+    }
+  }
+  chUi();
+  if (chCfg.grpA || chCfg.grpB || chCfg.grpC) setTimeout(() => chEnsure().catch(() => {}), 0);   // beim Start schon laden, damit der erste Tastendruck sofort klingt
+
+  // ---------- Offline-Modus: Service Worker + „Für offline vorbereiten“ ----------
+  const OFF_CACHE = 'swlooper-v1';   // muss zu CACHE in sw.js passen
+  const OFF_FILES = ['SoundWhacker_Kamera.html',
+    'vendor/spessasynth/spessasynth_core.mjs', 'vendor/spessasynth/stb-vorbis.mjs', 'vendor/spessasynth/spessasynth_lib.mjs', 'vendor/spessasynth/spessasynth_processor.min.js',
+    'vendor/mediapipe/vision_bundle.mjs', 'vendor/mediapipe/wasm/vision_wasm_internal.js', 'vendor/mediapipe/wasm/vision_wasm_internal.wasm',
+    'models/hand_landmarker.task', 'models/selfie_segmenter.tflite', 'models/face_landmarker.task', 'models/pose_landmarker_lite.task'];
+  const offInfo = (m, err) => { $('offInfo').textContent = m || ''; $('offInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  const offOk = 'serviceWorker' in navigator && 'caches' in window && location.protocol !== 'file:';
+  async function sfBuiltinStored() {
+    try { const r = await sfDb('readonly', s => s.get('builtin')); if (r && r.ver === SF_BUILTIN_VER && r.bytes) return true; } catch (e) {}
+    try { const r = await sfDb('readonly', s => s.get('main')); if (r && r.bytes) return true; } catch (e) {}
+    return false;
+  }
+  async function offStatus() {
+    if (!offOk) { offInfo('Offline-Modus geht nur über die Internetadresse (https), nicht als lokale Datei.'); $('offPrep').disabled = true; return; }
+    try {
+      const c = await caches.open(OFF_CACHE);
+      let have = 0;
+      for (const f of OFF_FILES) if (await c.match(new URL(f, location.href).href)) have++;
+      const sf = await sfBuiltinStored();
+      if (have === OFF_FILES.length && sf) offInfo('✓ offline bereit – die Kamera-App läuft auch ohne Internet.');
+      else offInfo((have + (sf ? 1 : 0)) + ' von ' + (OFF_FILES.length + 1) + ' Teilen offline gespeichert. Einmal mit Internet vorbereiten (ca. 45 MB).');
+    } catch (e) { offInfo('Offline-Speicher nicht verfügbar: ' + ((e && e.message) || e), true); }
+  }
+  // SW-HUB: Web-App des HUB (Standard-Adresse im HUB-WLAN) in neuem Tab öffnen – LED-Farben stellt der HUB selbst ein und speichert sie
+  $('offPrep').onclick = async () => {
+    if (!offOk) return;
+    $('offPrep').disabled = true;
+    try {
+      try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+      const c = await caches.open(OFF_CACHE);
+      for (let i = 0; i < OFF_FILES.length; i++) {
+        offInfo('Lade ' + (i + 1) + ' von ' + (OFF_FILES.length + 1) + ' … ' + OFF_FILES[i].split('/').pop());
+        const url = new URL(OFF_FILES[i], location.href).href;
+        const res = await fetch(url, { cache: 'reload' });
+        if (!res.ok) throw new Error(OFF_FILES[i] + ' (' + res.status + ')');
+        await c.put(url, res);
+      }
+      if (!(await sfBuiltinStored())) {
+        offInfo('Lade ' + (OFF_FILES.length + 1) + ' von ' + (OFF_FILES.length + 1) + ' … SoundFont (ca. 21 MB)');
+        const r = await fetch(SF_BUILTIN_URL);
+        if (!r.ok) throw new Error('SoundFont (' + r.status + ')');
+        const bytes = await r.arrayBuffer();
+        await sfDb('readwrite', s => s.put({ ver: SF_BUILTIN_VER, bytes }, 'builtin'));
+      }
+      await offStatus();
+    } catch (e) { offInfo('Vorbereiten fehlgeschlagen: ' + ((e && e.message) || e) + ' – besteht eine Internetverbindung?', true); }
+    $('offPrep').disabled = false;
+  };
+  if (offOk) navigator.serviceWorker.register('sw.js').then(() => offStatus(), () => offInfo('Offline-Speicher konnte nicht eingerichtet werden.', true));
+  else offStatus();
+
+  // ---------- Projekt-Tempo ----------
+  let projBpm = null;
+  function setProjBpm(v) { projBpm = v ? Math.round(v * 100) / 100 : null; $('projBpm').value = projBpm || ''; }
+  $('projBpm').onchange = () => { const v = +$('projBpm').value; setProjBpm(v >= 50 && v <= 200 ? v : null); };
+  function guessBpm(sec) {   // Länge → plausibles Tempo (4/4-Takt, 1–16 Takte)
+    let best = null, bd = Infinity;
+    for (const bars of [1, 2, 4, 8, 16]) {
+      const b = bars * 4 * 60 / sec;
+      if (b >= 70 && b <= 180) { const d = Math.abs(b - (projBpm || 120)) + (bars === 4 ? 0 : 4); if (d < bd) { bd = d; best = b; } }
+    }
+    return best ? Math.round(best * 100) / 100 : null;
+  }
+  function updateBpmTag(c) {
+    const t = c.el && c.el.bpmTag; if (!t) return;
+    if (!c.buffer) { t.textContent = 'Tempo –'; t.title = ''; return; }
+    t.textContent = c.bpm ? (c.bpmGuess ? '≈ ' : '') + (+c.bpm.toFixed(2)) + ' BPM' : 'Tempo ?';
+    t.title = c.bpmGuess ? 'Aus der Länge geschätzt – klicken, um das richtige Tempo einzugeben' : 'Klicken, um das Tempo zu ändern';
+  }
+
+  // ---------- Tempoänderung ----------
+  // WSOLA: verschiebt kurze, überlappende Ausschnitte so, dass die Wellenformen zusammenpassen – Tonhöhe bleibt gleich
+  function wsola(chs, ratio) {
+    const inLen = chs[0].length, N = 2048, Hs = 512, Ha = Hs / ratio, tol = 384, outLen = Math.round(inLen * ratio);
+    const mono = new Float32Array(inLen + N + 2 * tol);
+    for (let i = 0; i < inLen; i++) { let s = 0; for (const ch of chs) s += ch[i]; mono[i] = s; }
+    const win = new Float32Array(N);
+    for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N);
+    const outs = chs.map(() => new Float32Array(outLen + N)), norm = new Float32Array(outLen + N);
+    let prev = 0;
+    for (let k = 0; k * Hs < outLen; k++) {
+      const ideal = Math.round(k * Ha);
+      let best = Math.min(Math.max(0, ideal), inLen - 1);
+      if (k > 0) {
+        const nat = prev + Hs; let bc = -Infinity;
+        for (let d = -tol; d <= tol; d += 2) {
+          const s = ideal + d; if (s < 0 || s >= inLen) continue;
+          let cc = 0; for (let i = 0; i < N / 2; i += 4) cc += mono[nat + i] * mono[s + i];
+          if (cc > bc) { bc = cc; best = s; }
+        }
+      }
+      const op = k * Hs;
+      chs.forEach((ch, ci) => { const o = outs[ci]; for (let i = 0; i < N; i++) { const j = best + i; if (j < inLen) o[op + i] += ch[j] * win[i]; } });
+      for (let i = 0; i < N; i++) norm[op + i] += win[i];
+      prev = best;
+    }
+    return outs.map(o => { const r = new Float32Array(outLen); for (let i = 0; i < outLen; i++) r[i] = norm[i] > 1e-3 ? o[i] / norm[i] : 0; return r; });
+  }
+  function resampleCh(chs, ratio) {   // „Plattenspieler“: schneller = höher (kubische Interpolation)
+    const outLen = Math.round(chs[0].length * ratio), step = 1 / ratio;
+    return chs.map(ch => {
+      const o = new Float32Array(outLen);
+      for (let i = 0; i < outLen; i++) {
+        const x = i * step, j = Math.floor(x), f = x - j, a = ch[j - 1] || 0, b = ch[j] || 0, c2 = ch[j + 1] || 0, d = ch[j + 2] || 0;
+        o[i] = b + 0.5 * f * (c2 - a + f * (2 * a - 5 * b + 4 * c2 - d + f * (3 * (b - c2) + d - a)));
+      }
+      return o;
+    });
+  }
+  // Ausschnitt [start, start+srcLen) auf outFrames Samples bringen; ohne „circular“ mit Überblendung an der Naht
+  function renderLoop(chs, start, srcLen, outFrames, mode, circular, sr) {
+    const n = chs[0].length, margin = Math.round(srcLen * 0.05) + 4096, ratio = outFrames / srcLen;
+    const seg = chs.map(ch => {
+      const s = new Float32Array(srcLen + 2 * margin);
+      for (let i = 0; i < s.length; i++) { let j = start - margin + i; if (circular) j = ((j % n) + n) % n; s[i] = j >= 0 && j < n ? ch[j] : 0; }
+      return s;
+    });
+    const st = Math.abs(ratio - 1) < 1e-5 ? seg : (mode === 'vinyl' ? resampleCh(seg, ratio) : wsola(seg, ratio));
+    const off = Math.round(margin * ratio), fade = Math.round(sr * 0.012);
+    return st.map(ch => {
+      const o = new Float32Array(outFrames);
+      for (let i = 0; i < outFrames; i++) o[i] = ch[off + i] || 0;
+      if (!circular) for (let i = 0; i < fade && i < outFrames; i++) { const w = i / fade; o[i] = o[i] * w + (ch[off + outFrames + i] || 0) * (1 - w); }
+      return o;
+    });
+  }
+
+  // ---------- Tempo-Erkennung ----------
+  function analyzeTempo(buf, forceBpm) {
+    const sr = buf.sampleRate, n = buf.length, hop = 256, L = buf.getChannelData(0), R = buf.numberOfChannels > 1 ? buf.getChannelData(1) : L;
+    const frames = Math.floor(n / hop), lowE = new Float32Array(frames), midE = new Float32Array(frames), hiE = new Float32Array(frames), fps = sr / hop;
+    const a = 1 - Math.exp(-2 * Math.PI * 150 / sr), a2 = 1 - Math.exp(-2 * Math.PI * 1500 / sr);
+    const BF = [100, 200, 400, 800, 1600], bk = BF.map(f => 1 - Math.exp(-2 * Math.PI * f / sr)), bst = new Float64Array(5);
+    const bands = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(frames));   // Klangfarbe in 6 Bändern (für Akkordwechsel)
+    let lp = 0, lp2 = 0, px = 0, sumL = 0, sumH = 0, sumM = 0;
+    for (let f = 0; f < frames; f++) {
+      let eh = 0, el = 0, em = 0;
+      for (let i = f * hop; i < (f + 1) * hop; i++) {
+        const x = (L[i] + R[i]) * 0.5; lp += a * (x - lp); lp2 += a2 * (x - lp2);
+        const h = x - px; px = x; eh += h * h; el += lp * lp; em += (lp2 - lp) * (lp2 - lp);
+        let prev = 0;
+        for (let k = 0; k < 5; k++) { bst[k] += bk[k] * (x - bst[k]); const bv = bst[k] - prev; bands[k][f] += bv * bv; prev = bst[k]; }
+        const top = x - bst[4]; bands[5][f] += top * top;
+      }
+      lowE[f] = el; midE[f] = em; hiE[f] = eh; sumL += el; sumH += eh; sumM += em;
+    }
+    const mL = sumL / frames + 1e-12, mH = sumH / frames + 1e-12;
+    // Zwei Einsatz-Kurven: fürs Tempo der logarithmische Energiezuwachs (Bass + Höhen),
+    // fürs Schlagraster nur die scharfen Anschläge in den Höhen (Klick, Snare, Hats) – Bass-Nachhall verschiebt sonst das Raster
+    const novT = new Float32Array(frames), novP = new Float32Array(frames), novM = new Float32Array(frames), novE = new Float32Array(frames), eL = mL * 1e-4, eH = mH * 1e-4;
+    for (let f = 1; f < frames; f++) {
+      novT[f] = Math.max(0, Math.log(lowE[f] + eL) - Math.log(lowE[f - 1] + eL)) + Math.max(0, Math.log(hiE[f] + eH) - Math.log(hiE[f - 1] + eH));
+      // nur der erste Anschlag zählt: Vergleich mit dem Maximum der letzten ~45 ms (unterdrückt Clap-Nachschläge und Bass-Nachhall)
+      // Höhen nur halb gewichtet: offene Hi-Hats auf den Offbeats sollen das Raster nicht um einen halben Schlag verschieben
+      let pH = 0, pL = 0, pM = 0;
+      for (let j = Math.max(0, f - 8); j < f; j++) { if (hiE[j] > pH) pH = hiE[j]; if (lowE[j] > pL) pL = lowE[j]; if (midE[j] > pM) pM = midE[j]; }
+      novM[f] = Math.max(0, midE[f] - pM) / (sumM / frames + 1e-12);
+      novE[f] = Math.max(0, (lowE[f] + midE[f] + hiE[f]) - (pL + pM + pH));   // absoluter Energiesprung: die Kick ist meist der lauteste Anschlag
+      novP[f] = 0.5 * Math.max(0, hiE[f] - pH) / mH + Math.max(0, lowE[f] - pL) / mL + novM[f];
+    }
+    const w = Math.round(0.4 * fps);
+    const detrend = x => {
+      const cs = new Float64Array(frames + 1), y = new Float32Array(frames + 2);
+      for (let f = 0; f < frames; f++) cs[f + 1] = cs[f] + x[f];
+      for (let f = 0; f < frames; f++) { const a0 = Math.max(0, f - w), b0 = Math.min(frames, f + w); y[f] = Math.max(0, x[f] - (cs[b0] - cs[a0]) / (b0 - a0)); }
+      return y;
+    };
+    const nv = detrend(novT), np = detrend(novP);
+    const minLag = Math.floor(fps * 60 / 200), maxLag = Math.ceil(fps * 60 / 60), acf = new Float32Array(4 * maxLag + 2);
+    for (let lag = minLag; lag <= 4 * maxLag && lag < frames; lag++) { let s = 0; for (let f = 0; f + lag < frames; f++) s += nv[f] * nv[f + lag]; acf[lag] = s / (frames - lag); }
+    const A = x => { const i = Math.floor(x), fr = x - i; return (acf[i] || 0) * (1 - fr) + (acf[i + 1] || 0) * fr; };
+    const prior = (lag, sd) => Math.exp(-0.5 * Math.pow(Math.log2((60 * fps / lag) / 120) / sd, 2));
+    // Stufe 1: stärkste Periode
+    let bestLag = minLag, bestV = -1, sumV = 0, cnt = 0;
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      const v = (acf[lag] + 0.5 * A(lag * 2)) * prior(lag, 0.9); sumV += acf[lag]; cnt++;
+      if (v > bestV) { bestV = v; bestLag = lag; }
+    }
+    // Stufe 2: Taktprüfung – der richtige Schlag wiederholt sich auch nach 2 und 4 Schlägen (verhindert 2:3- und 3:2-Fehler)
+    let meterLag = bestLag, meterV = -1;
+    const cands = [];
+    for (const m of [1, 0.5, 2, 2 / 3, 1.5, 0.75, 4 / 3]) {
+      const lag = bestLag * m;
+      if (lag < minLag || lag > maxLag) continue;
+      const v = (A(lag) + A(lag * 2) + 2 * A(lag * 4)) * prior(lag, 1.0);
+      cands.push({ bpm: 60 * fps / lag, v });
+      if (v > meterV) { meterV = v; meterLag = lag; }
+    }
+    if (forceBpm) meterLag = 60 * fps / forceBpm;
+    cands.sort((x, y) => y.v - x.v);
+    const conf = A(meterLag) / (sumV / cnt + 1e-12);
+    // Feine Periode über alle Schläge (Kammfilter)
+    let best = { score: -1, p: meterLag };
+    for (let p = meterLag * 0.97; p <= meterLag * 1.03; p += meterLag * 0.0005) {
+      const nb = Math.floor((frames - 2) / p);
+      for (let ph = 0; ph < p; ph += 2) {
+        let s = 0;
+        for (let k = 0; k < nb; k++) { const x = ph + k * p, i = Math.floor(x), fr = x - i; s += nv[i] * (1 - fr) + nv[i + 1] * fr; }
+        if (s > best.score) best = { score: s, p };
+      }
+    }
+    // Schlagraster: Phase aus den scharfen Anschlägen
+    const p = best.p, nb = Math.floor((frames - 2) / p);
+    const comb = (arr, o) => { let s = 0; for (let k = 0; k < nb; k++) { const x = o + k * p, i = Math.floor(x), fr = x - i; if (i >= 0) s += arr[i] * (1 - fr) + arr[i + 1] * fr; } return s; };
+    let ph = 0, bs = -1;
+    for (let o = 0; o < p; o += 0.5) { const s = comb(np, o); if (s > bs) { bs = s; ph = o; } }
+    // Achtel/Sechzehntel-Verwechslung auflösen: Clap/Snare (Mitten) und Kick liegen auf den Schlägen, offene Hats und Offbeat-Bass nicht
+    { const nm = detrend(novM), ne = detrend(novE), sm = nm.reduce((x, y) => x + y, 0) + 1e-12, se = ne.reduce((x, y) => x + y, 0) + 1e-12;
+      let bq = 0, bv = -1;
+      for (let q = 0; q < 4; q++) { const o = (ph + q * p / 4) % p, v = comb(ne, o) / se + 0.5 * comb(nm, o) / sm; if (v > bv) { bv = v; bq = q; } }
+      ph = (ph + bq * p / 4) % p; }
+    const bpm = 60 * fps / p, beat = 60 / bpm, phs = ph / fps;
+    // Taktanfang: (1) wo sich das Klangbild am stärksten ändert (Akkordwechsel), (2) Kick-Schläge statt Snare-Schläge (2 und 4)
+    const lo = [0, 0, 0, 0], hi = [0, 0, 0, 0], chg = [0, 0, 0, 0], bf = Math.round(4 * beat * fps);   // genau ein Takt: gleiches Rhythmusmuster in beiden Fenstern
+    // Klangfarbe eines Fensters: Bandenergien relativ zueinander (Lautstärke herausgerechnet), damit Rhythmus-Lücken nicht zählen
+    const shape = (f0, f1) => {
+      const v = bands.map(b => { let s = 0; for (let j = Math.max(0, f0); j < Math.min(frames, f1); j++) s += b[j]; return Math.log(s + 1e-12); });
+      const m = v.reduce((x, y) => x + y, 0) / v.length; return v.map(x => x - m);
+    };
+    for (let k = 0; phs + k * beat < n / sr; k++) {
+      const f = Math.round((phs + k * beat) * fps);
+      for (let j = Math.max(0, f - 1); j < f + 5 && j < frames; j++) { lo[k % 4] += lowE[j] / mL; hi[k % 4] += hiE[j] / mH; }
+      if (f - bf >= 0 && f + bf < frames) { const b = shape(f - bf, f), c = shape(f, f + bf); let d = 0; for (let q = 0; q < 6; q++) d += Math.abs(c[q] - b[q]); chg[k % 4] += d; }
+    }
+    const sL = lo.reduce((x, y) => x + y, 0) + 1e-9, sH = hi.reduce((x, y) => x + y, 0) + 1e-9, sC = chg.reduce((x, y) => x + y, 0) / 4 + 1e-9;
+    const pair = j => (lo[j % 4] + lo[(j + 2) % 4]) / sL - (hi[j % 4] + hi[(j + 2) % 4]) / sH;
+    const kickPair = pair(0) >= pair(1) ? 0 : 1;
+    let down = 0, ds = -Infinity;
+    for (let j = 0; j < 4; j++) { const s = chg[j] / sC + (j % 2 === kickPair ? 0.3 : 0) + 0.1 * lo[j] / (sL / 4); if (s > ds) { ds = s; down = j; } }
+    let grid0 = phs + down * beat;
+    while (grid0 - 4 * beat >= 0) grid0 -= 4 * beat;
+    const alts = cands.map(c => c.bpm).filter(b => Math.abs(b / bpm - 1) > 0.05).slice(0, 3);
+    return { bpm, grid0, conf, alts };
+  }
+
+  // ---------- Alle Kanäle an das Projekt-Tempo anpassen ----------
+  async function retempoAll() {
+    const target = projBpm;
+    if (!target) { status('Erst oben ein Projekt-Tempo eintragen.', true); return; }
+    const todo = chans.filter(c => c.buffer && c.bpm && Math.abs(c.bpm - target) > 0.01);
+    const unknown = chans.filter(c => c.buffer && !c.bpm).map(c => c.idx + 1);
+    if (!todo.length) { status(unknown.length ? 'Tempo unbekannt bei Kanal ' + unknown.join(', ') + ' – dort auf „Tempo ?“ klicken und eingeben.' : 'Alle Kanäle haben schon ' + target + ' BPM.', !!unknown.length); return; }
+    const wasPlaying = playing;
+    stop();
+    $('retempoBtn').disabled = true;
+    for (const c of todo) {
+      status('Passe Kanal ' + (c.idx + 1) + ' an (' + (+c.bpm.toFixed(2)) + ' → ' + target + ' BPM) …');
+      await new Promise(r => setTimeout(r, 20));
+      const b = c.buffer, chs = [b.getChannelData(0), b.numberOfChannels > 1 ? b.getChannelData(1) : b.getChannelData(0)];
+      const [L, R] = renderLoop(chs, 0, b.length, Math.round(b.length * c.bpm / target), 'keep', true, b.sampleRate);
+      const name = c.fileName.replace(/(_\d+(\.\d+)?bpm)?\.[^.]+$/i, '') + '_' + target + 'bpm.wav';
+      await setSample(c, encodeWav(L, R, b.sampleRate), name, target);
+    }
+    $('retempoBtn').disabled = false;
+    status(todo.length + ' Kanal/Kanäle auf ' + target + ' BPM gebracht' + (unknown.length ? '; Tempo unbekannt bei Kanal ' + unknown.join(', ') : '') + '.', !!unknown.length);
+    if (wasPlaying) await start();
+  }
+  $('retempoBtn').onclick = retempoAll;
+
+  $('presetSave').onclick = savePreset;
+  $('presetLoad').onclick = () => loadPreset($('presetSel').value);
+  $('presetDel').onclick = deletePreset;
+  $('presetSel').onchange = () => loadPreset($('presetSel').value);
+
+  const saved = load();
+  chans.forEach(buildChannel);
+  if (window.indexedDB) {
+    let last = null;
+    try { last = localStorage.getItem(STORE + '.preset'); } catch (e) {}
+    refreshPresets(last).then(() => { if (last && $('presetSel').value === last) return loadPreset(last); })
+      .catch(() => presetInfo('Presets sind in diesem Browser nicht verfügbar.', true));
+  } else {
+    presetInfo('Presets sind in diesem Browser nicht verfügbar.', true);
+  }
+})();
+</script>
+</body>
+</html>
