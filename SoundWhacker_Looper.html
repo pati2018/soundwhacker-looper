@@ -86,6 +86,15 @@
     <span class="small mut" id="offInfo"></span>
   </div>
 
+  <div class="bar row" id="rcBar">
+    <b>Kamera-App</b>
+    <button id="rcBtn" title="Eine Kamera-App auf einem anderen iPad darf die SWs 1–5 drücken">&#128225; Fernsteuerung erlauben</button>
+    <span class="small mut">Code</span><b id="rcCodeShow" style="font-size:20px;letter-spacing:3px;min-width:3.5em"></b>
+    <span class="lamp" id="rcLamp" title="leuchtet, solange die Kamera-App einen SW drückt"></span>
+    <span class="small mut" id="rcInfo"></span>
+    <div class="hint" style="flex-basis:100%">Die <b>SoundWhacker Kamera</b>-App auf einem anderen iPad kann hier die SWs 1–5 „drücken“ – Gesten wirken dann wie eine Berührung des SW (Loop, Akkord, Ton, Melodie … je nach Einstellung hier). Beide iPads brauchen <b>WLAN mit Internet</b>: zum Verbinden dient der freie Vermittlungsdienst PeerJS, danach sind die iPads direkt verbunden (nur kurze Meldungen, keine Bilder, kein Ton). In der Kamera-App den Code eingeben.</div>
+  </div>
+
   <div class="bar row" id="hubBar">
     <b>SW-HUB</b>
     <button id="hubLed" title="Öffnet die Web-App des SW-HUB in einem neuen Tab – dort unter „LED-Farbe“ die Farbe je SW wählen">&#128161; LED-Farben am HUB einstellen</button>
@@ -2679,6 +2688,126 @@ const GEN = (() => {
   }
   swmPiano(); swmUi();
   if (swmCfg.on) setTimeout(() => chEnsure().catch(() => {}), 0);   // beim Start schon laden, damit der erste Tastendruck sofort klingt
+
+  // ---------- Fernsteuerung zwischen zwei iPads: Kamera-App drückt die SWs 1–5 im Looper ----------
+  // Zum Bekanntmachen dient der freie PeerJS-Vermittler (WebSocket, nur Verbindungsdaten). Danach sind die Geräte direkt
+  // verbunden (WebRTC-Datenkanal) – es werden nur kurze Meldungen „SW n gedrückt/losgelassen“ übertragen, keine Bilder, kein Ton.
+  const RC_HOST = 'wss://0.peerjs.com/peerjs?key=peerjs';
+  const RC_ICE = [{ urls: 'stun:stun.l.google.com:19302' }];
+  const RC_PREFIX = 'soundwhacker-looper-';
+  const RC_KEY = 'swremote.v1';   // eigener Speicher-Schlüssel (nicht pro App), damit Code/Verbindung gleich bleiben
+  // Der öffentliche Vermittler erwartet Nachrichten im Format der PeerJS-Bibliothek (sonst trennt er die Verbindung)
+  const rcSdp = d => ({ sdp: d.sdp, type: d.type });
+  const rcPayload = (conn, extra) => Object.assign({ type: 'data', connectionId: conn }, extra);
+  const rcNewConn = () => 'dc_' + Math.random().toString(36).slice(2, 12);
+  const rcLoad = () => { try { return JSON.parse(localStorage.getItem(RC_KEY) || '{}') || {}; } catch (e) { return {}; } };
+  const rcStore = o => { try { localStorage.setItem(RC_KEY, JSON.stringify(Object.assign(rcLoad(), o))); } catch (e) {} };
+  // WebSocket zum Vermittler: meldet Zustände ('open', 'taken', 'lost', 'error') und reicht OFFER/ANSWER/CANDIDATE weiter
+  function rcSignal(id, onMsg, onState) {
+    let ws = null, hb = 0, closed = false;
+    const open = () => {
+      ws = new WebSocket(RC_HOST + '&id=' + encodeURIComponent(id) + '&token=' + Math.random().toString(36).slice(2) + '&version=1.5.4');
+      ws.onmessage = ev => {
+        let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.type === 'OPEN') onState('open');
+        else if (m.type === 'ID-TAKEN') { closed = true; onState('taken'); }
+        else if (m.type === 'ERROR') onState('error', m.payload && m.payload.msg);
+        else onMsg(m);
+      };
+      ws.onclose = () => { clearInterval(hb); if (!closed) { onState('lost'); setTimeout(() => { if (!closed) open(); }, 3000); } };
+      ws.onerror = () => {};
+      hb = setInterval(() => { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'HEARTBEAT' })); }, 5000);
+    };
+    open();
+    return {
+      send: (type, dst, payload) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type, dst, payload })); },
+      close: () => { closed = true; clearInterval(hb); try { ws.close(); } catch (e) {} }
+    };
+  }
+  // Looper-Seite: wartet mit festem Code auf die Kamera-App; deren Meldungen wirken wie die Tasten 1–5 (wie vom SW-HUB)
+  const rc = { sig: null, peers: new Map(), held: new Set(), code: '', on: false };
+  const rcInfo = (m, err) => { $('rcInfo').textContent = m || ''; $('rcInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  function rcCount() { return [...rc.peers.values()].filter(p => p.dc && p.dc.readyState === 'open').length; }
+  function rcStatus() {
+    if (!rc.on) { rcInfo('aus'); return; }
+    const n = rcCount();
+    rcInfo(n ? 'verbunden ✓ (' + (n === 1 ? 'eine Kamera-App' : n + ' Kamera-Apps') + ') – Code ' + rc.code
+      : 'bereit – in der Kamera-App den Code ' + rc.code + ' eingeben');
+    $('rcCodeShow').textContent = rc.code;
+  }
+  function rcStart() {
+    let code = rcLoad().code;
+    if (!/^\d{4}$/.test(code || '')) { code = String(1000 + Math.floor(Math.random() * 9000)); rcStore({ code }); }
+    rc.code = code; rc.on = true;
+    $('rcBtn').innerHTML = '&#9632; Fernsteuerung beenden'; $('rcBtn').classList.add('learning');
+    $('rcCodeShow').textContent = code;
+    rcInfo('verbinde mit dem Vermittler …');
+    rc.sig = rcSignal(RC_PREFIX + code, rcOnSignal, (st, msg) => {
+      if (st === 'open') rcStatus();
+      else if (st === 'taken') { rcStore({ code: '' }); rcStop(); rcStart(); }   // Code ist gerade woanders vergeben → neuer Code
+      else if (st === 'lost') rcInfo('keine Verbindung zum Vermittler (Internet?) – versuche erneut …', true);
+      else rcInfo('Fernsteuerung: ' + (msg || 'Fehler'), true);
+    });
+  }
+  function rcStop() {
+    rc.on = false;
+    if (rc.sig) rc.sig.close(); rc.sig = null;
+    [...rc.peers.keys()].forEach(rcDrop);
+    $('rcBtn').innerHTML = '&#128225; Fernsteuerung erlauben'; $('rcBtn').classList.remove('learning');
+    $('rcCodeShow').textContent = '';
+    rcStatus();
+  }
+  async function rcOnSignal(m) {
+    const src = m.src;
+    if (!src) return;
+    let p = rc.peers.get(src);
+    try {
+      if (m.type === 'OFFER') {
+        if (p) rcDrop(src);
+        const pc = new RTCPeerConnection({ iceServers: RC_ICE });
+        const conn = (m.payload && m.payload.connectionId) || rcNewConn();
+        p = { pc, dc: null, q: [] }; rc.peers.set(src, p);
+        pc.onicecandidate = e => { if (e.candidate && rc.sig) rc.sig.send('CANDIDATE', src, rcPayload(conn, { candidate: e.candidate.toJSON() })); };
+        pc.ondatachannel = e => rcChannel(src, e.channel);
+        pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed' || pc.connectionState === 'closed') rcDrop(src); };
+        await pc.setRemoteDescription(m.payload.sdp);
+        for (const c of p.q) { try { await pc.addIceCandidate(c); } catch (e) {} }
+        p.q = null;
+        await pc.setLocalDescription(await pc.createAnswer());
+        rc.sig.send('ANSWER', src, rcPayload(conn, { sdp: rcSdp(pc.localDescription) }));
+      } else if (m.type === 'CANDIDATE' && p && m.payload && m.payload.candidate) {
+        if (p.q) p.q.push(m.payload.candidate); else await p.pc.addIceCandidate(m.payload.candidate);
+      }
+    } catch (e) { rcInfo('Fernsteuerung: Verbindung fehlgeschlagen (' + ((e && e.message) || e) + ')', true); }
+  }
+  function rcChannel(src, dc) {
+    const p = rc.peers.get(src);
+    if (!p) return;
+    p.dc = dc;
+    dc.onopen = () => { rcStatus(); try { dc.send(JSON.stringify({ t: 'hello', app: 'looper' })); } catch (e) {} };
+    dc.onclose = () => rcDrop(src);
+    dc.onmessage = e => {
+      let m; try { m = JSON.parse(e.data); } catch (x) { return; }
+      if (m.t === 'sw' && m.n >= 1 && m.n <= 5) rcPress(src, m.n, !!m.on);
+    };
+  }
+  // Wie ein SW: Taste n drücken/loslassen (gleicher Weg wie die Bluetooth-Tastatur des SW-HUB)
+  function rcPress(src, n, on) {
+    const id = src + ':' + n;
+    if (on) { if (rc.held.has(id)) return; rc.held.add(id); }
+    else if (!rc.held.delete(id)) return;
+    document.dispatchEvent(new KeyboardEvent(on ? 'keydown' : 'keyup', { code: 'Digit' + n, key: String(n), bubbles: true }));
+    $('rcLamp').classList.toggle('on', rc.held.size > 0);
+  }
+  function rcDrop(src) {
+    [...rc.held].filter(id => id.startsWith(src + ':')).forEach(id => rcPress(src, +id.split(':').pop(), false));
+    const p = rc.peers.get(src);
+    rc.peers.delete(src);
+    if (p) { try { if (p.dc) p.dc.close(); } catch (e) {} try { p.pc.close(); } catch (e) {} }
+    rcStatus();
+  }
+  $('rcBtn').onclick = () => { if (rc.on) { rcStop(); rcStore({ on: false }); } else { rcStart(); rcStore({ on: true }); } };
+  if (rcLoad().on) rcStart(); else rcStatus();
 
   // ---------- Offline-Modus: Service Worker + „Für offline vorbereiten“ ----------
   const OFF_CACHE = 'swlooper-v1';   // muss zu CACHE in sw.js passen

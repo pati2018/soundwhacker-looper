@@ -75,6 +75,12 @@
       <span class="small mut" id="gesInfo">aus</span>
     </div>
     <div class="row" style="margin-top:10px">
+      <b class="small">Looper auf anderem iPad steuern</b>
+      <input id="rcCode" type="text" inputmode="numeric" maxlength="4" placeholder="Code" style="width:80px;font-size:18px;letter-spacing:2px;text-align:center">
+      <button id="rccBtn">&#128225; Verbinden</button>
+      <span class="small mut" id="rccInfo">Code vom Looper-iPad („Fernsteuerung erlauben“) eingeben – dann drücken Auslöser für Kanal 1–5 dort die SWs 1–5.</span>
+    </div>
+    <div class="row" style="margin-top:10px">
       <label class="small mut">Hintergrund <select id="bgSel"><option value="none">Kamerabild</option><option value="blur">unscharf</option><option value="stage">Bühne</option><option value="image">eigenes Foto …</option></select></label>
       <button id="bgFileBtn" hidden>&#128444; Foto wählen</button>
       <label class="small mut"><input type="checkbox" id="gesOverlay" checked> Handpunkte und Kanal einblenden</label>
@@ -640,6 +646,7 @@
   // src = wer drückt (Taste, linke/rechte Hand, Kopf/Körper). Im Modus „gedrückt halten“ bleibt ein Kanal hörbar,
   // solange irgendeine Quelle ihn hält – Tasten und Gesten stören sich so nicht gegenseitig.
   function press(c, on, src) {
+    if (rcc.want && src && src !== 'key') { rccPress(c.idx + 1, on, src); return; }   // Fernsteuerung: SW im Looper-iPad drücken
     if (previewAll) return;
     const h = c.holders || (c.holders = new Set());
     src = src || 'x';
@@ -2583,6 +2590,112 @@
   }
   chUi();
   if (chCfg.grpA || chCfg.grpB || chCfg.grpC) setTimeout(() => chEnsure().catch(() => {}), 0);   // beim Start schon laden, damit der erste Tastendruck sofort klingt
+
+  // ---------- Fernsteuerung zwischen zwei iPads: Kamera-App drückt die SWs 1–5 im Looper ----------
+  // Zum Bekanntmachen dient der freie PeerJS-Vermittler (WebSocket, nur Verbindungsdaten). Danach sind die Geräte direkt
+  // verbunden (WebRTC-Datenkanal) – es werden nur kurze Meldungen „SW n gedrückt/losgelassen“ übertragen, keine Bilder, kein Ton.
+  const RC_HOST = 'wss://0.peerjs.com/peerjs?key=peerjs';
+  const RC_ICE = [{ urls: 'stun:stun.l.google.com:19302' }];
+  const RC_PREFIX = 'soundwhacker-looper-';
+  const RC_KEY = 'swremote.v1';   // eigener Speicher-Schlüssel (nicht pro App), damit Code/Verbindung gleich bleiben
+  // Der öffentliche Vermittler erwartet Nachrichten im Format der PeerJS-Bibliothek (sonst trennt er die Verbindung)
+  const rcSdp = d => ({ sdp: d.sdp, type: d.type });
+  const rcPayload = (conn, extra) => Object.assign({ type: 'data', connectionId: conn }, extra);
+  const rcNewConn = () => 'dc_' + Math.random().toString(36).slice(2, 12);
+  const rcLoad = () => { try { return JSON.parse(localStorage.getItem(RC_KEY) || '{}') || {}; } catch (e) { return {}; } };
+  const rcStore = o => { try { localStorage.setItem(RC_KEY, JSON.stringify(Object.assign(rcLoad(), o))); } catch (e) {} };
+  // WebSocket zum Vermittler: meldet Zustände ('open', 'taken', 'lost', 'error') und reicht OFFER/ANSWER/CANDIDATE weiter
+  function rcSignal(id, onMsg, onState) {
+    let ws = null, hb = 0, closed = false;
+    const open = () => {
+      ws = new WebSocket(RC_HOST + '&id=' + encodeURIComponent(id) + '&token=' + Math.random().toString(36).slice(2) + '&version=1.5.4');
+      ws.onmessage = ev => {
+        let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.type === 'OPEN') onState('open');
+        else if (m.type === 'ID-TAKEN') { closed = true; onState('taken'); }
+        else if (m.type === 'ERROR') onState('error', m.payload && m.payload.msg);
+        else onMsg(m);
+      };
+      ws.onclose = () => { clearInterval(hb); if (!closed) { onState('lost'); setTimeout(() => { if (!closed) open(); }, 3000); } };
+      ws.onerror = () => {};
+      hb = setInterval(() => { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'HEARTBEAT' })); }, 5000);
+    };
+    open();
+    return {
+      send: (type, dst, payload) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type, dst, payload })); },
+      close: () => { closed = true; clearInterval(hb); try { ws.close(); } catch (e) {} }
+    };
+  }
+  // Kamera-Seite: verbindet sich mit dem Code des Loopers; Auslöser für „Kanal 1–5“ drücken dann dort die SWs 1–5
+  const rcc = { sig: null, pc: null, dc: null, q: null, want: false, code: '', timer: 0, held: new Map() };
+  const rccInfo = (m, err) => { $('rccInfo').textContent = m || ''; $('rccInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  const rccOpen = () => !!(rcc.dc && rcc.dc.readyState === 'open');
+  function rccUi() {
+    $('rccBtn').innerHTML = rcc.want ? '&#9632; Trennen' : '&#128225; Verbinden';
+    $('rccBtn').classList.toggle('learning', rcc.want);
+    $('rcCode').disabled = rcc.want;
+  }
+  function rccClose() {
+    clearTimeout(rcc.timer);
+    if (rcc.sig) rcc.sig.close();
+    try { if (rcc.dc) rcc.dc.close(); } catch (e) {}
+    try { if (rcc.pc) rcc.pc.close(); } catch (e) {}
+    rcc.sig = rcc.dc = rcc.pc = rcc.q = null;
+    rcc.held.clear();
+  }
+  function rccConnect() {
+    rccClose();
+    if (!rcc.want) return;
+    const me = 'soundwhacker-kamera-' + Math.random().toString(36).slice(2, 10), dst = RC_PREFIX + rcc.code, conn = rcNewConn();
+    rccInfo('verbinde mit Looper ' + rcc.code + ' …');
+    rcc.sig = rcSignal(me, async m => {
+      try {
+        if (m.type === 'ANSWER' && rcc.pc) {
+          await rcc.pc.setRemoteDescription(m.payload.sdp);
+          for (const c of rcc.q || []) { try { await rcc.pc.addIceCandidate(c); } catch (e) {} }
+          rcc.q = null;
+        } else if (m.type === 'CANDIDATE' && rcc.pc && m.payload && m.payload.candidate) {
+          if (rcc.q) rcc.q.push(m.payload.candidate); else await rcc.pc.addIceCandidate(m.payload.candidate);
+        } else if (m.type === 'EXPIRE') rccInfo('Looper ' + rcc.code + ' nicht erreichbar – Code prüfen und dort „Fernsteuerung erlauben“ einschalten.', true);
+      } catch (e) { rccInfo('Verbindung fehlgeschlagen: ' + ((e && e.message) || e), true); }
+    }, async st => {
+      if (st === 'open' && !rcc.pc) {
+        const pc = rcc.pc = new RTCPeerConnection({ iceServers: RC_ICE });
+        rcc.q = [];
+        const dc = rcc.dc = pc.createDataChannel('sw', { ordered: true });
+        dc.onopen = () => {
+          clearTimeout(rcc.timer);
+          rccInfo('verbunden ✓ – Auslöser für „Kanal 1–5“ drücken jetzt die SWs 1–5 im Looper');
+          if (rcc.sig) { rcc.sig.close(); rcc.sig = null; }   // Vermittler wird nicht mehr gebraucht
+        };
+        dc.onclose = () => { if (rcc.want) { rccInfo('Verbindung getrennt – verbinde neu …', true); setTimeout(rccConnect, 2000); } };
+        pc.onicecandidate = e => { if (e.candidate && rcc.sig) rcc.sig.send('CANDIDATE', dst, rcPayload(conn, { candidate: e.candidate.toJSON() })); };
+        await pc.setLocalDescription(await pc.createOffer());
+        rcc.sig.send('OFFER', dst, rcPayload(conn, { sdp: rcSdp(pc.localDescription), label: conn, reliable: false, serialization: 'binary' }));
+      } else if (st === 'lost') rccInfo('keine Verbindung zum Vermittler (Internet?) – versuche erneut …', true);
+      else if (st === 'error') rccInfo('Fernsteuerung: Fehler beim Vermittler', true);
+    });
+    rcc.timer = setTimeout(() => {   // keine Antwort: nochmal versuchen (z. B. Looper noch nicht bereit)
+      if (rcc.want && !rccOpen()) { rccInfo('Looper ' + rcc.code + ' antwortet nicht – ist dort „Fernsteuerung erlauben“ an und beide im Internet? Neuer Versuch …', true); rccConnect(); }
+    }, 15000);
+  }
+  // Wird von press() aufgerufen: mehrere Quellen (linke/rechte Hand, Kopf …) können denselben SW halten
+  function rccPress(n, on, src) {
+    const h = rcc.held.get(n) || new Set();
+    rcc.held.set(n, h);
+    const was = h.size > 0;
+    if (on) h.add(src); else h.delete(src);
+    const now = h.size > 0;
+    if (was !== now && rccOpen()) { try { rcc.dc.send(JSON.stringify({ t: 'sw', n, on: now })); } catch (e) {} }
+  }
+  $('rccBtn').onclick = () => {
+    if (rcc.want) { rcc.want = false; gesReleaseAll(); bodyReleaseAll(); rccClose(); rccInfo('getrennt – Kanäle 1–5 spielen wieder hier'); rcStore({ want: false }); rccUi(); return; }
+    const code = $('rcCode').value.trim();
+    if (!/^\d{4}$/.test(code)) { rccInfo('Bitte den 4-stelligen Code vom Looper-iPad eingeben.', true); return; }
+    gesReleaseAll(); bodyReleaseAll();
+    rcc.code = code; rcc.want = true; rcStore({ camCode: code, want: true }); rccUi(); rccConnect();
+  };
+  (() => { const s = rcLoad(); if (s.camCode) $('rcCode').value = s.camCode; if (s.want && s.camCode) { rcc.code = s.camCode; rcc.want = true; rccConnect(); } rccUi(); })();
 
   // ---------- Offline-Modus: Service Worker + „Für offline vorbereiten“ ----------
   const OFF_CACHE = 'swlooper-v1';   // muss zu CACHE in sw.js passen
