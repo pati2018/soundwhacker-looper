@@ -4399,22 +4399,27 @@ const GEN = (() => {
   let ctx = null, master = null;
   let playing = false, startTime = 0;
   let previewAll = false;
-  const chans = Array.from({ length: N }, (_, i) => ({ idx: i, buffer: null, fileName: '', source: null, gain: null, vol: 0.9, mode: 'hold', open: false, el: {} }));
+  const chans = Array.from({ length: N }, (_, i) => ({ idx: i, buffer: null, fileName: '', source: null, gain: null, vol: 0.9, mode: 'hold', key: null, open: false, keyHeld: false, el: {} }));
   const validGes = () => false;   // Gesten gibt es hier nicht (Felder bleiben in Preset-Dateien kompatibel)
   const $ = id => document.getElementById(id);
   const status = (msg, err) => { $('lpStatus').textContent = msg || ''; $('lpStatus').className = 'small ' + (err ? 'err' : 'mut'); };
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ master: +$('master').value, ch: chans.map(c => ({ vol: c.vol, mode: c.mode })) })); } catch (e) {}
+    try { localStorage.setItem(STORE, JSON.stringify({ master: +$('master').value, ch: chans.map(c => ({ vol: c.vol, mode: c.mode, key: c.key })) })); } catch (e) {}
   }
   function load() {
     try {
       const s = JSON.parse(localStorage.getItem(STORE) || 'null');
       if (!s) return;
       if (typeof s.master === 'number') $('master').value = s.master;
-      (s.ch || []).forEach((d, i) => { if (!chans[i] || !d) return; if (typeof d.vol === 'number') chans[i].vol = d.vol; if (d.mode === 'hold' || d.mode === 'toggle') chans[i].mode = d.mode; });
+      (s.ch || []).forEach((d, i) => { if (!chans[i] || !d) return; if (typeof d.vol === 'number') chans[i].vol = d.vol; if (d.mode === 'hold' || d.mode === 'toggle') chans[i].mode = d.mode; if (d.key && typeof d.key.code === 'string') chans[i].key = { code: d.key.code, label: String(d.key.label || d.key.code) }; });
     } catch (e) {}
   }
-  function renderAssign() {}
+  // Standard: Taste/SW 1–5 schaltet Kanal 1–5 (wenn der SW auf „Looper EIN“ steht); eine angelernte Taste schaltet den Kanal zusätzlich direkt
+  function renderAssign(c) {
+    c.el.keyTag.textContent = 'Taste ' + (c.key ? c.key.label + ' / ' : '') + (c.idx + 1);
+    c.el.keyShow.textContent = c.key ? 'Taste ' + c.key.label + ' schaltet diesen Kanal immer direkt' : 'Taste/SW ' + (c.idx + 1) + ' bei „Looper EIN“';
+    c.el.keyClr.hidden = !c.key;
+  }
   // ---------- Audio ----------
   function ensureAudio() {
     if (ctx) return ctx;
@@ -4744,20 +4749,59 @@ const GEN = (() => {
     } else if (on) setOpen(c, !c.open);
   }
 
+  // ---------- Tasten anlernen (PC-Tastatur, zusätzlich zu den Ziffern 1–5) ----------
+  let learnKeyIdx = -1;
+  const MODIFIER_CODES = ['Tab', 'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'CapsLock', 'NumLock', 'ScrollLock', 'ContextMenu', 'AltGraph', 'Fn'];
+  function keyLabel(e) {
+    if (e.code === 'Space') return 'Leertaste';
+    if (/^Numpad/.test(e.code)) return 'Num ' + (e.key && e.key.length === 1 ? e.key : e.code.slice(6));
+    return e.key && e.key.length === 1 ? e.key.toUpperCase() : (e.key || e.code);
+  }
+  function startKeyLearn(i) {
+    stopKeyLearn();
+    learnKeyIdx = i;
+    const b = chans[i].el.keyBtn;
+    b.classList.add('learning');
+    b.textContent = 'Taste drücken … (Esc = Abbruch)';
+  }
+  function stopKeyLearn() {
+    if (learnKeyIdx >= 0) {
+      const b = chans[learnKeyIdx].el.keyBtn;
+      b.classList.remove('learning');
+      b.textContent = 'Taste anlernen';
+    }
+    learnKeyIdx = -1;
+  }
+  function learnKeyFrom(e) {
+    const c = chans[learnKeyIdx];
+    if (e.code === 'Escape') { stopKeyLearn(); return; }
+    if (MODIFIER_CODES.includes(e.code)) return;
+    if (e.code === 'Digit0' || e.code === 'Numpad0') { status('Die Taste 0 ist für „Alle vorhören“ reserviert.', true); return; }
+    chans.forEach(o => { if (o !== c && o.key && o.key.code === e.code) { o.key = null; renderAssign(o); status('Taste ' + keyLabel(e) + ' gehörte zu Kanal ' + (o.idx + 1) + ' und ist jetzt bei Kanal ' + (c.idx + 1) + '.'); } });
+    c.key = { code: e.code, label: keyLabel(e) };
+    stopKeyLearn();
+    renderAssign(c);
+    save();
+  }
+
   // ---------- Oberfläche ----------
   function buildChannel(c) {
     const card = document.createElement('div');
     card.className = 'ch';
     card.innerHTML =
-      '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '<span class="small mut" style="font-weight:400;margin-left:auto">SW ' + (c.idx + 1) + '</span></h2>' +
+      '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '<span class="keyTag small mut" style="font-weight:400;margin-left:auto" title="Tasten auf der PC-Tastatur"></span></h2>' +
       '<div class="row" style="gap:6px"><button class="fileBtn">WAV laden</button><button class="delBtn" title="Datei aus diesem Kanal entfernen">&#128465; Entfernen</button><button class="dlBtn" title="Datei dieses Kanals speichern">&#11015;</button><input type="file" hidden></div>' +
       '<div class="fname">keine Datei – hierher ziehen</div>' +
       '<div class="row small"><span class="bpmTag mut">Tempo –</span></div>' +
+      '<div class="row small" style="gap:6px"><button class="keyBtn" title="Eine Taste der PC-Tastatur für diesen Kanal festlegen (gilt zusätzlich zur Ziffer)">Taste anlernen</button><button class="keyClr" title="Angelernte Taste entfernen" hidden>&#10005;</button><span class="keyShow mut"></span></div>' +
       '<select class="modeSel"><option value="hold">Hörbar solange berührt</option><option value="toggle">Umschalten bei Berührung</option></select>' +
       '<div><div class="small mut">Lautstärke</div><input type="range" class="vol" min="0" max="100"></div>' +
       '<button class="hold">&#128266; Vorhören</button>';
     const q = s => card.querySelector(s);
-    c.el = { card, lamp: q('.lamp'), fname: q('.fname'), bpmTag: q('.bpmTag') };
+    c.el = { card, lamp: q('.lamp'), fname: q('.fname'), bpmTag: q('.bpmTag'),
+      keyTag: q('.keyTag'), keyBtn: q('.keyBtn'), keyClr: q('.keyClr'), keyShow: q('.keyShow') };
+    c.el.keyBtn.onclick = () => (learnKeyIdx === c.idx ? stopKeyLearn() : startKeyLearn(c.idx));
+    c.el.keyClr.onclick = () => { c.key = null; renderAssign(c); save(); };
     c.el.bpmTag.onclick = async () => {
       if (!c.buffer) return;
       const v = +((await ask('Tempo dieses Loops in BPM:', c.bpm ? String(+c.bpm.toFixed(2)) : '')) || 0);
@@ -5201,6 +5245,26 @@ const GEN = (() => {
       press(c, on, 'sw');
     }
   };
+  // Angelernte Tasten vor dem virtuellen HUB abfangen (capture), damit sie nicht zusätzlich einen SW drücken
+  const typingIn = t => t && (t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || (t.tagName === 'INPUT' && !['range', 'checkbox', 'button', 'radio'].includes(t.type)));
+  document.addEventListener('keydown', e => {
+    if (!$('askModal').hidden) return;
+    if (learnKeyIdx >= 0) { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) learnKeyFrom(e); return; }
+    const i = chans.findIndex(c => c.key && c.key.code === e.code);
+    if (i < 0 || e.ctrlKey || e.altKey || e.metaKey || typingIn(e.target)) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (e.repeat) return;
+    ensureAudio(); ctx.resume();
+    if (!playing && chans.some(x => x.buffer)) start();
+    chans[i].keyHeld = true; press(chans[i], true, 'key');
+  }, true);
+  document.addEventListener('keyup', e => {
+    const i = chans.findIndex(c => c.key && c.key.code === e.code);
+    if (i < 0) return;
+    e.stopImmediatePropagation();
+    if (chans[i].keyHeld) { chans[i].keyHeld = false; press(chans[i], false, 'key'); }
+  }, true);
+  window.addEventListener('blur', () => chans.forEach(c => { if (c.keyHeld) { c.keyHeld = false; press(c, false, 'key'); } }));
   $('looperopen').onclick = () => { $('looperarea').classList.add('open'); };
   $('looperback').onclick = () => { $('looperarea').classList.remove('open'); };
 
