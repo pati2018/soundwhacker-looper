@@ -647,6 +647,7 @@ button.btn{font-size:13px;white-space:nowrap}
         <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button id="instrAddBtn" class="btn">+ Instrument</button>
           <button id="instrSaveBtn" class="btn">&#128190; Speichern</button>
+          <button id="instrResetBtn" class="btn">&#8634; Liste aus SoundFont laden</button>
           <span id="instrSaveStat" class="mut" style="font-size:13px"></span>
         </div>
         <div style="margin-top:16px;padding-top:14px;border-top:1px solid #1d2940">
@@ -918,13 +919,7 @@ button.btn{font-size:13px;white-space:nowrap}
         A.out.connect(comp); comp.connect(ctx.destination);
         synth.connect(A.out);
         A.synth = synth;
-        if (!S.instrList.length) {   // Instrumenten-Liste beim ersten Start aus der SoundFont füllen
-          S.instrList = (synth.presetList || []).filter(p => !p.isGMGSDrum && !p.isDrum)
-            .sort((a, b) => a.bankMSB - b.bankMSB || a.program - b.program || a.bankLSB - b.bankLSB)
-            .slice(0, 64).map(p => ({ name: String(p.name).trim().slice(0, 23), p: p.program, m: p.bankMSB, l: p.bankLSB }));
-          save();
-          if (window.swOnInstrList) window.swOnInstrList();
-        }
+        if (!S.instrList.length) { S.instrList = sfInstrList(); save(); if (window.swOnInstrList) window.swOnInstrList(); }   // beim ersten Start aus der SoundFont
         for (let id = 1; id <= 5; id++) applyChannel(id);
         status('');
         return synth;
@@ -937,11 +932,29 @@ button.btn{font-size:13px;white-space:nowrap}
     })();
     return A.loading;
   }
+  // Instrumenten-Liste aus der SoundFont: alle Instrumente, dazu die Schlagzeug-Kits (Bank 128 = Schlagzeug)
+  function sfInstrList() {
+    const pl = (A.synth && A.synth.presetList) || [], seen = new Set();
+    const inst = pl.filter(p => !p.isGMGSDrum && !p.isDrum).sort((a, b) => a.bankMSB - b.bankMSB || a.program - b.program || a.bankLSB - b.bankLSB)
+      .map(p => ({ name: String(p.name).trim().slice(0, 23), p: p.program, m: p.bankMSB, l: p.bankLSB }));
+    const drums = pl.filter(p => (p.isGMGSDrum || p.isDrum) && !seen.has(p.program) && seen.add(p.program)).sort((a, b) => a.program - b.program)
+      .map(p => ({ name: ('Schlagzeug ' + String(p.name).trim().replace(/\s*Kit$/i, '')).slice(0, 23), p: p.program, m: 128, l: 0 }));
+    return inst.concat(drums).slice(0, 64);
+  }
+  window.swResetInstrList = async () => {
+    await ensureSynth();
+    S.instrList = sfInstrList(); save();
+    return S.instrList;
+  };
+  const isDrumBank = m => m >= 120;   // Bank 120/127/128 = Schlagzeug (auch aus alten HUB-Presets)
   const chOf = id => (S.midiCh[id] || id) - 1;   // Kanal 10 (Index 9) = Schlagzeug
   function applyChannel(id) {
     if (!A.synth) return;
-    const c = chOf(id), ins = S.instr[id] || { p: 0, m: 0, l: 0 };
-    A.synth.controllerChange(c, 0, ins.m); A.synth.controllerChange(c, 32, ins.l); A.synth.programChange(c, ins.p);
+    const c = chOf(id), ins = S.instr[id] || { p: 0, m: 0, l: 0 }, drum = isDrumBank(ins.m) || c === 9;
+    const mc = A.synth.midiChannels && A.synth.midiChannels[c];
+    if (mc) mc.setDrums(drum);   // Schlagzeug: jede Taste/Note ein anderes Schlaginstrument
+    if (!drum) { A.synth.controllerChange(c, 0, ins.m); A.synth.controllerChange(c, 32, ins.l); }
+    A.synth.programChange(c, ins.p);
     A.synth.controllerChange(c, 7, S.vol[id]); A.synth.controllerChange(c, 91, 30); A.synth.controllerChange(c, 93, 0);
   }
   // Noten senden: ohne gestarteten Klang wird nichts gespielt (Start beim ersten Tastendruck/Tippen)
@@ -1672,6 +1685,13 @@ document.getElementById('instrAddBtn').onclick=()=>{
   instrListData.push({name:'',p:0,m:0,l:0});
   renderInstrList();
 };
+document.getElementById('instrResetBtn').onclick=async()=>{
+  const stat=document.getElementById('instrSaveStat');
+  if(!confirm('Instrumenten-Liste durch die Instrumente der SoundFont ersetzen?')) return;
+  stat.textContent='Lade…'; stat.className='mut';
+  try{ instrListData=await window.swResetInstrList(); rebuildInstrDropdowns(); renderInstrList(); stat.textContent=instrListData.length+' Instrumente'; stat.className='ok'; }
+  catch(e){ stat.textContent='Fehler'; stat.className='err'; }
+};
 document.getElementById('instrSaveBtn').onclick=async()=>{
   const stat=document.getElementById('instrSaveStat');
   stat.textContent='Speichere…'; stat.className='mut';
@@ -2032,8 +2052,8 @@ document.getElementById('dpimport').addEventListener('change',async(e)=>{
         await fetch('/mel_import?id='+id+'&md='+md+'&steps='+encodeURIComponent(stepsStr),{method:'POST'}).catch(()=>{});
       }
     }
-    // Instrument-Liste wiederherstellen falls vorhanden
-    if(data.il&&Array.isArray(data.il)&&data.il.length){
+    // Instrument-Liste NICHT aus der Datei übernehmen – es gilt die Liste aus der SoundFont (Instrumente danach neu zuordnen)
+    if(false&&data.il&&Array.isArray(data.il)&&data.il.length){
       let b='cnt='+data.il.length;
       data.il.forEach((e,i)=>{
         b+='&n'+i+'='+encodeURIComponent(e.n||'')+'&p'+i+'='+e.p+'&m'+i+'='+e.m+'&l'+i+'='+e.l;
