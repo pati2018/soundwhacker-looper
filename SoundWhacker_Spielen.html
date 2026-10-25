@@ -912,7 +912,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <button class="big stop" id="stopBtn">&#9632; Stopp</button>
     <button class="big" id="allBtn" title="Alle Kanäle gleichzeitig hörbar schalten (Taste 0)">&#128266; Alle vorhören</button>
     <span class="small mut">Projekt-Tempo</span>
-    <input id="projBpm" type="number" min="50" max="200" step="0.01" style="width:86px" placeholder="–">
+    <button id="projBpmMinus" title="Tempo -1">&minus;</button><input id="projBpm" type="number" inputmode="decimal" min="50" max="200" step="0.01" style="width:86px" placeholder="–"><button id="projBpmPlus" title="Tempo +1">+</button>
     <button id="retempoBtn" title="Alle Kanäle auf das Projekt-Tempo bringen (Tonhöhe bleibt)">Alle anpassen</button>
     <span class="clock mut" id="clock">gestoppt</span>
     <span style="flex:1"></span>
@@ -985,7 +985,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <div class="bar hint">Das Arpeggio wird mit den Instrumenten der SoundFont erzeugt (dieselbe wie f&uuml;r die SWs) und als <b>5 Loops in den Looper</b> geladen &ndash; Kanal&nbsp;1 bis 5 bekommen je einen Akkord. Danach im <b>&#128257; Looper</b> auf Start dr&uuml;cken oder die SWs auf &bdquo;Looper EIN&ldquo; stellen.</div>
   </div>
 </div>
-<div class="modal" id="askModal" hidden style="z-index:80;align-items:center">
+<div class="modal" id="askModal" hidden style="z-index:300;align-items:center">
   <div class="modalBox" style="width:min(420px,100%)">
     <div id="askMsg"></div>
     <input id="askInput" type="text" style="width:100%">
@@ -4641,7 +4641,9 @@ const GEN = (() => {
 
   async function savePreset() {
     if (!chans.some(c => c.buffer)) { presetInfo('Erst WAV-Dateien laden.', true); return; }
-    const name = ((await ask('Name des Presets:', $('presetSel').value || '')) || '').trim();
+    let sugg = $('presetSel').value;
+    if (!sugg) { const have = new Set([...$('presetSel').options].map(o => o.value)); let k = 1; while (have.has('Preset ' + k)) k++; sugg = 'Preset ' + k; }
+    const name = ((await ask('Name des Presets:', sugg)) || '').trim();
     if (!name) return;
     const existing = [...$('presetSel').options].some(o => o.value === name);
     if (existing && !(await ask('Preset "' + name + '" überschreiben?'))) return;
@@ -5330,6 +5332,9 @@ const GEN = (() => {
   let projBpm = null;
   function setProjBpm(v) { projBpm = v ? Math.round(v * 100) / 100 : null; $('projBpm').value = projBpm || ''; }
   $('projBpm').onchange = () => { const v = +$('projBpm').value; setProjBpm(v >= 50 && v <= 200 ? v : null); };
+  const bpmStep = d => { const v = Math.round(projBpm || (chans.find(c => c.bpm) || {}).bpm || 120) + d; setProjBpm(Math.max(50, Math.min(200, v))); };
+  $('projBpmMinus').onclick = () => bpmStep(-1);
+  $('projBpmPlus').onclick = () => bpmStep(1);
   function guessBpm(sec) {   // Länge → plausibles Tempo (4/4-Takt, 1–16 Takte)
     let best = null, bd = Infinity;
     for (const bars of [1, 2, 4, 8, 16]) {
