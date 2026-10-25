@@ -383,35 +383,38 @@ button.btn{font-size:13px;white-space:nowrap}
 #looperarea{display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch}
 #looperarea.open{display:block}
 #looperback{position:fixed;top:16px;left:16px;z-index:101;background:#0f1724;border:1px solid #fff;color:#fff;border-radius:10px;padding:10px 18px;cursor:pointer;font-size:15px}
-#looperarea .lp-wrap{max-width:1000px;margin:0 auto;padding:76px 16px 40px}
-#looperarea .bar{background:#111826;border:1px solid #1d2940;border-radius:16px;padding:12px 14px;margin-bottom:12px;box-shadow:0 6px 30px rgba(0,0,0,.35)}
-#looperarea .row{flex-wrap:wrap}
-#looperarea details>summary{cursor:pointer;list-style:none;font-size:17px}
-#looperarea details>summary::-webkit-details-marker{display:none}
-#looperarea details>summary b{color:#FFD700}
-#looperarea .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
-#looperarea .ch{background:#0e1626;border:1px solid #1d2940;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
-#looperarea .ch.open{border-color:#4dff87;box-shadow:0 0 12px rgba(77,255,135,.25)}
-#looperarea .ch.drag{border-color:var(--acc);border-style:dashed}
-#looperarea .ch h2{font-size:16px;margin:0;display:flex;align-items:center;gap:8px;color:#FFD700}
-#looperarea .lamp{width:14px;height:14px;border-radius:50%;background:#233041;display:inline-block;flex:none;border:1px solid #25324b}
-#looperarea .lamp.on{background:#4dff87;box-shadow:0 0 8px #4dff87;border-color:#4dff87}
-#looperarea .fname{font-size:13px;color:var(--mut);word-break:break-all;min-height:18px}
-#looperarea .fname.ok{color:var(--fg)}
-#looperarea button.big{font-size:17px;padding:12px 20px;font-weight:600;border-radius:12px}
-#looperarea button.start{border-color:#4dff87;color:#4dff87}
-#looperarea button.stop{border-color:#ff6363;color:#ff6363}
-#looperarea button.learning{border-color:var(--acc);color:var(--acc)}
-#looperarea .hold{width:100%}
-#looperarea input[type=range]{width:100%;accent-color:var(--acc)}
-#looperarea input[type=text],#looperarea input[type=number]{background:#0f1724;color:var(--fg);border:1px solid #25324b;border-radius:10px;padding:7px 8px;width:auto}
-#looperarea .hint{font-size:13px;color:var(--mut);line-height:1.6}
-#looperarea .bpmTag{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
-#looperarea .clock{font-variant-numeric:tabular-nums}
+.lparea .lp-wrap{max-width:1000px;margin:0 auto;padding:76px 16px 40px}
+.lparea .bar{background:#111826;border:1px solid #1d2940;border-radius:16px;padding:12px 14px;margin-bottom:12px;box-shadow:0 6px 30px rgba(0,0,0,.35)}
+.lparea .row{flex-wrap:wrap}
+.lparea details>summary{cursor:pointer;list-style:none;font-size:17px}
+.lparea details>summary::-webkit-details-marker{display:none}
+.lparea details>summary b{color:#FFD700}
+.lparea .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.lparea .ch{background:#0e1626;border:1px solid #1d2940;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.lparea .ch.open{border-color:#4dff87;box-shadow:0 0 12px rgba(77,255,135,.25)}
+.lparea .ch.drag{border-color:var(--acc);border-style:dashed}
+.lparea .ch h2{font-size:16px;margin:0;display:flex;align-items:center;gap:8px;color:#FFD700}
+.lparea .lamp{width:14px;height:14px;border-radius:50%;background:#233041;display:inline-block;flex:none;border:1px solid #25324b}
+.lparea .lamp.on{background:#4dff87;box-shadow:0 0 8px #4dff87;border-color:#4dff87}
+.lparea .fname{font-size:13px;color:var(--mut);word-break:break-all;min-height:18px}
+.lparea .fname.ok{color:var(--fg)}
+.lparea button.big{font-size:17px;padding:12px 20px;font-weight:600;border-radius:12px}
+.lparea button.start{border-color:#4dff87;color:#4dff87}
+.lparea button.stop{border-color:#ff6363;color:#ff6363}
+.lparea button.learning{border-color:var(--acc);color:var(--acc)}
+.lparea .hold{width:100%}
+.lparea input[type=range]{width:100%;accent-color:var(--acc)}
+.lparea input[type=text],.lparea input[type=number]{background:#0f1724;color:var(--fg);border:1px solid #25324b;border-radius:10px;padding:7px 8px;width:auto}
+.lparea .hint{font-size:13px;color:var(--mut);line-height:1.6}
+.lparea .bpmTag{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.lparea .clock{font-variant-numeric:tabular-nums}
 #askModal{position:fixed;inset:0;background:rgba(5,8,14,.8);display:flex;justify-content:center;padding:24px 12px;z-index:200}
 #askModal[hidden]{display:none}
 #askModal .modalBox{background:#111826;border:1px solid #1d2940;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;color:var(--fg)}
 #askModal input{background:#0f1724;color:var(--fg);border:1px solid #25324b;border-radius:10px;padding:8px}
+#arpmakerarea{display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch}
+#arpmakerarea.open{display:block}
+#arpmakerback{position:fixed;top:16px;left:16px;z-index:101;background:#0f1724;border:1px solid #fff;color:#fff;border-radius:10px;padding:10px 18px;cursor:pointer;font-size:15px}
 </style>
 
 <div class="wrap">
@@ -420,6 +423,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <button id="melopen"      class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;color:#FFD700;border-color:#FFD700">&#9834; Soundwhackers einstellen</button>
     <button id="liveopen"     class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">Unterst&uuml;tzt Spielen</button>
     <button id="looperopen"   class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#128257; Looper</button>
+    <button id="arpmakeropen" class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#127929; Arpeggio-Maker</button>
     <button id="settingsopen" class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#9881; Einstellungen</button>
     <button id="presetopen"   class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#128190; Presets</button>
     <button id="hilfeopen"    class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#10067; Hilfe</button>
@@ -803,6 +807,7 @@ button.btn{font-size:13px;white-space:nowrap}
         <li>Jeder SW (Taste 1&ndash;5) spielt je nach Einstellung einen <b>Akkord/Ton</b>, eine <b>Melodie</b> (Schritt f&uuml;r Schritt oder als Arpeggio) oder <b>improvisiert</b></li>
         <li>Alles einstellen unter <b>&#9834; Soundwhackers einstellen</b>; Lautst&auml;rke mit den Reglern auf der Startseite</li>
         <li><b>Unterst&uuml;tzt Spielen</b>: Akkord-Slots f&uuml;r SW1 und das Akkord-Pad zum Antippen</li>
+        <li><b>&#127929; Arpeggio-Maker</b>: erzeugt ein Arpeggio &uuml;ber 5 Akkorde mit einem Instrument der SoundFont und l&auml;dt es als 5 Loops in den Looper</li>
         <li><b>&#128257; Looper</b>: 5 Loop-Kan&auml;le mit Loop-Generator. Steht ein SW auf <b>Looper EIN</b>, steuert SW&nbsp;1 Kanal&nbsp;1, SW&nbsp;2 Kanal&nbsp;2 &hellip;</li>
         <li>Am PC kannst du die SWs mit den Tasten 1&ndash;5 ausprobieren</li>
         <li>Eigene Kl&auml;nge: Einstellungen &rarr; Instrumente &rarr; <b>Eigene SoundFont laden (.sf2)</b> (am iPad m&ouml;glichst unter 30&ndash;40&nbsp;MB)</li>
@@ -873,7 +878,7 @@ button.btn{font-size:13px;white-space:nowrap}
   </div>
 </div>
 
-<div id="looperarea">
+<div id="looperarea" class="lparea">
   <button id="looperback">&#127968; Home</button>
   <div class="lp-wrap">
     <div style="font-weight:700;font-size:20px;margin:0 0 14px;color:#FFD700">&#128257; Looper</div>
@@ -937,6 +942,44 @@ button.btn{font-size:13px;white-space:nowrap}
       <b>SW 1 steuert Kanal 1, SW 2 Kanal 2 &hellip;</b> &ndash; aber nur, wenn der SW unter &bdquo;Soundwhackers einstellen&ldquo; auf <b>Looper EIN</b> steht.
       Der erste Druck startet die Wiedergabe von selbst. Die Looper-Presets (mit WAV-Dateien) sind getrennt von der Looper-App; mit &bdquo;Presets sichern / einspielen&ldquo; lassen sie sich trotzdem austauschen.
     </div>
+  </div>
+</div>
+<div id="arpmakerarea" class="lparea">
+  <button id="arpmakerback">&#127968; Home</button>
+  <div class="lp-wrap">
+    <div style="font-weight:700;font-size:20px;margin:0 0 14px;color:#FFD700">&#127929; Arpeggio-Maker</div>
+  <details class="bar" id="sfBox" open>
+    <summary style="cursor:pointer"><b>SoundFont-Arpeggio</b> <span class="small mut">&ndash; fünf Loops: dasselbe Arpeggio über fünf Akkorde, zum Begleiten</span></summary>
+    <div class="row" style="margin-top:12px">
+      <span class="small mut">SoundFont</span>
+      <button id="sfFileBtn">&#128193; Eigene SoundFont laden (.sf2)</button>
+      <button id="sfBuiltinBtn" title="Die mitgelieferte Instrumenten-Auswahl verwenden">Eingebaute verwenden</button>
+      <span class="small" id="sfName">keine geladen</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut">Instrument <select id="sfPreset" style="min-width:220px" disabled><option>– erst SoundFont laden –</option></select></label>
+      <label class="small mut">Hall: trocken <input type="range" id="sfRev" min="0" max="100" value="30" style="width:140px"> viel <span id="sfRevVal" style="display:inline-block;min-width:3.2em">30 %</span></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut">Tempo <input id="sfBpm" type="number" min="40" max="220" step="1" style="width:72px" value="100"> BPM</label>
+      <label class="small mut">Länge <select id="sfBars"><option value="1">1 Takt</option><option value="2" selected>2 Takte</option></select></label>
+      <label class="small mut">Muster <select id="sfPattern"><option value="up">aufwärts</option><option value="down">abwärts</option><option value="updown" selected>auf und ab</option></select></label>
+      <label class="small mut">Notenwert <select id="sfRate"><option value="2">Achtel</option><option value="4" selected>Sechzehntel</option></select></label>
+      <label class="small mut">Oktaven <select id="sfOct"><option>1</option><option selected>2</option><option>3</option></select></label>
+      <label class="small mut">Lage <select id="sfReg"><option value="36">tief</option><option value="48" selected>mittel</option><option value="60">hoch</option></select></label>
+    </div>
+    <div class="row" style="margin-top:12px"><b class="small">Akkorde</b>
+      <span class="small mut">vorbelegen aus Tonart</span> <select id="sfKey"></select> <select id="sfKeyMode"><option value="major">Dur</option><option value="minor">Moll</option></select>
+      <button id="sfFill">Vorbelegen</button>
+    </div>
+    <div class="row" id="sfChords" style="margin-top:8px;gap:8px 16px"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="big start" id="sfGenBtn" disabled>&#127929; 5 Arpeggio-Loops erzeugen</button>
+      <span class="small mut" id="sfInfo"></span>
+    </div>
+    <div class="hint" style="margin-top:8px">Eingebaut ist eine Auswahl von 45 Instrumenten und 3 Schlagzeug-Kits aus <b>GeneralUser GS</b> (S. Christian Collins, frei nutzbar; Lizenz im Ordner <code>soundfonts</code>). Sie wird beim ersten Gebrauch einmal geladen (ca. 21 MB) und bleibt dann im Browser gespeichert – auch auf dem iPad. Eine eigene SoundFont ersetzt sie und bleibt ebenfalls gespeichert; mit <b>Eingebaute verwenden</b> geht es zurück. Alle fünf Loops nutzen dasselbe Instrument und Muster, Kanal 1–5 bekommt jeweils den eingestellten Akkord. Mit den Kanal-Tasten (1–5 oder angelernte Tasten), SWs oder MIDI schaltest du dann zwischen den Akkorden um.</div>
+  </details>
+    <div class="bar hint">Das Arpeggio wird mit den Instrumenten der SoundFont erzeugt (dieselbe wie f&uuml;r die SWs) und als <b>5 Loops in den Looper</b> geladen &ndash; Kanal&nbsp;1 bis 5 bekommen je einen Akkord. Danach im <b>&#128257; Looper</b> auf Start dr&uuml;cken oder die SWs auf &bdquo;Looper EIN&ldquo; stellen.</div>
   </div>
 </div>
 <div class="modal" id="askModal" hidden style="z-index:80;align-items:center">
@@ -4997,6 +5040,281 @@ const GEN = (() => {
   $('exportBtn').onclick = exportFiles;
   $('genText').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); generate(); } });
 
+  // ---------- SoundFont-Arpeggio (SpessaSynth, Apache-2.0, wird erst bei Bedarf geladen) ----------
+  const SF_LIB = new URL('vendor/spessasynth/spessasynth_core.mjs', location.href).href;   // spessasynth_core 4.3.22 (Apache-2.0), lokale Kopie – auch offline
+  const SF_DB = 'swlooper-soundfont', SF_ST = 'sf';
+  const SF_SET = STORE + '.sf';
+  let sfLibMod = null, sfBank = null, sfFileName = '', sfBusy = false;
+  const sfInfo = (m, err) => { $('sfInfo').textContent = m || ''; $('sfInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  const NOTE_DE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
+  const sfChords = [{ pc: 0, m: 'major' }, { pc: 5, m: 'major' }, { pc: 7, m: 'major' }, { pc: 9, m: 'minor' }, { pc: 2, m: 'minor' }];
+  const chordName = c => NOTE_DE[c.pc] + (c.m === 'minor' ? 'm' : '');
+
+  function sfDb(mode, fn) {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(SF_DB, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(SF_ST);
+      r.onerror = () => rej(r.error);
+      r.onsuccess = () => {
+        const db = r.result, tx = db.transaction(SF_ST, mode), req = fn(tx.objectStore(SF_ST));
+        tx.oncomplete = () => { db.close(); res(req && req.result); };
+        tx.onerror = tx.onabort = () => { db.close(); rej(tx.error); };
+      };
+    });
+  }
+  async function sfLib() {
+    if (!sfLibMod) sfLibMod = await import(SF_LIB);
+    return sfLibMod;
+  }
+
+  // Einstellungen merken (ohne SoundFont-Daten)
+  function sfSave() {
+    try {
+      localStorage.setItem(SF_SET, JSON.stringify({
+        preset: $('sfPreset').value, rev: +$('sfRev').value, bpm: +$('sfBpm').value, bars: $('sfBars').value, pattern: $('sfPattern').value,
+        rate: $('sfRate').value, oct: $('sfOct').value, reg: $('sfReg').value, key: $('sfKey').value, keyMode: $('sfKeyMode').value,
+        chords: sfChords
+      }));
+    } catch (e) {}
+  }
+  function sfLoadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SF_SET) || 'null');
+      if (!s) return null;
+      ['sfBpm', 'sfBars', 'sfPattern', 'sfRate', 'sfOct', 'sfReg', 'sfKey', 'sfKeyMode'].forEach(id => {
+        const k = { sfBpm: 'bpm', sfBars: 'bars', sfPattern: 'pattern', sfRate: 'rate', sfOct: 'oct', sfReg: 'reg', sfKey: 'key', sfKeyMode: 'keyMode' }[id];
+        if (s[k] != null) $(id).value = s[k];
+      });
+      if (typeof s.rev === 'number') $('sfRev').value = s.rev;
+      $('sfRevVal').textContent = $('sfRev').value + ' %';
+      (s.chords || []).forEach((c, i) => { if (sfChords[i] && c && c.pc >= 0 && c.pc < 12) sfChords[i] = { pc: c.pc | 0, m: c.m === 'minor' ? 'minor' : 'major' }; });
+      return s;
+    } catch (e) { return null; }
+  }
+
+  function renderSfChords() {
+    const box = $('sfChords');
+    box.innerHTML = '';
+    sfChords.forEach((c, i) => {
+      const wrap = document.createElement('label');
+      wrap.className = 'small mut';
+      wrap.innerHTML = 'Kanal ' + (i + 1) + ' <select class="sfPc"></select> <select class="sfM"><option value="major">Dur</option><option value="minor">Moll</option></select>';
+      const pc = wrap.querySelector('.sfPc'), m = wrap.querySelector('.sfM');
+      NOTE_DE.forEach((n, k) => { const o = document.createElement('option'); o.value = k; o.textContent = n; pc.appendChild(o); });
+      pc.value = c.pc; m.value = c.m;
+      pc.onchange = m.onchange = () => { sfChords[i] = { pc: +pc.value, m: m.value }; sfSave(); };
+      box.appendChild(wrap);
+    });
+  }
+  NOTE_DE.forEach((n, k) => { const o = document.createElement('option'); o.value = k; o.textContent = n; $('sfKey').appendChild(o); });
+  // Fünf leitereigene Akkorde: Dur I IV V vi ii (C F G Am Dm), Moll i iv v VI VII (Am Dm Em F G)
+  $('sfFill').onclick = () => {
+    const k = +$('sfKey').value;
+    const set = $('sfKeyMode').value === 'major'
+      ? [[0, 'major'], [5, 'major'], [7, 'major'], [9, 'minor'], [2, 'minor']]
+      : [[0, 'minor'], [5, 'minor'], [7, 'minor'], [8, 'major'], [10, 'major']];
+    set.forEach(([iv, m], i) => { sfChords[i] = { pc: (k + iv) % 12, m }; });
+    renderSfChords(); sfSave();
+  };
+  ['sfBpm', 'sfBars', 'sfPattern', 'sfRate', 'sfOct', 'sfReg', 'sfKey', 'sfKeyMode', 'sfPreset', 'sfRev'].forEach(id => $(id).addEventListener('change', sfSave));
+  $('sfRev').addEventListener('input', () => { $('sfRevVal').textContent = $('sfRev').value + ' %'; });
+
+  async function sfUse(bytes, name) {
+    const lib = await sfLib();
+    const bank = lib.SoundBankLoader.fromArrayBuffer(bytes);
+    const list = bank.presets.filter(p => !p.isGMGSDrum && !p.isDrum)
+      .sort((a, b) => a.bankMSB - b.bankMSB || a.program - b.program || a.bankLSB - b.bankLSB);
+    if (!list.length) throw new Error('keine Instrumente gefunden');
+    sfBank = bank; sfFileName = name;
+    const sel = $('sfPreset'), want = (sfLoadSettings() || {}).preset;
+    sel.innerHTML = '';
+    list.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.bankMSB + ':' + p.bankLSB + ':' + p.program;
+      o.textContent = (p.bankMSB || p.bankLSB ? p.bankMSB + '/' : '') + (p.program + 1) + ' ' + p.name.trim();
+      sel.appendChild(o);
+    });
+    if (want && [...sel.options].some(o => o.value === want)) sel.value = want;
+    sel.disabled = false; $('sfGenBtn').disabled = false;
+    $('sfName').textContent = name + ' (' + (bytes.byteLength / 1048576).toFixed(1) + ' MB, ' + list.length + ' Instrumente)';
+  }
+
+  async function sfLoadFile(file) {
+    if (sfBusy) return;
+    sfBusy = true;
+    try {
+      sfInfo('Lade SoundFont …');
+      const bytes = await file.arrayBuffer();
+      await sfUse(bytes.slice(0), file.name);
+      try { await sfDb('readwrite', s => s.put({ name: file.name, bytes }, 'main')); sfInfo('SoundFont geladen und gespeichert.'); }
+      catch (e) { sfInfo('SoundFont geladen, aber nicht dauerhaft gespeichert (Browser-Speicher voll oder gesperrt).', true); }
+    } catch (e) {
+      sfInfo('SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e) + '. Ist das eine .sf2-Datei, und besteht eine Internetverbindung?', true);
+    }
+    sfBusy = false;
+  }
+  $('sfFileBtn').onclick = () => {
+    const fi = document.createElement('input');
+    fi.type = 'file';   // ohne accept (iOS graut sonst Dateien aus)
+    fi.onchange = () => { if (fi.files[0]) sfLoadFile(fi.files[0]); };
+    fi.click();
+  };
+
+  // Gespeicherte SoundFont erst laden, wenn der Bereich geöffnet wird (spart Speicher und Ladezeit)
+  // Eingebaute SoundFont (Auswahl aus GeneralUser GS) – wird erst bei Bedarf geladen und dann im Browser gespeichert
+  const SF_BUILTIN_URL = new URL('soundfonts/SoundWhacker-Auswahl.sf2', location.href).href, SF_BUILTIN_VER = 2;   // 2 = mit Drum-Kits (Standard, 808/909, Brush)
+  async function sfLoadBuiltin() {
+    sfInfo('Lade eingebaute SoundFont (einmalig ca. 21 MB) …');
+    let rec = null;
+    try { rec = await sfDb('readonly', s => s.get('builtin')); } catch (e) {}
+    let bytes = rec && rec.ver === SF_BUILTIN_VER ? rec.bytes : null;
+    if (!bytes) {
+      const r = await fetch(SF_BUILTIN_URL);
+      if (!r.ok) throw new Error('Download fehlgeschlagen (' + r.status + ')');
+      bytes = await r.arrayBuffer();
+      try { await sfDb('readwrite', s => s.put({ ver: SF_BUILTIN_VER, bytes }, 'builtin')); } catch (e) {}
+    }
+    await sfUse(bytes.slice(0), 'SoundWhacker-Auswahl (eingebaut)');
+    sfInfo('');
+  }
+  let sfRestoring = null, sfRestoringNow = false;
+  function sfRestore() {   // gleichzeitige Aufrufe teilen sich denselben Ladevorgang
+    if (sfBank) return Promise.resolve();
+    if (!sfRestoring) sfRestoring = (async () => {
+      sfRestoringNow = true;
+      try {
+        const rec = await sfDb('readonly', s => s.get('main'));
+        if (rec && rec.bytes) { sfInfo('Lade gespeicherte SoundFont …'); await sfUse(rec.bytes, rec.name || 'SoundFont'); sfInfo(''); return; }
+        await sfLoadBuiltin();
+      } catch (e) { sfInfo('SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e) + ' – besteht eine Internetverbindung?', true); }
+      finally { sfRestoring = null; sfRestoringNow = false; }
+    })();
+    return sfRestoring;
+  }
+  $('sfBuiltinBtn').onclick = async () => {
+    if (sfBusy) return;
+    sfBusy = true;
+    try {
+      try { await sfDb('readwrite', s => s.delete('main')); } catch (e) {}
+      await sfLoadBuiltin();
+      sfInfo('Eingebaute SoundFont aktiv.');
+    } catch (e) { sfInfo('Eingebaute SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e), true); }
+    sfBusy = false;
+  };
+  $('sfBox').addEventListener('toggle', () => { if ($('sfBox').open) { sfRestore(); try { localStorage.setItem(SF_SET + '.open', '1'); } catch (e) {} } else { try { localStorage.removeItem(SF_SET + '.open'); } catch (e) {} } });
+
+  // Arpeggio-Töne eines Akkords: Grundton, Terz, Quinte über n Oktaven + oberster Grundton
+  function arpNotes(ch, reg, octs, pattern) {
+    const root = reg + ((ch.pc + 6) % 12) - 6;           // Grundton nah an der gewählten Lage
+    const tri = [0, ch.m === 'minor' ? 3 : 4, 7];
+    const up = [];
+    for (let o = 0; o < octs; o++) tri.forEach(t => up.push(root + 12 * o + t));
+    up.push(root + 12 * octs);
+    if (pattern === 'down') return up.slice().reverse();
+    if (pattern === 'updown') return up.concat(up.slice(1, -1).reverse());
+    return up;
+  }
+
+  async function sfRenderLoop(lib, patch, ch, o, sr) {
+    const synth = new lib.SpessaSynthProcessor(sr, { eventsEnabled: false });
+    synth.soundBankManager.addSoundBank(sfBank, 'main');
+    await synth.processorInitialized;
+    synth.controllerChange(0, 0, patch.msb);
+    synth.controllerChange(0, 32, patch.lsb);
+    synth.programChange(0, patch.program);
+    synth.controllerChange(0, 91, Math.round(o.rev * 127));   // Hall-Anteil (Reverb Send)
+    synth.controllerChange(0, 93, 0);                         // kein Chorus
+    const loopLen = Math.round(o.bars * 4 * 60 / o.bpm * sr);
+    const steps = o.bars * 4 * o.rate, stepLen = loopLen / steps;
+    const notes = arpNotes(ch, o.reg, o.oct, o.pattern);
+    // Zwei Durchläufe rendern und den zweiten nehmen: dann ist das Ausklingen des Vorgängers schon drin (nahtloser Loop)
+    const ev = [];
+    for (let k = 0; k < 2 * steps; k++) {
+      // Jeder Loop-Durchlauf beginnt wieder auf dem Grundton, damit beide Durchläufe gleich sind
+      const t = Math.round(k * stepLen), n = notes[(k % steps) % notes.length];
+      const accent = k % (o.rate * 4) === 0 ? 100 : (k % o.rate === 0 ? 86 : 74);
+      ev.push({ t, on: true, n, v: accent });
+      ev.push({ t: Math.round(t + stepLen * 0.92), on: false, n });
+    }
+    ev.sort((a, b) => a.t - b.t || (a.on ? 1 : -1));
+    const total = 2 * loopLen, L = new Float32Array(total), R = new Float32Array(total);
+    let pos = 0, e = 0, blocks = 0;
+    while (pos < total) {
+      while (e < ev.length && ev[e].t <= pos) {
+        const x = ev[e++];
+        if (x.on) synth.noteOn(0, x.n, x.v); else synth.noteOff(0, x.n);
+      }
+      const next = e < ev.length ? ev[e].t : total;
+      const n = Math.max(1, Math.min(128, next - pos, total - pos));
+      synth.process(L, R, pos, n);
+      pos += n;
+      if (++blocks % 2000 === 0) await new Promise(r => setTimeout(r, 0));   // Oberfläche bleibt bedienbar
+    }
+    // Kein destroySynthProcessor(): das würde die gemeinsam genutzte SoundFont mit freigeben
+    synth.stopAllChannels(true);
+    return { L: L.slice(loopLen), R: R.slice(loopLen) };
+  }
+
+  async function sfGenerate() {
+    if (sfBusy || !sfBank) return;
+    sfBusy = true; $('sfGenBtn').disabled = true;
+    try {
+      ensureAudio();
+      await ctx.resume();
+      stop();
+      const lib = await sfLib();
+      const bpm = Math.max(40, Math.min(220, +$('sfBpm').value || 100));
+      $('sfBpm').value = bpm;
+      const [msb, lsb, program] = $('sfPreset').value.split(':').map(Number);
+      const o = { bpm, bars: +$('sfBars').value, rate: +$('sfRate').value, oct: +$('sfOct').value, reg: +$('sfReg').value, pattern: $('sfPattern').value, rev: +$('sfRev').value / 100 };
+      const sr = ctx.sampleRate, out = [];
+      for (let i = 0; i < 5; i++) {
+        sfInfo('Erzeuge Loop ' + (i + 1) + ' von 5 (' + chordName(sfChords[i]) + ') …');
+        out.push(await sfRenderLoop(lib, { msb, lsb, program }, sfChords[i], o, sr));
+      }
+      // Gemeinsame Lautstärke: lautester Loop auf -1 dBFS, Verhältnis zwischen den Loops bleibt gleich
+      let peak = 0;
+      out.forEach(x => { for (let k = 0; k < x.L.length; k++) peak = Math.max(peak, Math.abs(x.L[k]), Math.abs(x.R[k])); });
+      if (peak < 1e-5) throw new Error('Das Instrument hat keinen Ton erzeugt. Bitte ein anderes wählen.');
+      const g = 0.891 / peak;
+      const inst = $('sfPreset').selectedOptions[0].textContent.replace(/^[\d/]+\s*/, '').replace(/[^A-Za-z0-9]+/g, '');
+      for (let i = 0; i < 5; i++) {
+        const x = out[i];
+        for (let k = 0; k < x.L.length; k++) { x.L[k] *= g; x.R[k] *= g; }
+        await setSample(chans[i], GEN.encodeWav(x.L, x.R, sr), (i + 1) + '_Arp_' + chordName(sfChords[i]) + '_' + inst + '_' + bpm + 'bpm.wav', bpm);
+      }
+      setProjBpm(bpm);
+      sfSave();
+      sfInfo('Fertig: ' + sfChords.map(chordName).join(' · ') + ', ' + bpm + ' BPM. Die 5 Loops sind jetzt im Looper (Kanal 1–5) – dort Start drücken oder die SWs auf „Looper EIN“ stellen.');
+    } catch (e) {
+      sfInfo('Erzeugen fehlgeschlagen: ' + ((e && e.message) || e), true);
+    }
+    $('sfGenBtn').disabled = !sfBank; sfBusy = false;
+  }
+  $('sfGenBtn').onclick = sfGenerate;
+  sfLoadSettings();
+  renderSfChords();
+  try { if (localStorage.getItem(SF_SET + '.open') === '1') $('sfBox').open = true; } catch (e) {}
+
+  // Eigene/eingebaute SoundFont über die Klangerzeugung der App laden – gilt dann für SWs und Arpeggio gleich
+  $('sfFileBtn').onclick = () => {
+    const fi = document.createElement('input');
+    fi.type = 'file';   // ohne accept (iOS graut sonst Dateien aus)
+    fi.onchange = async () => {
+      const f = fi.files[0]; if (!f) return;
+      sfInfo('Lade ' + f.name + ' …');
+      try { await window.swSoundFont.load(f); if (window.swOnInstrList) window.swOnInstrList(); sfBank = null; await sfRestore(); sfInfo('SoundFont geladen – gilt auch für die SWs (Einstellungen → Instrumente).'); }
+      catch (e) { sfInfo('Fehler: ' + ((e && e.message) || e), true); }
+    };
+    fi.click();
+  };
+  $('sfBuiltinBtn').onclick = async () => {
+    sfInfo('Lade eingebaute SoundFont …');
+    try { await window.swSoundFont.builtin(); if (window.swOnInstrList) window.swOnInstrList(); sfBank = null; await sfRestore(); sfInfo('Eingebaute SoundFont aktiv.'); }
+    catch (e) { sfInfo('Fehler: ' + ((e && e.message) || e), true); }
+  };
+  $('arpmakeropen').onclick = () => { $('arpmakerarea').classList.add('open'); sfRestore(); };
+  $('arpmakerback').onclick = () => { $('arpmakerarea').classList.remove('open'); };
   // ---------- Projekt-Tempo ----------
   let projBpm = null;
   function setProjBpm(v) { projBpm = v ? Math.round(v * 100) / 100 : null; $('projBpm').value = projBpm || ''; }
