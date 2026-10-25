@@ -474,6 +474,8 @@ button.btn{font-size:13px;white-space:nowrap}
     <div style="flex:1;padding:0 5px;text-align:center"><div class="mut" style="font-size:11px">Hall <span id="revval4">30</span></div><input type="range" class="rev-slider" id="revslider4" data-id="4" min="0" max="127" value="30" style="width:100%;accent-color:var(--acc)"></div>
     <div style="flex:1;padding:0 5px;text-align:center"><div class="mut" style="font-size:11px">Hall <span id="revval5">30</span></div><input type="range" class="rev-slider" id="revslider5" data-id="5" min="0" max="127" value="30" style="width:100%;accent-color:var(--acc)"></div>
   </div>
+  <div style="padding:8px 4px 0"><button id="swExtraToggle" class="btn" style="width:100%;font-size:14px;padding:8px">&#9660; Arpeggio- und SW-Kn&ouml;pfe einblenden</button></div>
+  <div id="swExtra" hidden>
   <!-- Per-SW Arpeggio Toggle -->
   <div style="display:flex;gap:0;padding:6px 4px 0;justify-content:space-around">
     <div style="flex:1;padding:0 5px"><button id="swArpBtn1" class="btn" style="width:100%;font-size:12px;padding:8px 2px;font-weight:600">&#9655; Arp 1</button></div>
@@ -503,6 +505,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <button id="swTouchAllBtn" class="btn" style="padding:14px 12px;font-size:15px;font-weight:600;white-space:nowrap">&#128263; Alle</button>
     <button id="allArpBtn" class="btn" style="flex:1;padding:14px;font-size:18px;font-weight:600">&#9654; Alle Arpeggios starten</button>
     <button id="arpSyncBtn" class="btn" style="padding:14px 18px;font-size:18px;font-weight:600" title="Alle laufenden Arpeggios auf Schritt 1 synchronisieren">&#8635;</button>
+  </div>
   </div>
 
 </div>
@@ -3551,6 +3554,14 @@ document.querySelectorAll('.mix-fader').forEach(sl=>{
   });
 });
 loadVolumes();
+// Arp-/Touch-Zeilen ein-/ausblenden (Zustand merken)
+(function(){
+  const box=document.getElementById('swExtra'), b=document.getElementById('swExtraToggle');
+  function show(on){ box.hidden=!on; b.innerHTML=on?'&#9650; Arpeggio- und SW-Kn&ouml;pfe ausblenden':'&#9660; Arpeggio- und SW-Kn&ouml;pfe einblenden'; try{localStorage.setItem('swspielen.extra',on?'1':'0');}catch(e){} }
+  let on=false; try{on=localStorage.getItem('swspielen.extra')==='1';}catch(e){}
+  show(on);
+  b.onclick=()=>show(box.hidden);
+})();
 // Hall pro SW
 let revTimers=[0,0,0,0,0,0];
 async function loadRevs(){
