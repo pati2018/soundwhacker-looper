@@ -60,8 +60,8 @@ button.btn{font-size:13px;white-space:nowrap}
   flex:1;border-right:1px solid #1a2640;padding:0 6px;
 }
 .mix-ch:last-child{border-right:none}
-.mix-instr{font-size:9px;color:#7888aa;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
-  cursor:default;width:100%;text-align:center;max-width:72px}
+.mix-instr{font-size:10px;color:#9aaacc;white-space:normal;overflow-wrap:anywhere;line-height:1.25;
+  cursor:default;width:100%;text-align:center;min-height:2.5em}
 .mix-val{
   font-size:13px;color:var(--acc);font-family:monospace;
   min-width:28px;text-align:center;font-weight:700;
@@ -426,6 +426,14 @@ button.btn{font-size:13px;white-space:nowrap}
       <span class="dot off" id="mixled5"></span>
       <span class="mix-instr" id="mixinstr5"></span>
     </div>
+  </div>
+  <!-- Hall pro SW -->
+  <div style="display:flex;gap:0;padding:6px 4px 0;justify-content:space-around">
+    <div style="flex:1;padding:0 5px;text-align:center"><div class="mut" style="font-size:11px">Hall <span id="revval1">30</span></div><input type="range" class="rev-slider" id="revslider1" data-id="1" min="0" max="127" value="30" style="width:100%;accent-color:var(--acc)"></div>
+    <div style="flex:1;padding:0 5px;text-align:center"><div class="mut" style="font-size:11px">Hall <span id="revval2">30</span></div><input type="range" class="rev-slider" id="revslider2" data-id="2" min="0" max="127" value="30" style="width:100%;accent-color:var(--acc)"></div>
+    <div style="flex:1;padding:0 5px;text-align:center"><div class="mut" style="font-size:11px">Hall <span id="revval3">30</span></div><input type="range" class="rev-slider" id="revslider3" data-id="3" min="0" max="127" value="30" style="width:100%;accent-color:var(--acc)"></div>
+    <div style="flex:1;padding:0 5px;text-align:center"><div class="mut" style="font-size:11px">Hall <span id="revval4">30</span></div><input type="range" class="rev-slider" id="revslider4" data-id="4" min="0" max="127" value="30" style="width:100%;accent-color:var(--acc)"></div>
+    <div style="flex:1;padding:0 5px;text-align:center"><div class="mut" style="font-size:11px">Hall <span id="revval5">30</span></div><input type="range" class="rev-slider" id="revslider5" data-id="5" min="0" max="127" value="30" style="width:100%;accent-color:var(--acc)"></div>
   </div>
   <!-- Per-SW Arpeggio Toggle -->
   <div style="display:flex;gap:0;padding:6px 4px 0;justify-content:space-around">
@@ -852,7 +860,7 @@ button.btn{font-size:13px;white-space:nowrap}
       instr: [0, 1, 2, 3, 4, 5].map(() => ({ p: 0, m: 0, l: 0 })), instrList: [],
       improRoot: arr6(0), improScale: arr6(0), improOct: arr6(4), improEn: arr6(false), improMode: false,
       akkordOff: arr6(false), mel: [0, 1, 2, 3, 4, 5].map(() => []), melMode: arr6(false),
-      vol: arr6(100), midiCh: [0, 1, 2, 3, 4, 5],
+      vol: arr6(100), rev: arr6(30), midiCh: [0, 1, 2, 3, 4, 5],
       arpBpm: 120, arpDiv: arr6(0), arpTgm: arr6(false), liveMode: arr6(false),
       slots: [0, 1, 2, 3, 4, 5].map(() => ({ root: -1, qual: 0, ts: 0 })), activeSlot: 0,
       lpresets: [null, null, null, null, null, null, null, null, null], dpresets: [null, null, null, null, null]
@@ -934,6 +942,7 @@ button.btn{font-size:13px;white-space:nowrap}
         A.synth = synth;
         if (!S.instrList.length) { S.instrList = sfInstrList(); save(); if (window.swOnInstrList) window.swOnInstrList(); }   // beim ersten Start aus der SoundFont
         for (let id = 1; id <= 5; id++) applyChannel(id);
+        if (window.swOnSynthReady) window.swOnSynthReady();
         status('');
         return synth;
       } catch (e) {
@@ -980,6 +989,16 @@ button.btn{font-size:13px;white-space:nowrap}
     },
     builtin: async () => { try { await sfDb('readwrite', s => s.delete('main')); } catch (e) {} return sfSwitch(await sfBytes()); }
   };
+  // Name eines Instruments (auch wenn es nicht in der Liste steht, z. B. aus alten Presets)
+  window.swInstrName = (p, m, l) => {
+    p = +p || 0; m = +m || 0; l = +l || 0;
+    const e = S.instrList.find(x => x.p === p && x.m === m && x.l === l);
+    if (e) return e.name;
+    const pl = (A.synth && A.synth.presetList) || [];
+    if (m >= 120) { const d = pl.find(x => (x.isGMGSDrum || x.isDrum) && x.program === p) || pl.find(x => x.isGMGSDrum || x.isDrum); return 'Schlagzeug' + (d ? ' ' + String(d.name).trim().replace(/\s*Kit$/i, '') : ''); }
+    const f = pl.find(x => !x.isGMGSDrum && !x.isDrum && x.program === p && x.bankMSB === m && x.bankLSB === l) || pl.find(x => !x.isGMGSDrum && !x.isDrum && x.program === p);
+    return f ? String(f.name).trim() : 'Programm ' + (p + 1);
+  };
   const isDrumBank = m => m >= 120;   // Bank 120/127/128 = Schlagzeug (auch aus alten HUB-Presets)
   const chOf = id => (S.midiCh[id] || id) - 1;   // Kanal 10 (Index 9) = Schlagzeug
   function applyChannel(id) {
@@ -989,7 +1008,7 @@ button.btn{font-size:13px;white-space:nowrap}
     if (mc) mc.setDrums(drum);   // Schlagzeug: jede Taste/Note ein anderes Schlaginstrument
     if (!drum) { A.synth.controllerChange(c, 0, ins.m); A.synth.controllerChange(c, 32, ins.l); }
     A.synth.programChange(c, ins.p);
-    A.synth.controllerChange(c, 7, S.vol[id]); A.synth.controllerChange(c, 91, 30); A.synth.controllerChange(c, 93, 0);
+    A.synth.controllerChange(c, 7, S.vol[id]); A.synth.controllerChange(c, 91, S.rev[id] != null ? S.rev[id] : 30); A.synth.controllerChange(c, 93, 0);
   }
   // Noten senden: ohne gestarteten Klang wird nichts gespielt (Start beim ersten Tastendruck/Tippen)
   const on = (id, n, v, t) => { if (A.synth) A.synth.noteOn(chOf(id), clampMidi(n), v || 110, t ? { time: t } : undefined); };
@@ -1160,7 +1179,7 @@ button.btn{font-size:13px;white-space:nowrap}
     const a = f => [0, 1, 2, 3, 4, 5].map(f);
     Object.assign(P, {
       ir: a(i => S.improRoot[i] || 0), is: a(i => S.improScale[i] || 0), io: a(i => S.improOct[i] || 4), ie: a(i => S.improEn[i] ? 1 : 0),
-      ad: a(i => S.arpDiv[i] || 0), ae: a(i => R.arpEn[i] ? 1 : 0), sv: a(i => S.vol[i] != null ? S.vol[i] : 100), ab: S.arpBpm,
+      rv: a(i => S.rev[i] != null ? S.rev[i] : 30), ad: a(i => S.arpDiv[i] || 0), ae: a(i => R.arpEn[i] ? 1 : 0), sv: a(i => S.vol[i] != null ? S.vol[i] : 100), ab: S.arpBpm,
       slsr: a(i => i && S.slots[i].root >= 0 ? S.slots[i].root : 255), slsq: a(i => i ? S.slots[i].qual : 0), slst: a(i => i ? S.slots[i].ts : 0),
       slsa: S.activeSlot, tgm: [1, 2, 3, 4, 5].reduce((m, i) => m | (S.arpTgm[i] ? 1 << (i - 1) : 0), 0), ch: a(i => S.midiCh[i] || i)
     });
@@ -1175,7 +1194,7 @@ button.btn{font-size:13px;white-space:nowrap}
       S.melMode[i] = !!d.mm; S.akkordOff[i] = !!d.ao; R.melStep[i] = 0; R.melPlaying[i] = false;
       S.mel[i] = (P.mel && P.mel[i]) ? P.mel[i].map(s => ({ n: s.n.slice(0, 3), d: s.d || 0 })) : [];
       S.improRoot[i] = (P.ir || [])[i] || 0; S.improScale[i] = (P.is || [])[i] || 0; S.improOct[i] = (P.io || [])[i] || 4; S.improEn[i] = !!(P.ie || [])[i];
-      S.arpDiv[i] = (P.ad || [])[i] || 0; S.vol[i] = (P.sv || [])[i] != null ? P.sv[i] : 100;
+      S.arpDiv[i] = (P.ad || [])[i] || 0; if ((P.rv || [])[i] != null) S.rev[i] = P.rv[i]; S.vol[i] = (P.sv || [])[i] != null ? P.sv[i] : 100;
       S.slots[i] = { root: (P.slsr || [])[i] == null || P.slsr[i] === 255 ? -1 : P.slsr[i], qual: (P.slsq || [])[i] ? 1 : 0, ts: (P.slst || [])[i] || 0 };
       S.arpTgm[i] = !!(((P.tgm || 0) >> (i - 1)) & 1);
       const c = (P.ch || [])[i]; if (c >= 1 && c <= 16) S.midiCh[i] = c;
@@ -1193,7 +1212,7 @@ button.btn{font-size:13px;white-space:nowrap}
       if (!P) { presets.push({ n, name: '', filled: false, ids: [] }); continue; }
       const o = { n, name: P.name || '', filled: true, ids: [] };
       for (let i = 1; i <= 5; i++) { const d = P.sw[i]; o.ids.push({ i, nt: d.nt, rt: d.rt, qq: d.qq, ts: d.ts, pp: d.pp, ms: d.ms, ls: d.ls, mm: d.mm, ao: d.ao, ml: 0, md: '' }); }
-      ['ir', 'is', 'io', 'ie', 'ad', 'ae', 'ab', 'sv', 'slsr', 'slsq', 'slst', 'slsa', 'tgm', 'ch'].forEach(k => { o[k] = P[k]; });
+      ['ir', 'is', 'io', 'ie', 'ad', 'ae', 'ab', 'sv', 'rv', 'slsr', 'slsq', 'slst', 'slsa', 'tgm', 'ch'].forEach(k => { o[k] = P[k]; });
       o.lc = [0, 0, 0, 0, 0]; o.gm = 0;
       for (let i = 1; i <= 5; i++) o['mel' + i] = melToStr((P.mel && P.mel[i]) || []);
       presets.push(o);
@@ -1211,7 +1230,7 @@ button.btn{font-size:13px;white-space:nowrap}
       if (g('n') != null) d.nt = +g('n'); if (g('r') != null) d.rt = +g('r'); if (g('q') != null) d.qq = +g('q'); if (g('t') != null) d.ts = +g('t');
       if (g('p') != null) d.pp = +g('p'); if (g('m') != null) d.ms = +g('m'); if (g('l') != null) d.ls = +g('l');
       if (g('mm') != null) d.mm = g('mm') === '1' ? 1 : 0; if (g('ao') != null) d.ao = g('ao') === '1' ? 1 : 0;
-      [['ir', 'ir'], ['is', 'is'], ['io', 'io'], ['ad', 'ad'], ['sv', 'sv'], ['slsr', 'slsr'], ['slsq', 'slsq'], ['slst', 'slst'], ['ch', 'ch']].forEach(([k, f]) => { if (q.has(k + i)) P[f][i] = +q.get(k + i); });
+      [['ir', 'ir'], ['is', 'is'], ['io', 'io'], ['ad', 'ad'], ['sv', 'sv'], ['rv', 'rv'], ['slsr', 'slsr'], ['slsq', 'slsq'], ['slst', 'slst'], ['ch', 'ch']].forEach(([k, f]) => { if (q.has(k + i)) P[f][i] = +q.get(k + i); });
       if (q.has('ie' + i)) P.ie[i] = q.get('ie' + i) === '1' ? 1 : 0;
       if (q.has('ae' + i)) P.ae[i] = q.get('ae' + i) === '1' ? 1 : 0;
       if (q.has('mel' + i)) P.mel[i] = strToMel(q.get('mel' + i));
@@ -1326,6 +1345,8 @@ button.btn{font-size:13px;white-space:nowrap}
       return routes['/slots']();
     },
     '/volumes': () => ok({ vol: S.vol }),
+    '/revs': () => ok({ rev: S.rev }),
+    '/rev_set': q => { const id = idArg(q); S.rev[id] = Math.max(0, Math.min(127, +q.get('val') || 0)); if (A.synth) A.synth.controllerChange(chOf(id), 91, S.rev[id]); save(); return ok('ok'); },
     '/volume_set': q => { const id = idArg(q); S.vol[id] = Math.max(0, Math.min(127, +q.get('val') || 0)); if (A.synth) A.synth.controllerChange(chOf(id), 7, S.vol[id]); save(); return ok('ok'); },
     '/dpresets': () => ok({ presets: [1, 2, 3, 4].map(n => ({ n, name: (S.dpresets[n] && S.dpresets[n].name) || '', filled: !!S.dpresets[n] })) }),
     '/dpreset_save': q => { const n = Math.max(1, Math.min(4, +q.get('num') || 1)); S.dpresets[n] = snapshot(q.get('name') || ('Preset ' + n)); save(); return ok('ok'); },
@@ -1545,7 +1566,7 @@ function updateMixInstr(id){
   const span=document.getElementById('mixinstr'+id);
   if(!span) return;
   const idx=sel?parseInt(sel.value,10):-1;
-  span.textContent=(idx>=0&&instrListData[idx])?instrListData[idx].name:'';
+  span.textContent=(idx>=0&&instrListData[idx])?instrListData[idx].name:(sel&&sel.dataset.p!=null&&sel.dataset.p!==''&&window.swInstrName?window.swInstrName(sel.dataset.p,sel.dataset.m,sel.dataset.l):'');
 }
 function updateAllMixInstrs(){ for(let i=1;i<=5;i++) updateMixInstr(i); }
 function rebuildInstrDropdowns(){
@@ -1972,6 +1993,7 @@ async function doLoadDPreset(num){
         }
       }
       dpStat('Geladen \u2713','ok');
+      loadRevs(); updateAllMixInstrs();
       if(j.impro){
         const im=j.impro;
         if(im.root &&im.root.length)  for(let i=1;i<=5;i++) improRootSW[i] =im.root[i] ||0;
@@ -2500,6 +2522,7 @@ function syncMelControls(id){
     await fetch('/instr_set?id='+i+'&p='+e.p+'&m='+e.m+'&l='+e.l,{method:'POST'});
     const sel=document.getElementById('instrsel_'+i);
     if(sel){sel.value=mi.value;sel.dataset.p=e.p;sel.dataset.m=e.m;sel.dataset.l=e.l;}
+    updateMixInstr(i);
   };
   const iSrc=document.getElementById('instrsel_'+id);
   if(iSrc) mi.value=iSrc.value;
@@ -3349,6 +3372,24 @@ document.querySelectorAll('.mix-fader').forEach(sl=>{
   });
 });
 loadVolumes();
+// Hall pro SW
+let revTimers=[0,0,0,0,0,0];
+async function loadRevs(){
+  try{
+    const j=await(await fetch('/revs')).json();
+    for(let i=1;i<=5;i++){ const v=j.rev[i]!=null?j.rev[i]:30; const sl=document.getElementById('revslider'+i); if(sl) sl.value=v; const vl=document.getElementById('revval'+i); if(vl) vl.textContent=v; }
+  }catch(e){}
+}
+document.querySelectorAll('.rev-slider').forEach(sl=>{
+  const id=parseInt(sl.dataset.id);
+  sl.addEventListener('input',()=>{
+    const val=parseInt(sl.value);
+    document.getElementById('revval'+id).textContent=val;
+    clearTimeout(revTimers[id]);
+    revTimers[id]=setTimeout(()=>{ fetch('/rev_set?id='+id+'&val='+val,{method:'POST'}).catch(()=>{}); },40);
+  });
+});
+loadRevs();
 
 
 // ===== ID-1 Touch-LED Polling =====
@@ -3369,6 +3410,7 @@ loadVolumes();
 })();
 // Instrumentenliste neu aufbauen, sobald die Klangerzeugung sie aus der SoundFont gefüllt hat
 window.swOnInstrList=()=>fetch('/instr_list').then(r=>r.json()).then(list=>{ instrListData=list; rebuildInstrDropdowns(); renderInstrList(); }).catch(()=>{});
+window.swOnSynthReady=()=>updateAllMixInstrs();   // Namen von Instrumenten außerhalb der Liste nachtragen
 // Offline-Speicher (gleicher Service Worker wie Looper und Kamera-App)
 if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
