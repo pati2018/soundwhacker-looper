@@ -1648,6 +1648,31 @@ const GEN = (() => {
   });
   window.addEventListener('blur', releaseKeys);   // Fenster verliert den Fokus: keine hängenden Tasten
 
+  // iOS/Safari: Audio wird erst nach einer echten Berührung freigegeben – mit der ersten Berührung entsperren
+  const unlockAudio = () => {
+    try {
+      ensureAudio();
+      ctx.resume();
+      const b = ctx.createBuffer(1, 1, ctx.sampleRate), s = ctx.createBufferSource();
+      s.buffer = b; s.connect(ctx.destination); s.start(0);
+    } catch (e) {}
+    ['touchend', 'pointerup', 'click'].forEach(ev => document.removeEventListener(ev, unlockAudio, true));
+  };
+  ['touchend', 'pointerup', 'click'].forEach(ev => document.addEventListener(ev, unlockAudio, true));
+
+  $('startBtn').onclick = start;
+  $('stopBtn').onclick = stop;
+  $('allBtn').onclick = togglePreviewAll;
+  $('master').oninput = () => { if (master) master.gain.setTargetAtTime($('master').value / 100, ctx.currentTime, 0.01); };
+  $('master').onchange = save;
+
+  // Laufzeit-Anzeige
+  setInterval(() => {
+    if (!playing || !ctx) return;
+    const t = Math.max(0, ctx.currentTime - startTime);
+    $('clock').textContent = 'läuft ' + Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
+  }, 250);
+
   // ---------- Export (Ordner oder ZIP) ----------
   function downloadBlob(blob, name) {
     const a = document.createElement('a');
