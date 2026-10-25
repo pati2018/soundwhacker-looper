@@ -1,0 +1,3306 @@
+<!doctype html><html lang="de"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="SW Spielen">
+<meta name="mobile-web-app-capable" content="yes">
+<title>SoundWhacker Spielen</title>
+<style>
+:root{--bg:#0b0f14;--fg:#e8eef7;--mut:#8aa0b3;--acc:#5ea1ff}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--fg);scrollbar-width:none;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+  padding-left:env(safe-area-inset-left);
+  padding-right:env(safe-area-inset-right);}
+body::-webkit-scrollbar{display:none}
+.wrap{max-width:1000px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 12px}
+.card{background:#111826;border:1px solid #1d2940;border-radius:16px;padding:12px;box-shadow:0 6px 30px rgba(0,0,0,.35);margin-bottom:12px}
+.grid{ display:flex; flex-direction:column; gap:8px; }
+.row{ display:flex; align-items:center; gap:10px; }
+.ipcell{ flex:1; min-width:0; }
+.badge{padding:4px 10px;border-radius:999px;background:#0e1626;border:1px solid #22314d;font-size:12px;white-space:nowrap}
+select,button{background:#0f1724;color:var(--fg);border:1px solid #25324b;border-radius:10px;padding:7px 8px;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+input[type=number]{background:#0f1724;color:var(--fg);border:1px solid #25324b;border-radius:10px;padding:7px 4px;width:100%;-moz-appearance:textfield;-webkit-appearance:none}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+button.btn{font-size:13px;white-space:nowrap}
+.ok{color:#b7ffd3}
+.err{color:#ffb7b7}
+.mut{color:#8aa0b3;font-size:13px}
+.small{font-size:12px}
+.ledline{display:flex;align-items:center;flex-wrap:wrap}
+.ledline>*{margin-right:10px;margin-bottom:4px}
+.ledline>*:last-child{margin-right:0}
+.dot{width:16px;height:16px;border-radius:999px;border:1px solid #25324b;display:inline-block;vertical-align:middle;box-shadow:0 0 10px rgba(0,0,0,.35) inset}
+.dot.off{background:conic-gradient(#233041 0 25%, transparent 0 50%, #233041 0 75%, transparent 0)}
+.dot.blue{background:#4ea3ff}
+.dot.green{background:#4dff87;box-shadow:0 0 7px #4dff87}
+.dot.red{background:#ff6363}
+.dot.yellow{background:#FFD700;box-shadow:0 0 7px #FFD700}
+
+/* ===== Responsive ===== */
+@media (max-width: 820px){
+  .badge{font-size:11px}
+  button.btn{padding:6px 8px}
+  select{padding:6px 8px}
+}
+
+/* ===== Mixer ===== */
+#mixer{
+  display:flex;gap:0;
+  background:#080c12;
+  border:1px solid #1d2940;border-radius:16px;
+  padding:40px 4px 12px;margin-bottom:12px;
+  justify-content:space-around;
+}
+.mix-ch{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  flex:1;border-right:1px solid #1a2640;padding:0 6px;
+}
+.mix-ch:last-child{border-right:none}
+.mix-instr{font-size:9px;color:#7888aa;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  cursor:default;width:100%;text-align:center;max-width:72px}
+.mix-val{
+  font-size:13px;color:var(--acc);font-family:monospace;
+  min-width:28px;text-align:center;font-weight:700;
+}
+.mix-track{
+  width:72px;height:240px;
+  position:relative;
+  flex-shrink:0;
+}
+.mix-track::before{
+  content:'';position:absolute;left:50%;top:12px;bottom:12px;
+  width:6px;transform:translateX(-50%);
+  background:linear-gradient(to bottom,#5ea1ff55,#1d2940);
+  border-radius:3px;pointer-events:none;z-index:0;
+}
+.mix-fader{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%) rotate(-90deg);
+  -webkit-appearance:none;appearance:none;
+  width:216px;height:72px;
+  background:transparent;cursor:pointer;
+  touch-action:none;z-index:1;
+}
+.mix-fader::-webkit-slider-runnable-track{
+  height:6px;border-radius:3px;
+  background:#1d2940;
+}
+.mix-fader::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:68px;height:68px;
+  border-radius:14px;
+  background:var(--acc);
+  margin-top:-31px;
+  box-shadow:0 2px 14px rgba(94,161,255,.45);
+  cursor:grab;
+}
+.mix-label{
+  font-size:15px;font-weight:700;color:var(--mut);letter-spacing:.5px;
+}
+.mix-ip{
+  font-size:10px;color:#FFD700;font-family:monospace;
+  text-align:center;width:100%;word-break:break-all;
+  padding:2px 2px 4px;line-height:1.2;
+}
+/* ===== Live-Modus ===== */
+#livearea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);
+  flex-direction:column;align-items:stretch;
+  touch-action:none;
+}
+#livearea.open{display:flex}
+#liveheader{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;flex-shrink:0;
+  border-bottom:1px solid #1d2940;
+}
+#liveslotpanel{
+  display:none;flex-shrink:0;
+  max-height:45vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  border-bottom:1px solid #1d2940;
+  padding:12px 16px;background:var(--bg);
+}
+#liveslotpanel.open{display:block}
+#slottoggle{
+  background:#0f1724;border:1px solid #25324b;
+  color:var(--fg);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:13px;
+}
+#slottoggle.active,#chordpadopen.active{border-color:var(--acc);color:var(--acc)}
+#livegrid{
+  position:relative;
+  flex:1;
+  overflow:hidden;
+}
+.livebtn{
+  width:130px;height:130px;
+  background:#152035;border:3px solid #25324b;
+  color:var(--fg);font-size:15px;font-weight:700;line-height:1.3;
+  display:flex;align-items:center;justify-content:center;
+  text-align:center;cursor:pointer;
+  transition:border-color .15s,box-shadow .15s,transform .1s;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  -webkit-user-select:none;
+  -webkit-touch-callout:none;
+  touch-action:none;
+}
+.livebtn:active{transform:scale(.93)}
+.livebtn.active{
+  border-color:var(--acc);
+  box-shadow:0 0 28px rgba(94,161,255,.5);
+  background:#1a2942;
+}
+#liveback{
+  background:#0f1724;border:1px solid #25324b;
+  color:var(--fg);border-radius:10px;
+  padding:10px 18px;cursor:pointer;font-size:15px;
+}
+#livearea.editmode .livebtn{
+  border-style:dashed;
+  cursor:grab;
+}
+.liveColorDot{
+  position:absolute;top:-10px;right:-10px;
+  width:28px;height:28px;border-radius:50%;
+  border:2px solid rgba(255,255,255,0.6);
+  display:none;z-index:10;
+  font-size:14px;line-height:24px;text-align:center;
+}
+#livearea.editmode .liveColorDot{ display:block; }
+#liveColorPicker{
+  position:absolute;z-index:200;
+  background:#0f1724;border:1px solid #25324b;border-radius:12px;
+  padding:6px;display:flex;flex-wrap:wrap;width:148px;
+}
+/* ===== Akkord-Pad ===== */
+#chordpadarea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);
+  flex-direction:column;align-items:stretch;
+  touch-action:none;
+}
+#chordpadarea.open{display:flex}
+#chordpadheader{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;flex-shrink:0;
+  border-bottom:1px solid #1d2940;
+}
+#chordpadgrid{
+  position:relative;
+  flex:1;
+  overflow:hidden;
+}
+#chordpadback{
+  background:#0f1724;border:1px solid #25324b;
+  color:var(--fg);border-radius:10px;
+  padding:10px 18px;cursor:pointer;font-size:15px;
+}
+#chordpadarea.editmode .padBtn{
+  border-style:dashed;
+  cursor:grab;
+}
+.padColorDot{
+  position:absolute;top:-10px;right:-10px;
+  width:28px;height:28px;border-radius:50%;
+  border:2px solid rgba(255,255,255,0.6);
+  display:none;z-index:10;
+  font-size:14px;line-height:24px;text-align:center;
+}
+#chordpadarea.editmode .padColorDot{ display:block; }
+#padColorPicker{
+  position:absolute;z-index:200;
+  background:#0f1724;border:1px solid #25324b;border-radius:12px;
+  padding:6px;display:flex;flex-wrap:wrap;width:148px;
+}
+.padColorSwatch{
+  width:36px;height:36px;border-radius:50%;cursor:pointer;
+  border:2px solid rgba(255,255,255,0.2);
+  touch-action:none;
+  margin:4px;
+}
+.padColorSwatch.sel{ border-color:#fff;transform:scale(1.15); }
+/* ===== Melodie-Recorder ===== */
+#melarea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);flex-direction:column;align-items:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#melarea.open{display:flex}
+#melback{
+  position:fixed;top:16px;left:16px;z-index:101;
+  background:#0f1724;border:1px solid #25324b;
+  color:var(--fg);border-radius:10px;
+  padding:10px 18px;cursor:pointer;font-size:15px;
+}
+#mel-to-preset,#preset-to-mel,#instr-to-preset{
+  position:fixed;top:16px;right:16px;z-index:101;
+  background:#0f1724;border-radius:10px;
+  padding:10px 18px;cursor:pointer;font-size:15px;
+}
+#mel-to-preset,#preset-to-mel,#instr-to-preset{color:#fff;border:1px solid #fff;}
+#melcontent{
+  width:100%;max-width:960px;padding:60px 16px 24px;
+  display:flex;flex-direction:column;gap:16px;align-items:center;
+}
+#melseq{
+  display:flex;flex-wrap:wrap;gap:6px;min-height:44px;
+  background:#111826;border:1px solid #1d2940;border-radius:12px;
+  padding:8px;width:100%;box-sizing:border-box;
+}
+.mnote{
+  padding:5px 10px;border-radius:8px;background:#152035;
+  border:2px solid #25324b;font-size:13px;color:var(--fg);
+}
+.mnote.current{
+  border-color:var(--acc);background:#1a2942;
+  box-shadow:0 0 12px rgba(94,161,255,.5);color:var(--acc);
+  font-weight:700;
+}
+#piano{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;padding-bottom:8px}
+.wkey{
+  width:var(--kw,42px);height:var(--kh,130px);background:#e8eef7;border:1px solid #888;
+  border-radius:0 0 6px 6px;cursor:pointer;flex-shrink:0;
+  transition:background .08s;display:flex;align-items:flex-end;
+  justify-content:center;padding-bottom:6px;box-sizing:border-box;
+  font-size:12px;color:#666;user-select:none;-webkit-tap-highlight-color:transparent;
+}
+.wkey:active,.wkey.pressed{background:var(--acc);color:#fff}
+.wkey.ckey{color:#e23b3b;font-weight:700}
+.bkey{
+  width:var(--bkw,26px);height:var(--bkh,82px);background:#1a1a2e;border:1px solid #555;
+  border-radius:0 0 4px 4px;position:absolute;top:0;z-index:2;
+  cursor:pointer;transition:background .08s;display:flex;align-items:flex-end;
+  justify-content:center;padding-bottom:4px;box-sizing:border-box;
+  font-size:9px;color:#fff;user-select:none;-webkit-tap-highlight-color:transparent;
+}
+.bkey:active,.bkey.pressed{background:var(--acc)}
+#piano.no-labels .wkey{color:transparent}
+#piano.no-labels .bkey{color:transparent}
+#improarea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);flex-direction:column;align-items:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#improarea.open{display:flex}
+#settingsarea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);flex-direction:column;align-items:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#settingsarea.open{display:flex}
+.set-hdr{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:6px 0;user-select:none;font-weight:600;font-size:16px;}
+.set-arr{font-size:13px;color:var(--acc);display:inline-block;transition:transform 0.2s;}
+.set-hdr.open .set-arr{transform:rotate(90deg);}
+#hilfearea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);flex-direction:column;align-items:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#hilfearea.open{display:flex}
+#gedankenarea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);flex-direction:column;align-items:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#gedankenarea.open{display:flex}
+#gedankenback{
+  position:fixed;top:16px;left:16px;z-index:101;
+  background:#0f1724;border:1px solid #25324b;
+  color:var(--fg);border-radius:10px;
+  padding:10px 18px;cursor:pointer;font-size:15px;
+}
+#settingsback{
+  position:fixed;top:16px;left:16px;z-index:101;
+  background:#0f1724;border:1px solid #25324b;
+  color:var(--fg);border-radius:10px;
+  padding:10px 18px;cursor:pointer;font-size:15px;
+}
+#ledarea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);flex-direction:column;align-items:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#ledarea.open{display:flex}
+#ledback{
+  position:fixed;top:16px;left:16px;z-index:101;
+  background:#0f1724;border:1px solid #25324b;
+  color:var(--fg);border-radius:10px;
+  padding:10px 18px;cursor:pointer;font-size:15px;
+}
+#instrarea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);flex-direction:column;align-items:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#instrarea.open{display:flex}
+#instrback{
+  position:fixed;top:16px;left:16px;z-index:101;
+  background:#0f1724;border:1px solid #25324b;
+  color:var(--fg);border-radius:10px;
+  padding:10px 18px;cursor:pointer;font-size:15px;
+}
+#presetarea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);flex-direction:column;align-items:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#presetarea.open{display:flex}
+#presetback{
+  position:fixed;top:16px;left:16px;z-index:101;
+  background:#0f1724;border:1px solid #25324b;
+  color:var(--fg);border-radius:10px;
+  padding:10px 18px;cursor:pointer;font-size:15px;
+}
+#tonakkordarea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);flex-direction:column;align-items:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#tonakkordarea.open{display:flex}
+#tonakkordback{
+  position:fixed;top:16px;left:16px;z-index:101;
+  background:#0f1724;border:1px solid #25324b;
+  color:var(--fg);border-radius:10px;
+  padding:10px 18px;cursor:pointer;font-size:15px;
+}
+#improback{
+  position:fixed;top:16px;left:16px;z-index:101;
+  background:#0f1724;border:1px solid #25324b;
+  color:var(--fg);border-radius:10px;
+  padding:10px 18px;cursor:pointer;font-size:15px;
+}
+#liveback,#chordpadback,#melback,#gedankenback,#settingsback,#ledback,#instrback,#presetback,#tonakkordback,#improback{
+  border-color:#fff;color:#fff;
+}
+</style>
+
+<div class="wrap">
+  <div id="swStatus" class="mut" style="text-align:center;min-height:18px;margin:0 0 8px"></div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+    <button id="melopen"      class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;color:#FFD700;border-color:#FFD700">&#9834; Soundwhackers einstellen</button>
+    <button id="liveopen"     class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">Unterst&uuml;tzt Spielen</button>
+    <button id="settingsopen" class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#9881; Einstellungen</button>
+    <button id="presetopen"   class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#128190; Presets</button>
+    <button id="hilfeopen"    class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#10067; Hilfe</button>
+    <!-- versteckte Trigger für improopen/instropen/tonakkordopen (JS-Referenzen bleiben erhalten) -->
+    <button id="tonakkordopen" style="display:none"></button>
+    <button id="improopen"     style="display:none"></button>
+    <button id="instropen"     style="display:none"></button>
+  </div>
+
+  <!-- ===== Mixer ===== -->
+  <div id="mixer">
+    <div class="mix-ch" data-id="1">
+      <div class="mix-val" id="mixval1">100</div>
+      <div class="mix-track"><input class="mix-fader" type="range" id="mixfader1" data-id="1" min="0" max="127" value="100"></div>
+      <span class="dot off" id="mixled1"></span>
+      <span class="mix-instr" id="mixinstr1"></span>
+    </div>
+    <div class="mix-ch" data-id="2">
+      <div class="mix-val" id="mixval2">100</div>
+      <div class="mix-track"><input class="mix-fader" type="range" id="mixfader2" data-id="2" min="0" max="127" value="100"></div>
+      <span class="dot off" id="mixled2"></span>
+      <span class="mix-instr" id="mixinstr2"></span>
+    </div>
+    <div class="mix-ch" data-id="3">
+      <div class="mix-val" id="mixval3">100</div>
+      <div class="mix-track"><input class="mix-fader" type="range" id="mixfader3" data-id="3" min="0" max="127" value="100"></div>
+      <span class="dot off" id="mixled3"></span>
+      <span class="mix-instr" id="mixinstr3"></span>
+    </div>
+    <div class="mix-ch" data-id="4">
+      <div class="mix-val" id="mixval4">100</div>
+      <div class="mix-track"><input class="mix-fader" type="range" id="mixfader4" data-id="4" min="0" max="127" value="100"></div>
+      <span class="dot off" id="mixled4"></span>
+      <span class="mix-instr" id="mixinstr4"></span>
+    </div>
+    <div class="mix-ch" data-id="5">
+      <div class="mix-val" id="mixval5">100</div>
+      <div class="mix-track"><input class="mix-fader" type="range" id="mixfader5" data-id="5" min="0" max="127" value="100"></div>
+      <span class="dot off" id="mixled5"></span>
+      <span class="mix-instr" id="mixinstr5"></span>
+    </div>
+  </div>
+  <!-- Per-SW Arpeggio Toggle -->
+  <div style="display:flex;gap:0;padding:6px 4px 0;justify-content:space-around">
+    <div style="flex:1;padding:0 5px"><button id="swArpBtn1" class="btn" style="width:100%;font-size:12px;padding:8px 2px;font-weight:600">&#9655; Arp 1</button></div>
+    <div style="flex:1;padding:0 5px"><button id="swArpBtn2" class="btn" style="width:100%;font-size:12px;padding:8px 2px;font-weight:600">&#9655; Arp 2</button></div>
+    <div style="flex:1;padding:0 5px"><button id="swArpBtn3" class="btn" style="width:100%;font-size:12px;padding:8px 2px;font-weight:600">&#9655; Arp 3</button></div>
+    <div style="flex:1;padding:0 5px"><button id="swArpBtn4" class="btn" style="width:100%;font-size:12px;padding:8px 2px;font-weight:600">&#9655; Arp 4</button></div>
+    <div style="flex:1;padding:0 5px"><button id="swArpBtn5" class="btn" style="width:100%;font-size:12px;padding:8px 2px;font-weight:600">&#9655; Arp 5</button></div>
+  </div>
+  <!-- Arp Touch-Modus pro SW -->
+  <div style="display:flex;gap:0;padding:4px 4px 0;justify-content:space-around">
+    <div style="flex:1;padding:0 5px"><button id="arpModeBtn1" class="btn" style="width:100%;font-size:16px;padding:5px 2px">&#128076;</button></div>
+    <div style="flex:1;padding:0 5px"><button id="arpModeBtn2" class="btn" style="width:100%;font-size:16px;padding:5px 2px">&#128076;</button></div>
+    <div style="flex:1;padding:0 5px"><button id="arpModeBtn3" class="btn" style="width:100%;font-size:16px;padding:5px 2px">&#128076;</button></div>
+    <div style="flex:1;padding:0 5px"><button id="arpModeBtn4" class="btn" style="width:100%;font-size:16px;padding:5px 2px">&#128076;</button></div>
+    <div style="flex:1;padding:0 5px"><button id="arpModeBtn5" class="btn" style="width:100%;font-size:16px;padding:5px 2px">&#128076;</button></div>
+  </div>
+  <!-- SW Touch-Simulation: 5 Mute-Buttons ausgerichtet unter Fader -->
+  <div style="display:flex;gap:0;padding:4px 4px 0;justify-content:space-around">
+    <div style="flex:1;padding:0 5px"><button id="swTouchBtn1" class="btn" style="width:100%;font-size:13px;padding:10px 2px;font-weight:600">&#128263; SW1</button></div>
+    <div style="flex:1;padding:0 5px"><button id="swTouchBtn2" class="btn" style="width:100%;font-size:13px;padding:10px 2px;font-weight:600">&#128263; SW2</button></div>
+    <div style="flex:1;padding:0 5px"><button id="swTouchBtn3" class="btn" style="width:100%;font-size:13px;padding:10px 2px;font-weight:600">&#128263; SW3</button></div>
+    <div style="flex:1;padding:0 5px"><button id="swTouchBtn4" class="btn" style="width:100%;font-size:13px;padding:10px 2px;font-weight:600">&#128263; SW4</button></div>
+    <div style="flex:1;padding:0 5px"><button id="swTouchBtn5" class="btn" style="width:100%;font-size:13px;padding:10px 2px;font-weight:600">&#128263; SW5</button></div>
+  </div>
+  <!-- Alle SW + Start/Stop + Sync -->
+  <div style="padding:6px 4px 4px;display:flex;gap:8px">
+    <button id="swTouchAllBtn" class="btn" style="padding:14px 12px;font-size:15px;font-weight:600;white-space:nowrap">&#128263; Alle</button>
+    <button id="allArpBtn" class="btn" style="flex:1;padding:14px;font-size:18px;font-weight:600">&#9654; Alle Arpeggios starten</button>
+    <button id="arpSyncBtn" class="btn" style="padding:14px 18px;font-size:18px;font-weight:600" title="Alle laufenden Arpeggios auf Schritt 1 synchronisieren">&#8635;</button>
+  </div>
+
+</div>
+
+</div>
+
+<div id="chordpadarea">
+  <div id="chordpadheader">
+    <button id="chordpadback">&#127968; Home</button>
+    <button id="padshapebtn" class="btn">&#11044;</button>
+    <button id="padedittoggle" class="btn">&#9998; Positionieren</button>
+  </div>
+  <div id="chordpadgrid"></div>
+</div>
+
+<div id="livearea">
+  <div id="liveheader">
+    <button id="liveback">&#127968; Home</button>
+    <button id="slottoggle">&#9835; Slots</button>
+    <button id="chordpadopen" class="btn">&#9835; Akkord-Pad</button>
+    <button id="liveshapebtn" class="btn">&#11044;</button>
+    <button id="liveedittoggle" class="btn">&#9998; Positionieren</button>
+  </div>
+  <div id="liveslotpanel">
+    <div style="font-weight:600;margin-bottom:8px">Akkord-Slots <span class="mut small">(Slot speichern, dann &#9654; Aktivieren &mdash; Touch spielt den Slot)</span></div>
+    <div id="slotlist" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div style="font-weight:600;margin:12px 0 8px">Slot-Presets</div>
+    <div id="lpresetgrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <span class="mut" style="font-size:12px">Name:</span>
+      <input id="lpname" type="text" maxlength="20" placeholder="Preset-Name" style="flex:1;min-width:100px;background:#0e1626;color:#e0e8ff;border:1px solid #1d2940;border-radius:8px;padding:5px 8px;font-size:13px">
+      <button id="lpsave" class="btn">Speichern</button>
+      <button id="lpload" class="btn">Laden</button>
+      <span id="lpstat" class="mut" style="font-size:12px"></span>
+    </div>
+  </div>
+  <div id="livegrid"></div>
+</div>
+
+<div id="melarea">
+  <button id="melback">&#127968; Home</button>
+  <button id="mel-to-preset">&#128190; Presets</button>
+  <div id="melcontent">
+    <!-- SW-Selektor -->
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;position:sticky;top:0;z-index:10;background:var(--bg);padding:8px 0 6px;margin-bottom:4px">
+      <button class="btn melid-btn" data-id="1" id="melid1" style="font-size:22px;padding:16px 28px;border-color:#FFD700;color:#FFD700">SW1</button>
+      <button class="btn melid-btn" data-id="2" id="melid2" style="font-size:22px;padding:16px 28px;border-color:#FFD700;color:#FFD700">SW2</button>
+      <button class="btn melid-btn" data-id="3" id="melid3" style="font-size:22px;padding:16px 28px;border-color:#FFD700;color:#FFD700">SW3</button>
+      <button class="btn melid-btn" data-id="4" id="melid4" style="font-size:22px;padding:16px 28px;border-color:#FFD700;color:#FFD700">SW4</button>
+      <button class="btn melid-btn" data-id="5" id="melid5" style="font-size:22px;padding:16px 28px;border-color:#FFD700;color:#FFD700">SW5</button>
+    </div>
+    <!-- Modus-Buttons -->
+    <span id="melstepinfo" style="display:none"></span>
+    <div style="margin-top:100px;display:flex;gap:14px;align-items:stretch;flex-wrap:wrap;justify-content:center">
+      <button id="modemelBtn"   class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9834; Melodie AUS</button>
+      <button id="modeakkBtn"   class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9835; Akkord AUS</button>
+      <button id="modeimproBtn" class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9836; Impro AUS</button>
+    </div>
+    <!-- Instrument (gilt für alle Modi) -->
+    <div style="margin-top:40px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <span class="mut" style="font-size:20px">&#127931; Instrument:</span>
+      <select id="mel-instr" style="font-size:18px;padding:10px 8px;min-height:48px;flex:1"></select>
+    </div>
+    <!-- Melodie (inkl. Tastatur) -->
+    <div style="width:100%;background:#111826;border:1px solid #1d2940;border-radius:14px;margin-top:16px">
+      <button id="melToggle" style="width:100%;text-align:left;background:transparent;border:none;color:#FFD700;border-radius:14px;padding:16px 20px;font-size:20px;cursor:pointer;font-weight:600">
+        &#9834; Melodie &#9660;
+      </button>
+      <div id="melPanel" style="display:none;padding:0 16px 16px">
+        <div style="display:flex;align-items:center;gap:12px;margin:10px 0 6px;flex-wrap:wrap">
+          <button class="btn" id="pianoOctDown" style="font-size:20px;padding:10px 20px">&#9664;</button>
+          <span id="pianoOctLabel" class="mut" style="font-size:18px;min-width:36px;text-align:center">C3</span>
+          <button class="btn" id="pianoOctUp" style="font-size:20px;padding:10px 20px">&#9654;</button>
+          <span class="mut" style="font-size:17px">Oktave</span>
+          <span class="mut" style="font-size:14px;margin-left:8px">Breite:</span>
+          <input id="pianoWidthSlider" type="range" min="22" max="72" value="42" style="width:100px">
+        </div>
+        <div id="piano"></div>
+        <!-- Tondauer-Auswahl -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px">
+          <span class="mut" style="font-size:14px">Dauer:</span>
+          <button class="btn mel-dur-btn" data-dur="6" style="font-size:14px;padding:7px 10px">1/1</button>
+          <button class="btn mel-dur-btn" data-dur="5" style="font-size:14px;padding:7px 10px">1/2</button>
+          <button class="btn mel-dur-btn" data-dur="4" style="font-size:14px;padding:7px 10px">1/2.</button>
+          <button class="btn mel-dur-btn" data-dur="0" style="font-size:14px;padding:7px 10px;border-color:var(--acc);color:var(--acc)">1/4</button>
+          <button class="btn mel-dur-btn" data-dur="3" style="font-size:14px;padding:7px 10px">1/4.</button>
+          <button class="btn mel-dur-btn" data-dur="1" style="font-size:14px;padding:7px 10px">1/8</button>
+          <button class="btn mel-dur-btn" data-dur="7" style="font-size:14px;padding:7px 10px">1/8T</button>
+          <button class="btn mel-dur-btn" data-dur="2" style="font-size:14px;padding:7px 10px">1/16</button>
+          <button id="melPauseBtn" class="btn" style="font-size:14px;padding:7px 12px">&#9644; Pause</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;margin-top:10px">
+          <span class="mut" style="font-size:18px">Aktuell:</span>
+          <div id="melpending" style="display:flex;gap:6px;flex-wrap:wrap;min-width:60px;font-size:17px"></div>
+          <button id="melstep" class="btn" style="font-size:18px;padding:12px 22px">&#10003; Schritt +</button>
+          <button id="melauto" class="btn" style="font-size:17px;padding:12px 18px;border-color:var(--acc);color:var(--acc)">Auto: EIN</button>
+        </div>
+        <div id="melseq" style="font-size:16px"></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:12px">
+          <button id="meldel"   class="btn" style="font-size:18px;padding:12px 22px">&#9003; Letzten l&ouml;schen</button>
+          <button id="melclear" class="btn" style="font-size:18px;padding:12px 22px">&#10005; Alles l&ouml;schen</button>
+        </div>
+        <div id="mel-arp-bar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px;padding:8px 0;border-top:1px solid #1d2940">
+          <button id="melArpBtn" class="btn" style="font-size:18px;padding:12px 22px;min-width:180px">&#127925; Arpeggio: AUS</button>
+          <span class="mut" style="font-size:17px">BPM:</span>
+          <input id="melArpBpm" type="range" min="20" max="300" value="120" style="width:140px">
+          <span id="melArpBpmVal" style="font-size:17px;min-width:40px">120</span>
+          <span id="melArpStat" class="mut" style="font-size:13px"></span>
+        </div>
+        <!-- Vorschau-Button für aktuellen SW -->
+        <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #1d2940">
+          <button id="arpPreviewBtn" class="btn" style="font-size:17px;padding:10px 22px;min-width:160px">&#9654; SW1 Vorhören</button>
+          <span class="mut" style="font-size:13px">Simuliert Sensor-Touch für aktuellen SW</span>
+        </div>
+      </div>
+    </div>
+    <!-- Improvisation -->
+    <div style="width:100%;background:#111826;border:1px solid #1d2940;border-radius:14px">
+      <button id="improToggle" style="width:100%;text-align:left;background:transparent;border:none;color:#FFD700;border-radius:14px;padding:16px 20px;font-size:20px;cursor:pointer;font-weight:600">
+        &#9835; Improvisation &#9660;
+      </button>
+      <div id="improPanel" style="display:none;padding:0 16px 16px">
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:12px 0">
+          <span class="mut" style="font-size:18px">Tonart:</span>
+          <select id="improRoot" style="font-size:18px;padding:10px 8px;min-height:48px">
+            <option value="0">C</option><option value="1">C#</option><option value="2">D</option>
+            <option value="3">D#</option><option value="4">E</option><option value="5">F</option>
+            <option value="6">F#</option><option value="7">G</option><option value="8">G#</option>
+            <option value="9">A</option><option value="10">A#</option><option value="11">H</option>
+          </select>
+          <span class="mut" style="font-size:18px">Skala:</span>
+          <select id="improScale" style="font-size:18px;padding:10px 8px;min-height:48px">
+            <option value="0">Dur-Tonleiter</option>
+            <option value="1">Pentatonik</option>
+            <option value="2">Moll-Pentatonik</option>
+            <option value="3">Phrygisch-Dur</option>
+          </select>
+          <span class="mut" style="font-size:18px">Oktave:</span>
+          <select id="improOct" style="font-size:18px;padding:10px 8px;min-height:48px">
+            <option value="2">2</option><option value="3">3</option>
+            <option value="4" selected>4</option><option value="5">5</option>
+            <option value="6">6</option><option value="7">7</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <button id="improPlayBtn" class="btn" style="font-size:20px;padding:14px 36px">&#9654; Impro spielen</button>
+          <span id="improStat" class="mut" style="font-size:16px">Sensor oder &#9654; tippen &rarr; zuf&auml;lliger Ton der Skala</span>
+        </div>
+      </div>
+    </div>
+    <!-- Akkord / Transpose / Instrument -->
+    <div style="width:100%;background:#111826;border:1px solid #1d2940;border-radius:14px">
+      <button id="akkordToggle" style="width:100%;text-align:left;background:transparent;border:none;color:#FFD700;border-radius:14px;padding:16px 20px;font-size:20px;cursor:pointer;font-weight:600">
+        &#9835; Akkord &#9660;
+      </button>
+      <div id="akkordPanel" style="display:none;padding:0 16px 16px">
+        <div id="mel-controls" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px 0">
+          <span class="mut" style="font-size:18px">Akkord:</span>
+          <select id="mel-chord" style="font-size:18px;padding:10px 8px;min-height:48px"></select>
+          <span class="mut" style="font-size:18px">Transp.:</span>
+          <select id="mel-trans" style="font-size:18px;padding:10px 8px;min-height:48px"></select>
+          <span id="mel-ctrl-stat" class="mut" style="font-size:16px"></span>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <button id="chordPlayBtn" class="btn" style="font-size:20px;padding:14px 36px">&#9654; Akkord vorh&ouml;ren</button>
+          <span id="chordStat" class="mut" style="font-size:16px">&#9654; tippen &rarr; ausgew&auml;hlten Akkord h&ouml;ren</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div id="improarea"></div>
+
+
+<div id="settingsarea">
+  <button id="settingsback">&#127968; Home</button>
+  <div style="width:100%;max-width:700px;padding:70px 16px 40px">
+
+    <!-- ===== Instrumente ===== -->
+    <div class="card">
+      <div class="set-hdr" data-sec="sec-instr">
+        <span>&#127929; Instrumente</span><span class="set-arr">&#9654;</span>
+      </div>
+      <div id="sec-instr" style="display:none;margin-top:14px;display:none">
+        <div class="mut small" style="margin-bottom:10px">Name eingeben und Programm (1&ndash;128), MSB, LSB festlegen. Speichern &rarr; erscheint als Dropdown auf der Hauptseite.</div>
+        <div id="instrlistwrap" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button id="instrAddBtn" class="btn">+ Instrument</button>
+          <button id="instrSaveBtn" class="btn">&#128190; Speichern</button>
+          <span id="instrSaveStat" class="mut" style="font-size:13px"></span>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid #1d2940">
+          <div style="font-weight:600;margin-bottom:10px">&#127929; Klaviatur</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button id="pianoLabelBtn" class="btn" style="font-size:13px;padding:6px 14px">&#9000; Notennamen</button>
+            <span class="mut small">Notennamen auf den Klaviertasten ein-/ausblenden</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Steuerung ===== -->
+    <div class="card" style="margin-top:10px">
+      <div class="set-hdr" data-sec="sec-ctl">
+        <span>&#127899; Steuerung</span><span class="set-arr">&#9654;</span>
+      </div>
+      <div id="sec-ctl" style="display:none;margin-top:14px">
+        <div class="mut small" style="margin-bottom:12px">Wie die SoundWhackers diese App steuern. Der Klang kommt immer aus diesem Gerät.</div>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;font-size:15px"><input type="radio" name="ctlMode" value="keys" style="margin-top:4px"><span><b>Tasten 1&ndash;5</b> &ndash; der SW-HUB ist im Bluetooth-<b>Tastatur</b>-Modus gekoppelt und sendet die Tasten 1 bis 5, solange ein SW ber&uuml;hrt wird. Geht auch in Safari auf dem iPad.</span></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:12px;font-size:15px"><input type="radio" name="ctlMode" value="midi" style="margin-top:4px"><span><b>BLE-MIDI</b> &ndash; der SW-HUB ist im <b>MIDI</b>-Modus gekoppelt. Jeder MIDI-Kanal gilt als &bdquo;SW gedr&uuml;ckt&ldquo; (Zuordnung unter MIDI-Kan&auml;le). <b>Nicht in Safari auf dem iPad</b> &ndash; nur Chrome/Edge am PC oder die App &bdquo;Web MIDI Browser&ldquo;.</span></label>
+        <span id="ctlStat" class="mut small"></span>
+      </div>
+    </div>
+
+    <!-- ===== MIDI-Kanäle ===== -->
+    <div class="card" style="margin-top:10px">
+      <div class="set-hdr" data-sec="sec-midich">
+        <span>&#127898; MIDI-Kan&auml;le</span><span class="set-arr">&#9654;</span>
+      </div>
+      <div id="sec-midich" style="display:none;margin-top:14px">
+        <div class="mut small" style="margin-bottom:12px">Auf welchem Kanal jeder SoundWhacker klingt &ndash; im BLE-MIDI-Modus au&szlig;erdem: auf welchem Kanal der SW-HUB diesen SW sendet. <b>Kanal 10 = Schlagzeug</b> (General MIDI): Dann l&ouml;st jede Note ein anderes Schlagzeug-Instrument aus. Wird im Preset mitgespeichert.</div>
+        <div id="midiChRows" style="display:flex;flex-direction:column;gap:8px"></div>
+        <span id="midiChStat" class="mut small"></span>
+      </div>
+    </div>
+
+    <!-- ===== Melodie kopieren ===== -->
+    <div class="card" style="margin-top:10px">
+      <div class="set-hdr" data-sec="sec-melcopy">
+        <span>&#128203; Melodie kopieren</span><span class="set-arr">&#9654;</span>
+      </div>
+      <div id="sec-melcopy" style="display:none;margin-top:14px">
+        <div class="mut small" style="margin-bottom:12px">Melodie eines SoundWhackers auf einen oder mehrere andere SWs &uuml;bertragen. Die Ziel-SWs &uuml;bernehmen alle Schritte, Dauer und Modus.</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+          <span style="font-size:14px;font-weight:600">Quelle:</span>
+          <select id="melCopyFrom" style="font-size:15px;padding:8px 12px;background:var(--card2,#0d1a2e);border:1px solid #2a3a5a;border-radius:8px;color:var(--fg)">
+            <option value="1">SW1</option>
+            <option value="2">SW2</option>
+            <option value="3">SW3</option>
+            <option value="4">SW4</option>
+            <option value="5">SW5</option>
+          </select>
+          <span style="font-size:14px;color:var(--acc)">&#9658;</span>
+          <span style="font-size:14px;font-weight:600">Ziel:</span>
+          <div id="melCopyTargets" style="display:flex;gap:10px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:5px;font-size:15px"><input type="checkbox" value="1"> SW1</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:15px"><input type="checkbox" value="2"> SW2</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:15px"><input type="checkbox" value="3"> SW3</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:15px"><input type="checkbox" value="4"> SW4</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:15px"><input type="checkbox" value="5"> SW5</label>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button id="melCopyBtn" class="btn" style="font-size:14px;padding:8px 18px">&#128203; Melodie kopieren</button>
+          <span id="melCopyStat" class="mut small"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== System ===== -->
+    <div class="card" style="margin-top:10px;border:1px solid #a33">
+      <div class="set-hdr" data-sec="sec-sys">
+        <span style="color:#e55">&#9888; System</span><span class="set-arr" style="color:#e55">&#9654;</span>
+      </div>
+      <div id="sec-sys" style="display:none;margin-top:14px">
+        <div class="mut small" style="margin-bottom:12px">L&ouml;scht alle in diesem Browser gespeicherten Einstellungen (Noten, Akkorde, Melodien, Presets, Lautst&auml;rke, Instrumente). Die App startet danach mit den Standardwerten neu.</div>
+        <button id="factoryResetBtn" class="btn" style="font-size:14px;padding:8px 18px;border-color:#a33;color:#e55">&#128465; Alle Einstellungen l&ouml;schen</button>
+        <span id="factoryResetStat" class="mut small" style="margin-left:10px"></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="hilfearea">
+  <button id="hilfeback">&#127968; Home</button>
+  <div style="width:100%;max-width:700px;padding:70px 16px 40px">
+
+    <div class="card">
+      <div style="font-weight:600;font-size:18px;margin-bottom:16px">&#10067; Hilfe &amp; Anleitungen</div>
+
+      <div style="font-weight:600;font-size:15px;margin-bottom:10px;color:var(--acc)">&#127381; Einrichten (einmalig)</div>
+      <ol style="margin:0 0 20px 18px;line-height:2">
+        <li>Am SW-HUB unter Einstellungen &rarr; Bluetooth-Modus <b>Tastatur</b> w&auml;hlen (HUB startet neu)</li>
+        <li>iPad: Einstellungen &rarr; Bluetooth &rarr; den HUB mit dem Zusatz <b>-KEY</b> koppeln</li>
+        <li>Diese Seite in Safari &ouml;ffnen, &bdquo;Teilen&ldquo; &rarr; &bdquo;Zum Home-Bildschirm&ldquo;</li>
+        <li>Einmal tippen, damit der Klang startet &ndash; die Instrumente werden beim ersten Mal geladen (ca. 21&nbsp;MB, danach auch offline)</li>
+      </ol>
+
+      <div style="font-weight:600;font-size:15px;margin-bottom:10px;color:var(--acc)">&#9989; Spielen</div>
+      <ul style="margin:0 0 20px 18px;line-height:2">
+        <li>Jeder SW (Taste 1&ndash;5) spielt je nach Einstellung einen <b>Akkord/Ton</b>, eine <b>Melodie</b> (Schritt f&uuml;r Schritt oder als Arpeggio) oder <b>improvisiert</b></li>
+        <li>Alles einstellen unter <b>&#9834; Soundwhackers einstellen</b>; Lautst&auml;rke mit den Reglern auf der Startseite</li>
+        <li><b>Unterst&uuml;tzt Spielen</b>: Akkord-Slots f&uuml;r SW1 und das Akkord-Pad zum Antippen</li>
+        <li>Am PC kannst du die SWs mit den Tasten 1&ndash;5 ausprobieren</li>
+      </ul>
+
+      <div style="background:#1a2a1a;border-left:3px solid #4a8;padding:10px 14px;border-radius:6px;font-size:13px;line-height:1.7">
+        <b>&#9888; Hinweis:</b><br>
+        Steuerung per <b>BLE-MIDI</b> (Einstellungen &rarr; Steuerung) geht nicht in Safari auf dem iPad &ndash; dort den Tastatur-Modus verwenden.<br>
+        Einstellungen und Presets bleiben in diesem Browser gespeichert; mit Export/Import (Presets) kannst du sie sichern oder auf ein anderes Ger&auml;t bringen &ndash; auch Preset-Dateien vom SW-HUB.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="instrarea">
+  <button id="instrback">&#127968; Home</button>
+  <button id="instr-to-preset">&#128190; Presets</button>
+  <div style="width:100%;max-width:700px;padding:70px 16px 40px">
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:12px">&#127931; Instrumente</div>
+      <div class="mut small" style="margin-bottom:12px">Instrument pro SW w&auml;hlen. Instrument-Liste unter &#9881; Einstellungen definieren.</div>
+      <div id="instrrows" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div style="font-weight:600;margin-bottom:8px">&#9836; Improvisation</div>
+      <div class="mut small" style="margin-bottom:12px">Wenn aktiv: Berühren des SW spielt zufällige Töne aus der eingestellten Skala. Bleibt auch auf der Hauptseite aktiv.</div>
+      <div id="improToggleRows" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+</div>
+
+<div id="presetarea">
+  <button id="presetback">&#127968; Home</button>
+  <button id="preset-to-mel">&#9834; Soundwhackers einstellen</button>
+  <div style="width:100%;max-width:700px;padding:80px 16px 40px">
+    <div class="card">
+      <div style="font-weight:700;font-size:18px;margin-bottom:12px">&#128190; Ger&auml;te-Presets
+        <span class="mut small">(speichert alle Einstellungen f&uuml;r SW 1&ndash;5)</span>
+      </div>
+      <div id="dpresetgrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px">
+        <span class="mut" style="font-size:15px">Name:</span>
+        <input id="dpname" type="text" maxlength="20" placeholder="Preset-Name"
+          style="flex:1;min-width:120px;background:#0e1626;color:#e0e8ff;border:1px solid #1d2940;border-radius:10px;padding:10px 12px;font-size:16px">
+        <button id="dpsave" class="btn" style="font-size:16px;padding:10px 20px">Speichern</button>
+        <span id="dpstat" class="mut" style="font-size:14px"></span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;border-top:1px solid #1d2940;padding-top:12px">
+        <input id="dpfilename" type="text" placeholder="Dateiname…" style="flex:1;min-width:130px;max-width:220px;font-size:14px;padding:8px 10px;background:#1d2940;color:#e8eaf0;border:1px solid #2d3f60;border-radius:8px">
+        <button id="dpexport" class="btn" style="font-size:14px;padding:8px 14px">&#8659; Export</button>
+        <label class="btn" style="font-size:14px;padding:8px 14px;cursor:pointer">&#8657; Import<input id="dpimport" type="file" accept=".json" style="display:none"></label>
+        <button id="dpclearall" class="btn" style="font-size:14px;padding:8px 14px;color:#ff6b6b;border-color:#ff6b6b">&#128465; Alle l&ouml;schen</button>
+        <span id="dpimportstat" class="mut" style="font-size:13px"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tonakkordarea">
+  <button id="tonakkordback">&#127968; Home</button>
+  <div style="width:100%;max-width:700px;padding:70px 16px 40px">
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:12px">&#9835; Ton / Akkord</div>
+      <div class="mut small" style="margin-bottom:12px">Ton (60&ndash;71), Akkord (Dur/Moll), Transponieren (&minus;2&hellip;+2) pro SW einstellen und senden.</div>
+      <div id="tonakkordrows" style="display:flex;flex-direction:column;gap:4px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== SoundWhacker Spielen: „virtueller HUB“ =====
+// Die Oberfläche ist die des SoundWhacker HUB (sw.local). Statt den ESP32 per HTTP zu fragen, beantwortet dieser Teil
+// alle Anfragen ('/chord', '/mel', …) direkt im Browser und erzeugt den Klang selbst mit einer SoundFont.
+// Gesteuert wird über die Tasten 1–5 (SW-HUB als Bluetooth-Tastatur) oder per BLE-MIDI (Kanal je SW → SW gedrückt).
+(() => {
+  'use strict';
+  const STORE = 'swspielen.v1';
+  const MAX_MELODY = 64;
+  const DUR_Q = [1, 0.5, 0.25, 1.5, 3, 2, 4, 1 / 3];   // Dauer-Code (wie im HUB) → Länge in Vierteln
+  const IMPRO_SCALES = [[0, 2, 4, 5, 7, 9, 11], [0, 2, 4, 7, 9], [0, 3, 5, 7, 10], [0, 1, 4, 5, 7, 8, 10]];
+  const stepToSemi = s => (s === -2 ? -24 : s === -1 ? -12 : s === 1 ? 12 : s === 2 ? 24 : 0);
+  const clampMidi = v => Math.max(0, Math.min(127, v | 0));
+  const triad = (root, q) => [root, root + (q === 1 ? 3 : 4), root + 7].map(clampMidi);   // q: 0=Dur, 1=Moll
+  const arr6 = v => [0, v, v, v, v, v];
+
+  // ---------- Zustand (wird im Browser gespeichert) ----------
+  function defaults() {
+    return {
+      v: 1, control: 'keys',
+      note: arr6(60), chordRoot: arr6(-1), chordQual: arr6(0), ts: arr6(0),
+      instr: [0, 1, 2, 3, 4, 5].map(() => ({ p: 0, m: 0, l: 0 })), instrList: [],
+      improRoot: arr6(0), improScale: arr6(0), improOct: arr6(4), improEn: arr6(false), improMode: false,
+      akkordOff: arr6(false), mel: [0, 1, 2, 3, 4, 5].map(() => []), melMode: arr6(false),
+      vol: arr6(100), midiCh: [0, 1, 2, 3, 4, 5],
+      arpBpm: 120, arpDiv: arr6(0), arpTgm: arr6(false), liveMode: arr6(false),
+      slots: [0, 1, 2, 3, 4, 5].map(() => ({ root: -1, qual: 0, ts: 0 })), activeSlot: 0,
+      lpresets: [null, null, null, null, null, null, null, null, null], dpresets: [null, null, null, null, null]
+    };
+  }
+  let S = defaults();
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (raw && raw.v === 1) S = Object.assign(defaults(), raw);
+  } catch (e) {}
+  let saveT = 0;
+  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 150); };
+
+  // ---------- Laufzeit (nicht gespeichert) ----------
+  const R = {
+    touched: arr6(false), sounding: [0, 1, 2, 3, 4, 5].map(() => null), melStep: arr6(0), melPlaying: arr6(false), melPlayStep: arr6(0),
+    arpEn: arr6(false), arpMuted: arr6(true), arpStep: arr6(0), arpPrev: arr6(0), arpNext: arr6(0), arpWas: arr6(false), arpEv: [0, 1, 2, 3, 4, 5].map(() => []),
+    improNote: arr6(-1), padNotes: null, midiCount: new Map()
+  };
+
+  // ---------- Klangerzeugung (SoundFont, wie im Looper; teilt sich die gespeicherte SoundFont) ----------
+  const LIB = new URL('vendor/spessasynth/spessasynth_lib.mjs', location.href).href;
+  const PROC = new URL('vendor/spessasynth/spessasynth_processor.min.js', location.href).href;
+  const SF_URL = new URL('soundfonts/SoundWhacker-Auswahl.sf2', location.href).href, SF_VER = 2;
+  const A = { ctx: null, synth: null, loading: null, out: null };
+  function sfDb(mode, fn) {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('swlooper-soundfont', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('sf');
+      r.onerror = () => rej(r.error);
+      r.onsuccess = () => {
+        const db = r.result, tx = db.transaction('sf', mode), req = fn(tx.objectStore('sf'));
+        tx.oncomplete = () => { db.close(); res(req && req.result); };
+        tx.onerror = tx.onabort = () => { db.close(); rej(tx.error); };
+      };
+    });
+  }
+  async function sfBytes() {
+    try { const r = await sfDb('readonly', s => s.get('main')); if (r && r.bytes) return r.bytes; } catch (e) {}
+    try { const r = await sfDb('readonly', s => s.get('builtin')); if (r && r.ver === SF_VER && r.bytes) return r.bytes; } catch (e) {}
+    status('Lade Instrumente (einmalig ca. 21 MB) …');
+    const res = await fetch(SF_URL);
+    if (!res.ok) throw new Error('SoundFont-Download fehlgeschlagen (' + res.status + ')');
+    const bytes = await res.arrayBuffer();
+    try { await sfDb('readwrite', s => s.put({ ver: SF_VER, bytes }, 'builtin')); } catch (e) {}
+    return bytes;
+  }
+  function audioCtx() {
+    if (A.ctx) return A.ctx;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+    return A.ctx;
+  }
+  function ensureSynth() {
+    if (A.synth) return Promise.resolve(A.synth);
+    if (!A.loading) A.loading = (async () => {
+      let synth = null;
+      try {
+        const ctx = audioCtx();
+        if (!ctx.audioWorklet) throw new Error('Dieser Browser kann keine Echtzeit-Klangerzeugung (AudioWorklet).');
+        status('Klang wird geladen …');
+        await ctx.audioWorklet.addModule(PROC);
+        const lib = await import(LIB);
+        synth = new lib.WorkletSynthesizer(ctx);
+        await synth.soundBankManager.addSoundBank(await sfBytes(), 'main');
+        await synth.isReady;
+        for (let t = 0; t < 40 && !(synth.presetList && synth.presetList.length); t++) await new Promise(r => setTimeout(r, 50));
+        const comp = ctx.createDynamicsCompressor();   // schützt vor Übersteuern, wenn mehrere SWs gleichzeitig klingen
+        comp.threshold.value = -10; comp.knee.value = 6; comp.ratio.value = 8; comp.attack.value = 0.003; comp.release.value = 0.2;
+        A.out = ctx.createGain(); A.out.gain.value = 3;
+        A.out.connect(comp); comp.connect(ctx.destination);
+        synth.connect(A.out);
+        A.synth = synth;
+        if (!S.instrList.length) {   // Instrumenten-Liste beim ersten Start aus der SoundFont füllen
+          S.instrList = (synth.presetList || []).filter(p => !p.isGMGSDrum && !p.isDrum)
+            .sort((a, b) => a.bankMSB - b.bankMSB || a.program - b.program || a.bankLSB - b.bankLSB)
+            .slice(0, 64).map(p => ({ name: String(p.name).trim().slice(0, 23), p: p.program, m: p.bankMSB, l: p.bankLSB }));
+          save();
+          if (window.swOnInstrList) window.swOnInstrList();
+        }
+        for (let id = 1; id <= 5; id++) applyChannel(id);
+        status('');
+        return synth;
+      } catch (e) {
+        try { if (synth) synth.destroy(); } catch (e2) {}
+        const msg = (e && e.message) || String(e);
+        status(/memory|speicher/i.test(msg) ? 'Zu wenig Speicher – bitte andere Tabs schließen und neu laden.' : 'Klang konnte nicht starten: ' + msg, true);
+        A.loading = null; throw e;
+      }
+    })();
+    return A.loading;
+  }
+  const chOf = id => (S.midiCh[id] || id) - 1;   // Kanal 10 (Index 9) = Schlagzeug
+  function applyChannel(id) {
+    if (!A.synth) return;
+    const c = chOf(id), ins = S.instr[id] || { p: 0, m: 0, l: 0 };
+    A.synth.controllerChange(c, 0, ins.m); A.synth.controllerChange(c, 32, ins.l); A.synth.programChange(c, ins.p);
+    A.synth.controllerChange(c, 7, S.vol[id]); A.synth.controllerChange(c, 91, 30); A.synth.controllerChange(c, 93, 0);
+  }
+  // Noten senden: ohne gestarteten Klang wird nichts gespielt (Start beim ersten Tastendruck/Tippen)
+  const on = (id, n, v, t) => { if (A.synth) A.synth.noteOn(chOf(id), clampMidi(n), v || 110, t ? { time: t } : undefined); };
+  const off = (id, n, t) => { if (A.synth) A.synth.noteOff(chOf(id), clampMidi(n), t ? { time: t } : undefined); };
+  const soundOff = id => { if (A.synth) A.synth.controllerChange(chOf(id), 120, 0); };
+  function kick() {   // Klang starten (beim ersten Tastendruck/Tippen – iPad verlangt eine Bedienung)
+    const ctx = audioCtx();
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    ensureSynth().catch(() => {});
+  }
+  ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, kick, { capture: true, passive: true }));
+
+  // ---------- Statuszeile ----------
+  function status(m, err) {
+    const el = document.getElementById('swStatus');
+    if (!el) return;
+    el.textContent = m || (A.synth ? '' : '🔊 Zum Starten des Klangs einmal tippen oder einen SW drücken');
+    el.style.color = err ? '#ffb7b7' : '#8aa0b3';
+  }
+  document.addEventListener('DOMContentLoaded', () => status(''));
+
+  // ---------- Was ein SW beim Berühren/Loslassen macht (wie loop() im HUB) ----------
+  function pickImpro(id) {
+    const sc = IMPRO_SCALES[S.improScale[id]] || IMPRO_SCALES[0];
+    const base = Math.max(12, Math.min(116, S.improOct[id] * 12 + S.improRoot[id]));
+    const pool = sc.map(x => base + x).filter(n => n <= 127 && n !== R.improNote[id]);
+    return pool.length ? pool[Math.floor(Math.random() * pool.length)] : base;
+  }
+  function semiFor(id) {   // SW1: aktiver Slot hat Vorrang vor der SW1-Transposition (wie im HUB)
+    if (id === 1 && S.activeSlot > 0 && S.chordRoot[1] >= 0) return stepToSemi(S.slots[S.activeSlot].ts);
+    return stepToSemi(S.ts[id]);
+  }
+  function touch(id, pressed) {
+    if (R.touched[id] === pressed) return;
+    R.touched[id] = pressed;
+    if (pressed) kick();
+    const steps = S.mel[id];
+    if (S.improMode && S.improEn[id]) {
+      if (pressed) { if (R.improNote[id] >= 0) off(id, R.improNote[id]); R.improNote[id] = pickImpro(id); on(id, R.improNote[id], 100); }
+      else if (R.improNote[id] >= 0) { off(id, R.improNote[id]); R.improNote[id] = -1; }
+    } else if (S.melMode[id] && steps.length) {
+      if (R.arpEn[id]) {
+        if (S.arpTgm[id]) { if (pressed) { R.arpMuted[id] = !R.arpMuted[id]; if (R.arpMuted[id]) arpSilence(id); } }
+        else { R.arpMuted[id] = !pressed; if (!pressed) arpSilence(id); }
+      } else if (pressed) {   // Melodie Schritt für Schritt
+        const st = steps[R.melStep[id] % steps.length];
+        st.n.forEach(n => on(id, n, 127));
+        R.melPlaying[id] = true; R.melPlayStep[id] = R.melStep[id] % steps.length;
+      } else {
+        if (R.melPlaying[id]) { (steps[R.melPlayStep[id]] || { n: [] }).n.forEach(n => off(id, n)); R.melPlaying[id] = false; }
+        R.melStep[id] = (R.melStep[id] + 1) % steps.length;
+      }
+    } else if (!S.akkordOff[id]) {   // Akkord bzw. Ton
+      if (pressed) {
+        const semi = semiFor(id), r = S.chordRoot[id];
+        R.sounding[id] = r >= 0 ? triad(clampMidi(r + semi), S.chordQual[id]) : [clampMidi(S.note[id] + semi)];
+        R.sounding[id].forEach(n => on(id, n, 127));
+      } else if (R.sounding[id]) { R.sounding[id].forEach(n => off(id, n)); R.sounding[id] = null; }
+    }
+  }
+  window.swTouch = touch;
+
+  // ---------- Melodie-Arpeggio (Takt läuft, Berühren schaltet stumm/laut – wie im HUB) ----------
+  const LOOKAHEAD = 0.06;
+  function arpSilence(id) {   // klingende und schon geplante Töne dieses SW beenden
+    if (!A.ctx) return;
+    const now = A.ctx.currentTime;
+    R.arpEv[id].forEach(e => e.n.forEach(n => off(id, n, Math.max(now, e.t + 0.002))));
+    R.arpEv[id] = []; R.arpWas[id] = false;
+  }
+  function arpStart(id, t0) {
+    arpSilence(id);
+    R.arpEn[id] = true; R.arpMuted[id] = true; R.arpStep[id] = 0; R.arpPrev[id] = 0;
+    R.arpNext[id] = t0 != null ? t0 : (A.ctx ? A.ctx.currentTime + 0.02 : 0);
+  }
+  function arpStop(id) { R.arpEn[id] = false; R.arpMuted[id] = true; arpSilence(id); }
+  setInterval(() => {
+    if (!A.ctx || !A.synth) return;
+    const now = A.ctx.currentTime;
+    for (let id = 1; id <= 5; id++) {
+      const steps = S.mel[id];
+      if (!R.arpEn[id] || !steps.length) continue;
+      if (R.arpNext[id] < now - 0.5) R.arpNext[id] = now;   // nach Pause/Hintergrund nicht nachholen
+      R.arpEv[id] = R.arpEv[id].filter(e => e.off > now - 0.05);
+      while (R.arpNext[id] < now + LOOKAHEAD) {
+        const cur = R.arpStep[id] % steps.length, st = steps[cur], len = DUR_Q[st.d || 0] * 60 / S.arpBpm, t = R.arpNext[id];
+        if (!R.arpMuted[id] && st.n.length) {
+          st.n.forEach(n => { on(id, n, 100, t); off(id, n, t + len * 0.95); });
+          R.arpEv[id].push({ t, off: t + len, n: st.n.slice() });
+        }
+        R.arpPrev[id] = cur; R.arpStep[id] = (cur + 1) % steps.length; R.arpNext[id] = t + len;
+      }
+    }
+  }, 15);
+
+  // ---------- Kurze Vorschau-Töne ----------
+  function preview(id, notes, ms) {
+    kick();
+    const go = () => { notes.forEach(n => on(id, n, 100)); setTimeout(() => notes.forEach(n => off(id, n)), ms); };
+    if (A.synth) go(); else ensureSynth().then(go).catch(() => {});
+  }
+
+  // ---------- Steuerung: Tasten 1–5 (SW-HUB als Bluetooth-Tastatur) und BLE-MIDI ----------
+  const typing = t => t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button'].includes(t.type)) || t.tagName === 'SELECT');
+  const keyId = e => { const m = /^(Digit|Numpad)([1-5])$/.exec(e.code || ''); return m ? +m[2] : 0; };
+  document.addEventListener('keydown', e => {
+    const id = keyId(e);
+    if (!id || e.ctrlKey || e.altKey || e.metaKey || typing(e.target)) return;
+    e.preventDefault();
+    if (!e.repeat) touch(id, true);
+  });
+  document.addEventListener('keyup', e => { const id = keyId(e); if (id) touch(id, false); });
+  window.addEventListener('blur', () => { for (let id = 1; id <= 5; id++) touch(id, false); });
+  let midiAccess = null;
+  const midiState = { ok: false, msg: '' };
+  function onMidi(ev) {
+    const [st, d1, d2] = ev.data;
+    const type = st & 0xF0, ch = (st & 0x0F) + 1;
+    if (type !== 0x90 && type !== 0x80) return;
+    const isOn = type === 0x90 && d2 > 1;   // Anschlag 0/1 = loslassen
+    for (let id = 1; id <= 5; id++) {
+      if (S.midiCh[id] !== ch) continue;
+      const k = id + ':' + d1, set = R.midiCount.get(id) || new Set();
+      R.midiCount.set(id, set);
+      if (isOn) set.add(k); else set.delete(k);
+      touch(id, set.size > 0);   // Kanal hat irgendeine Note an → SW gedrückt
+    }
+  }
+  async function midiApply() {
+    if (S.control !== 'midi') {
+      if (midiAccess) midiAccess.inputs.forEach(i => { i.onmidimessage = null; });
+      midiState.ok = false; midiState.msg = 'Steuerung über die Tasten 1–5.';
+      return;
+    }
+    if (!navigator.requestMIDIAccess) { midiState.ok = false; midiState.msg = 'Dieser Browser kann kein MIDI (Safari auf dem iPad nicht) – bitte Chrome/Edge am PC oder die App „Web MIDI Browser“ verwenden.'; return; }
+    try {
+      midiAccess = midiAccess || await navigator.requestMIDIAccess();
+      const bind = () => { midiAccess.inputs.forEach(i => { i.onmidimessage = S.control === 'midi' ? onMidi : null; }); };
+      bind(); midiAccess.onstatechange = bind;
+      const names = [...midiAccess.inputs.values()].map(i => i.name);
+      midiState.ok = names.length > 0;
+      midiState.msg = names.length ? 'MIDI-Eingang: ' + names.join(', ') : 'Kein MIDI-Gerät gefunden – ist der HUB per Bluetooth verbunden?';
+    } catch (e) { midiState.ok = false; midiState.msg = 'MIDI-Zugriff wurde nicht erlaubt.'; }
+  }
+  window.swControl = {
+    get: () => S.control, state: midiState,
+    set: async mode => { S.control = mode === 'midi' ? 'midi' : 'keys'; save(); await midiApply(); return midiState; },
+    refresh: midiApply
+  };
+  midiApply();
+
+  // ---------- Presets (Geräte-Presets 1–4) im Format des HUB ----------
+  const melToStr = steps => steps.map(s => s.n.join(',') + ':' + (s.d || 0)).join('|');
+  function strToMel(str) {
+    if (!str) return [];
+    return String(str).split('|').filter(x => x.length).slice(0, MAX_MELODY).map(tok => {
+      const cp = tok.lastIndexOf(':'); let d = 0, notes = tok;
+      if (cp >= 0) { d = Math.max(0, Math.min(7, parseInt(tok.slice(cp + 1)) || 0)); notes = tok.slice(0, cp); }
+      return { n: notes.split(',').filter(x => x !== '').map(x => clampMidi(parseInt(x))).slice(0, 3), d };
+    });
+  }
+  function snapshot(name) {
+    const P = { name, filled: true, sw: [null], mel: [null] };
+    for (let i = 1; i <= 5; i++) {
+      P.sw.push({ nt: S.note[i], rt: S.chordRoot[i] < 0 ? 255 : S.chordRoot[i], qq: S.chordQual[i], ts: S.ts[i], pp: S.instr[i].p, ms: S.instr[i].m, ls: S.instr[i].l, mm: S.melMode[i] ? 1 : 0, ao: S.akkordOff[i] ? 1 : 0 });
+      P.mel.push(S.mel[i].map(s => ({ n: s.n.slice(), d: s.d })));
+    }
+    const a = f => [0, 1, 2, 3, 4, 5].map(f);
+    Object.assign(P, {
+      ir: a(i => S.improRoot[i] || 0), is: a(i => S.improScale[i] || 0), io: a(i => S.improOct[i] || 4), ie: a(i => S.improEn[i] ? 1 : 0),
+      ad: a(i => S.arpDiv[i] || 0), ae: a(i => R.arpEn[i] ? 1 : 0), sv: a(i => S.vol[i] != null ? S.vol[i] : 100), ab: S.arpBpm,
+      slsr: a(i => i && S.slots[i].root >= 0 ? S.slots[i].root : 255), slsq: a(i => i ? S.slots[i].qual : 0), slst: a(i => i ? S.slots[i].ts : 0),
+      slsa: S.activeSlot, tgm: [1, 2, 3, 4, 5].reduce((m, i) => m | (S.arpTgm[i] ? 1 << (i - 1) : 0), 0), ch: a(i => S.midiCh[i] || i)
+    });
+    return P;
+  }
+  function applyPreset(P) {
+    for (let i = 1; i <= 5; i++) {
+      const d = P.sw[i] || {};
+      if (d.nt != null) S.note[i] = d.nt;
+      S.chordRoot[i] = d.rt == null || d.rt === 255 ? -1 : d.rt; S.chordQual[i] = d.qq ? 1 : 0; S.ts[i] = d.ts || 0;
+      S.instr[i] = { p: d.pp || 0, m: d.ms || 0, l: d.ls || 0 };
+      S.melMode[i] = !!d.mm; S.akkordOff[i] = !!d.ao; R.melStep[i] = 0; R.melPlaying[i] = false;
+      S.mel[i] = (P.mel && P.mel[i]) ? P.mel[i].map(s => ({ n: s.n.slice(0, 3), d: s.d || 0 })) : [];
+      S.improRoot[i] = (P.ir || [])[i] || 0; S.improScale[i] = (P.is || [])[i] || 0; S.improOct[i] = (P.io || [])[i] || 4; S.improEn[i] = !!(P.ie || [])[i];
+      S.arpDiv[i] = (P.ad || [])[i] || 0; S.vol[i] = (P.sv || [])[i] != null ? P.sv[i] : 100;
+      S.slots[i] = { root: (P.slsr || [])[i] == null || P.slsr[i] === 255 ? -1 : P.slsr[i], qual: (P.slsq || [])[i] ? 1 : 0, ts: (P.slst || [])[i] || 0 };
+      S.arpTgm[i] = !!(((P.tgm || 0) >> (i - 1)) & 1);
+      const c = (P.ch || [])[i]; if (c >= 1 && c <= 16) S.midiCh[i] = c;
+      if ((P.ae || [])[i] && S.mel[i].length) arpStart(i); else arpStop(i);
+    }
+    S.improMode = S.improEn.some((v, i) => i && v);
+    S.arpBpm = P.ab || 120; S.activeSlot = P.slsa || 0;
+    for (let i = 1; i <= 5; i++) applyChannel(i);
+    save();
+  }
+  function exportJson() {   // gleiches Format wie der Export des HUB → Dateien sind austauschbar
+    const presets = [];
+    for (let n = 1; n <= 4; n++) {
+      const P = S.dpresets[n];
+      if (!P) { presets.push({ n, name: '', filled: false, ids: [] }); continue; }
+      const o = { n, name: P.name || '', filled: true, ids: [] };
+      for (let i = 1; i <= 5; i++) { const d = P.sw[i]; o.ids.push({ i, nt: d.nt, rt: d.rt, qq: d.qq, ts: d.ts, pp: d.pp, ms: d.ms, ls: d.ls, mm: d.mm, ao: d.ao, ml: 0, md: '' }); }
+      ['ir', 'is', 'io', 'ie', 'ad', 'ae', 'ab', 'sv', 'slsr', 'slsq', 'slst', 'slsa', 'tgm', 'ch'].forEach(k => { o[k] = P[k]; });
+      o.lc = [0, 0, 0, 0, 0]; o.gm = 0;
+      for (let i = 1; i <= 5; i++) o['mel' + i] = melToStr((P.mel && P.mel[i]) || []);
+      presets.push(o);
+    }
+    const mel = [null];
+    for (let id = 1; id <= 5; id++) mel.push({ id, md: S.melMode[id] ? 1 : 0, s: S.mel[id].map(s => s.n), d: S.mel[id].map(s => s.d || 0) });
+    return { v: 1, il: S.instrList.map(e => ({ n: e.name, p: e.p, m: e.m, l: e.l })), presets, mel };
+  }
+  function presetFromRaw(q) {   // Formular aus dem Import (/dpreset_raw) → Preset
+    const n = Math.max(1, Math.min(4, +q.get('num') || 1));
+    const P = S.dpresets[n] || snapshot('');
+    if (q.has('name')) P.name = q.get('name');
+    for (let i = 1; i <= 5; i++) {
+      const d = P.sw[i], g = k => q.get('d' + i + k);
+      if (g('n') != null) d.nt = +g('n'); if (g('r') != null) d.rt = +g('r'); if (g('q') != null) d.qq = +g('q'); if (g('t') != null) d.ts = +g('t');
+      if (g('p') != null) d.pp = +g('p'); if (g('m') != null) d.ms = +g('m'); if (g('l') != null) d.ls = +g('l');
+      if (g('mm') != null) d.mm = g('mm') === '1' ? 1 : 0; if (g('ao') != null) d.ao = g('ao') === '1' ? 1 : 0;
+      [['ir', 'ir'], ['is', 'is'], ['io', 'io'], ['ad', 'ad'], ['sv', 'sv'], ['slsr', 'slsr'], ['slsq', 'slsq'], ['slst', 'slst'], ['ch', 'ch']].forEach(([k, f]) => { if (q.has(k + i)) P[f][i] = +q.get(k + i); });
+      if (q.has('ie' + i)) P.ie[i] = q.get('ie' + i) === '1' ? 1 : 0;
+      if (q.has('ae' + i)) P.ae[i] = q.get('ae' + i) === '1' ? 1 : 0;
+      if (q.has('mel' + i)) P.mel[i] = strToMel(q.get('mel' + i));
+    }
+    if (q.has('ab')) P.ab = +q.get('ab'); if (q.has('slsa')) P.slsa = +q.get('slsa'); if (q.has('tgm')) P.tgm = +q.get('tgm');
+    P.filled = true; S.dpresets[n] = P; save();
+  }
+
+  // ---------- Antworten auf die Anfragen der Oberfläche (statt HTTP zum ESP32) ----------
+  const ok = (body, type) => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status: 200, headers: { 'Content-Type': type || (typeof body === 'string' ? 'text/plain' : 'application/json') } });
+  const bad = m => new Response(m || 'bad', { status: 400 });
+  const notesArg = q => (q.get('notes') || '').split(',').filter(x => x !== '').slice(0, 3).map(x => clampMidi(parseInt(x)));
+  const idArg = q => Math.max(1, Math.min(5, parseInt(q.get('id')) || 1));
+  function melStop(id) { if (R.melPlaying[id]) { (S.mel[id][R.melPlayStep[id]] || { n: [] }).n.forEach(n => off(id, n)); R.melPlaying[id] = false; } }
+  const routes = {
+    '/registry': () => { const j = {}; for (let i = 1; i <= 5; i++) j[i] = { ip: '', seen: 0, age: 999999 }; return ok(j); },
+    '/instr': () => { const j = {}; for (let i = 1; i <= 5; i++) j[i] = S.instr[i]; return ok(j); },
+    '/instr_set': q => { const id = idArg(q); S.instr[id] = { p: +q.get('p') || 0, m: +q.get('m') || 0, l: +q.get('l') || 0 }; applyChannel(id); save(); return ok('ok'); },
+    '/instr_list': () => ok(S.instrList),
+    '/instr_list_save': q => {
+      const cnt = Math.max(0, Math.min(64, +q.get('cnt') || 0)); S.instrList = [];
+      for (let i = 0; i < cnt; i++) S.instrList.push({ name: (q.get('n' + i) || '').slice(0, 23), p: Math.max(0, Math.min(127, +q.get('p' + i) || 0)), m: Math.max(0, Math.min(127, +q.get('m' + i) || 0)), l: Math.max(0, Math.min(127, +q.get('l' + i) || 0)) });
+      save(); return ok('ok');
+    },
+    '/impro': () => { const j = { root: S.improRoot, scale: S.improScale, oct: S.improOct }; for (let i = 1; i <= 5; i++) j['e' + i] = S.improEn[i] ? 1 : 0; return ok(j); },
+    '/impro_set': q => {
+      if (q.has('id')) { const id = idArg(q); if (q.has('root')) S.improRoot[id] = +q.get('root'); if (q.has('scale')) S.improScale[id] = +q.get('scale'); if (q.has('oct')) S.improOct[id] = +q.get('oct'); }
+      for (let i = 1; i <= 5; i++) if (q.has('e' + i)) { const was = S.improEn[i]; S.improEn[i] = q.get('e' + i) === '1'; if (was !== S.improEn[i]) { if (R.improNote[i] >= 0) off(i, R.improNote[i]); R.improNote[i] = -1; soundOff(i); R.touched[i] = false; } }
+      if (q.has('on')) { S.improMode = q.get('on') === '1'; if (!S.improMode) for (let i = 1; i <= 5; i++) if (R.improNote[i] >= 0) { off(i, R.improNote[i]); R.improNote[i] = -1; } }
+      save(); return ok('ok');
+    },
+    '/impro_play': q => { const id = idArg(q); preview(id, [pickImpro(id)], 400); return ok('ok'); },
+    '/chord_preview': q => { const id = idArg(q), r = S.chordRoot[id]; if (r < 0) return ok('nochord'); preview(id, triad(clampMidi(r + stepToSemi(S.ts[id])), S.chordQual[id]), 600); return ok('ok'); },
+    '/transpose': (q, m) => {
+      if (m === 'GET') { const j = {}; for (let i = 1; i <= 5; i++) j[i] = S.ts[i]; return ok(j); }
+      const id = idArg(q), s = parseInt(q.get('step')); S.ts[id] = [-2, -1, 0, 1, 2].includes(s) ? s : 0; save(); return ok('ok');
+    },
+    '/set': q => { const id = idArg(q), n = parseInt(q.get('note')); if (n < 60 || n > 71) return bad('range'); S.note[id] = n; S.chordRoot[id] = -1; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
+    '/chord': q => { const id = idArg(q), r = parseInt(q.get('root')); if (r < 60 || r > 71) return bad('range'); S.chordRoot[id] = r; S.chordQual[id] = q.get('qual') === 'min' ? 1 : 0; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
+    '/chord_off': q => { const id = idArg(q); S.chordRoot[id] = -1; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
+    '/slots': () => ok({ active: S.activeSlot, slots: [1, 2, 3, 4, 5].map(i => ({ root: S.slots[i].root, qual: S.slots[i].qual === 1 ? 'min' : 'maj', ts: S.slots[i].ts })) }),
+    '/slot_set': q => {
+      const s = Math.max(1, Math.min(5, +q.get('slot') || 1));
+      if (q.get('root') === 'off') S.slots[s].root = -1;
+      else { const r = parseInt(q.get('root')); if (r < 60 || r > 71) return bad('range'); S.slots[s].root = r; S.slots[s].qual = q.get('qual') === 'min' ? 1 : 0; }
+      save(); return ok('ok');
+    },
+    '/slot_activate': q => {
+      const s = Math.max(1, Math.min(5, +q.get('slot') || 1));
+      if (S.slots[s].root >= 0) { S.chordRoot[1] = S.slots[s].root; S.chordQual[1] = S.slots[s].qual; } else S.chordRoot[1] = -1;
+      S.activeSlot = s; save(); return ok('ok');
+    },
+    '/slot_transpose': q => { const s = Math.max(1, Math.min(5, +q.get('slot') || 1)), t = parseInt(q.get('step')); S.slots[s].ts = [-2, -1, 0, 1, 2].includes(t) ? t : 0; save(); return ok('ok'); },
+    '/mel': q => {
+      const id = idArg(q), st = S.mel[id], arpOn = R.arpEn[id] && !R.arpMuted[id];
+      return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], len: st.length, playing: arpOn || R.melPlaying[id] });
+    },
+    '/mel_preview': q => { const id = idArg(q); preview(id, [clampMidi(parseInt(q.get('note')))], 300); return ok('ok'); },
+    '/mel_add_step': q => { const id = idArg(q); if (S.mel[id].length >= MAX_MELODY) return ok('full'); S.mel[id].push({ n: notesArg(q), d: Math.max(0, Math.min(7, +q.get('dur') || 0)) }); save(); return ok('ok'); },
+    '/mel_set_step': q => { const id = idArg(q), i = parseInt(q.get('idx')); if (!(i >= 0 && i < S.mel[id].length)) return bad('bad idx'); S.mel[id][i] = { n: notesArg(q), d: q.has('dur') ? Math.max(0, Math.min(7, +q.get('dur'))) : S.mel[id][i].d }; save(); return ok('ok'); },
+    '/mel_clear': q => { const id = idArg(q); melStop(id); S.mel[id] = []; R.melStep[id] = 0; if (R.arpEn[id]) arpStop(id); save(); return ok('ok'); },
+    '/mel_import': q => { const id = idArg(q); melStop(id); if (q.has('md')) S.melMode[id] = q.get('md') === '1'; S.mel[id] = strToMel(q.get('steps')).filter(s => s.n.length); R.melStep[id] = 0; save(); return ok('ok'); },
+    '/mel_del': q => { const id = idArg(q); if (S.mel[id].length) { S.mel[id].pop(); if (R.melStep[id] >= S.mel[id].length) R.melStep[id] = 0; } save(); return ok('ok'); },
+    '/mel_del_step': q => {
+      const id = idArg(q), i = parseInt(q.get('idx')); if (!(i >= 0 && i < S.mel[id].length)) return bad('bad idx');
+      if (R.melPlaying[id] && R.melPlayStep[id] === i) melStop(id);
+      S.mel[id].splice(i, 1); if (R.melStep[id] >= S.mel[id].length) R.melStep[id] = 0; save(); return ok('ok');
+    },
+    '/mel_ins_step': q => { const id = idArg(q); if (S.mel[id].length >= MAX_MELODY) return ok('full'); let i = parseInt(q.get('idx')); i = Math.max(0, Math.min(S.mel[id].length, isNaN(i) ? 0 : i)); S.mel[id].splice(i, 0, { n: notesArg(q), d: Math.max(0, Math.min(7, +q.get('dur') || 0)) }); save(); return ok('ok'); },
+    '/mel_mode': q => {
+      const id = idArg(q);
+      if (q.has('akkord')) { const a = q.get('akkord') === '1'; if (!a) soundOff(id); S.akkordOff[id] = !a; save(); return ok('ok'); }
+      S.melMode[id] = q.get('active') === '1'; if (S.melMode[id]) R.melStep[id] = 0; else melStop(id); save(); return ok('ok');
+    },
+    '/mel_arp_set': q => {
+      if (q.has('id') && q.has('en')) {
+        const id = idArg(q), en = q.get('en') === '1';
+        if (en && S.mel[id].length) {
+          S.liveMode[id] = false; melStop(id);
+          const running = [1, 2, 3, 4, 5].find(k => k !== id && R.arpEn[k]);   // im gemeinsamen Takt einsteigen
+          arpStart(id, running ? R.arpNext[running] : null);
+        } else { arpStop(id); S.liveMode[id] = q.get('live') === '1'; }
+        save(); return ok('ok');
+      }
+      if (q.has('id') && q.has('div')) { S.arpDiv[idArg(q)] = Math.max(0, Math.min(5, +q.get('div') || 0)); save(); return ok('ok'); }
+      const all = q.get('on') === '1', t0 = A.ctx ? A.ctx.currentTime + 0.03 : 0;
+      for (let id = 1; id <= 5; id++) { if (all && S.mel[id].length) arpStart(id, t0); else arpStop(id); }
+      return ok('ok');
+    },
+    '/arp_sync': () => { const t0 = A.ctx ? A.ctx.currentTime + 0.03 : 0; for (let id = 1; id <= 5; id++) if (R.arpEn[id] && S.mel[id].length) { arpSilence(id); R.arpStep[id] = 0; R.arpPrev[id] = 0; R.arpNext[id] = t0; } return ok('ok'); },
+    '/arp_mute': q => { const id = idArg(q); R.arpMuted[id] = q.get('muted') === '1'; if (R.arpMuted[id]) { arpSilence(id); soundOff(id); } else kick(); return ok('ok'); },
+    '/mel_arp_bpm': q => { S.arpBpm = Math.max(20, Math.min(300, +q.get('bpm') || 120)); save(); return ok('ok'); },
+    '/mel_arp': () => ok({ bpm: S.arpBpm, en: R.arpEn.map((v, i) => (i && v ? 1 : 0)), div: S.arpDiv, tgm: S.arpTgm.map((v, i) => (i && v ? 1 : 0)), lv: S.liveMode.map((v, i) => (i && v ? 1 : 0)) }),
+    '/arp_touch_mode': q => { const id = idArg(q); if (q.has('m')) S.arpTgm[id] = q.get('m') === '1'; S.liveMode[id] = false; save(); return ok('ok'); },
+    '/chord_play': q => {
+      const s = Math.max(1, Math.min(5, +q.get('slot') || 1));
+      if (R.padNotes) { R.padNotes.forEach(n => off(1, n)); R.padNotes = null; }
+      if (S.slots[s].root < 0) return ok('empty');
+      kick();
+      R.padNotes = triad(clampMidi(S.slots[s].root + stepToSemi(S.slots[s].ts)), S.slots[s].qual);
+      const go = () => { if (R.padNotes) R.padNotes.forEach(n => on(1, n, 127)); };
+      if (A.synth) go(); else ensureSynth().then(go).catch(() => {});
+      return ok('ok');
+    },
+    '/chord_stop': () => { if (R.padNotes) { R.padNotes.forEach(n => off(1, n)); R.padNotes = null; } return ok('ok'); },
+    '/touchstates': () => { const j = {}; for (let i = 1; i <= 5; i++) j[i] = !!R.touched[i]; return ok(j); },
+    '/lpresets': () => ok({ presets: [1, 2, 3, 4, 5, 6, 7, 8].map(n => { const p = S.lpresets[n]; return { n, name: (p && p.name) || '', filled: !!(p && p.slots.some(s => s.root >= 0)) }; }) }),
+    '/lpreset_save': q => { const n = Math.max(1, Math.min(8, +q.get('num') || 1)); S.lpresets[n] = { name: q.get('name') || ('Preset ' + n), slots: S.slots.slice(1).map(s => Object.assign({}, s)), active: S.activeSlot }; save(); return ok('ok'); },
+    '/lpreset_load': q => {
+      const n = Math.max(1, Math.min(8, +q.get('num') || 1)), p = S.lpresets[n];
+      if (p) { p.slots.forEach((s, k) => { S.slots[k + 1] = Object.assign({}, s); }); S.activeSlot = p.active || 0; if (S.activeSlot && S.slots[S.activeSlot].root >= 0) { S.chordRoot[1] = S.slots[S.activeSlot].root; S.chordQual[1] = S.slots[S.activeSlot].qual; } save(); }
+      return routes['/slots']();
+    },
+    '/volumes': () => ok({ vol: S.vol }),
+    '/volume_set': q => { const id = idArg(q); S.vol[id] = Math.max(0, Math.min(127, +q.get('val') || 0)); if (A.synth) A.synth.controllerChange(chOf(id), 7, S.vol[id]); save(); return ok('ok'); },
+    '/dpresets': () => ok({ presets: [1, 2, 3, 4].map(n => ({ n, name: (S.dpresets[n] && S.dpresets[n].name) || '', filled: !!S.dpresets[n] })) }),
+    '/dpreset_save': q => { const n = Math.max(1, Math.min(4, +q.get('num') || 1)); S.dpresets[n] = snapshot(q.get('name') || ('Preset ' + n)); save(); return ok('ok'); },
+    '/dpreset_load': q => {
+      const n = Math.max(1, Math.min(4, +q.get('num') || 1)), P = S.dpresets[n];
+      if (!P) return new Response('leer', { status: 404 });
+      applyPreset(P);
+      const ids = [];
+      for (let i = 1; i <= 5; i++) ids.push({ id: i, note: S.note[i], root: S.chordRoot[i], qual: S.chordQual[i] ? 'min' : 'maj', ts: S.ts[i], ch: i, prog: S.instr[i].p, msb: S.instr[i].m, lsb: S.instr[i].l, ao: S.akkordOff[i] ? 1 : 0, mm: S.melMode[i] ? 1 : 0 });
+      const im = { root: S.improRoot, scale: S.improScale, oct: S.improOct }; for (let i = 1; i <= 5; i++) im['e' + i] = S.improEn[i] ? 1 : 0;
+      return ok({ ids, impro: im, arpDiv: S.arpDiv, arpEn: R.arpEn.map((v, i) => (i && v ? 1 : 0)), arpBpm: S.arpBpm, vol: S.vol, led: [] });
+    },
+    '/export_presets': () => ok(exportJson()),
+    '/dpreset_raw': q => { presetFromRaw(q); return ok('ok'); },
+    '/dpreset_clear_all': () => { S.dpresets = [null, null, null, null, null]; for (let i = 1; i <= 5; i++) { melStop(i); arpStop(i); S.mel[i] = []; R.melStep[i] = 0; } save(); return ok('ok'); },
+    '/midichan': (q, m) => {
+      if (m === 'GET') return ok({ c: S.midiCh, g: [0, 0, 0, 0, 0, 0] });
+      for (let i = 1; i <= 5; i++) if (q.has('c' + i)) { const c = Math.max(1, Math.min(16, +q.get('c' + i) || i)); if (c !== S.midiCh[i]) { soundOff(i); S.midiCh[i] = c; applyChannel(i); } }
+      save(); return ok('ok');
+    },
+    '/melody_copy': q => {
+      const from = idArg(new URLSearchParams('id=' + q.get('from'))); let copied = 0;
+      (q.get('to') || '').split(',').map(Number).forEach(to => { if (to >= 1 && to <= 5 && to !== from) { melStop(to); S.mel[to] = S.mel[from].map(s => ({ n: s.n.slice(), d: s.d })); S.melMode[to] = S.melMode[from]; R.melStep[to] = 0; copied++; } });
+      save(); return ok({ copied });
+    },
+    '/factory_reset': () => { try { localStorage.removeItem(STORE); } catch (e) {} setTimeout(() => location.reload(), 300); return ok('ok'); }
+  };
+  const realFetch = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (!url.startsWith('/')) return realFetch(input, init);
+    const u = new URL(url, location.href), method = ((init && init.method) || 'GET').toUpperCase();
+    const q = new URLSearchParams(u.search);
+    if (init && init.body) new URLSearchParams(typeof init.body === 'string' ? init.body : String(init.body)).forEach((v, k) => q.set(k, v));
+    const h = routes[u.pathname];
+    if (!h) return ok('ok');   // Teile, die es nur am ESP32 gab (LED, WLAN …), tun hier nichts
+    try { return h(q, method); } catch (e) { console.error('[Spielen]', u.pathname, e); return new Response(String(e), { status: 500 }); }
+  };
+})();
+</script>
+<script>
+const NAMES=["C4","C#4","D4","D#4","E4","F4","F#4","G4","G#4","A4","A#4","B4"];
+const grid=document.getElementById('grid');
+
+function mkNoteSelect(){ const s=document.createElement('select'); for(let n=60;n<=71;n++){ const o=document.createElement('option'); o.value=n; o.text=n+' '+NAMES[n-60]; s.appendChild(o);} return s; }
+function mkChordSelect(){
+  const s=document.createElement('select');
+  const off=document.createElement('option'); off.value='off'; off.text='Aus (kein Akkord)'; s.appendChild(off);
+  for(let n=60;n<=71;n++){
+    const oM=document.createElement('option'); oM.value='maj-'+n; oM.text=NAMES[n-60]+'-Dur';  s.appendChild(oM);
+    const om=document.createElement('option'); om.value='min-'+n; om.text=NAMES[n-60]+'-Moll'; s.appendChild(om);
+  }
+  return s;
+}
+function mkTransSel(){
+  const s=document.createElement('select');
+  [-2,-1,0,1,2].forEach(v=>{ const o=document.createElement('option'); o.value=v; o.text='Transp. '+(v>0?'+':'')+v; s.appendChild(o); });
+  return s;
+}
+function mkBtn(txt){ const b=document.createElement('button'); b.textContent=txt; b.className='btn'; return b; }
+function mkNumInput(id,prefix,min,max){
+  const i=document.createElement('input'); i.type='number';
+  i.id=prefix+'_'+id; i.min=min; i.max=max; i.value=min; i.style.cssText='width:100%';
+  return i;
+}
+
+
+// ===== Instrumente-Seite =====
+function buildInstrRows(){
+  const wrap=document.getElementById('instrrows');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  for(let i=1;i<=5;i++){
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;flex-wrap:wrap';
+    const badge=document.createElement('span'); badge.className='badge'; badge.textContent='SW '+i;
+    const sel=document.createElement('select'); sel.id='instrsel_'+i; sel.style.cssText='flex:1;min-width:140px';
+    const ph=document.createElement('option'); ph.value=''; ph.text='— Instrument —'; sel.appendChild(ph);
+    sel.addEventListener('change',()=>{
+      const idx=parseInt(sel.value,10);
+      if(isNaN(idx)||idx<0||idx>=instrListData.length) return;
+      const d=instrListData[idx];
+      sel.dataset.p=d.p; sel.dataset.m=d.m; sel.dataset.l=d.l;
+      updateMixInstr(i);
+      fetch('/instr_set?id='+i+'&p='+d.p+'&m='+d.m+'&l='+d.l,{method:'POST'}).catch(()=>{});
+    });
+    row.append(badge,sel);
+    wrap.appendChild(row);
+  }
+}
+buildInstrRows();
+
+// ===== Improv-Toggles in der Instrarea (pro SW) =====
+function buildImproToggleRows(){
+  const wrap=document.getElementById('improToggleRows');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  for(let i=1;i<=5;i++){
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px';
+    row.innerHTML=`<span class="badge" style="min-width:46px;text-align:center">SW ${i}</span>`+
+      `<button id="instrImproBtn${i}" class="btn" style="font-size:15px;padding:10px 22px;min-width:90px">Aus</button>`+
+      `<span class="mut small">Berühren = zufälliger Ton</span>`;
+    wrap.appendChild(row);
+  }
+  for(let i=1;i<=5;i++){
+    document.getElementById('instrImproBtn'+i).onclick=async function(){
+      const next=!improEnaState[i];
+      improEnaState[i]=next;
+      const any=improEnaState.some((v,k)=>k>=1&&v);
+      try{
+        await fetch('/impro_set?e'+i+'='+(next?'1':'0')+'&on='+(any?'1':'0'),{method:'POST'});
+      }catch(e){}
+      applyInstrImproVisual(i);
+    };
+  }
+}
+function applyInstrImproVisual(i){
+  const b=document.getElementById('instrImproBtn'+i);
+  if(!b) return;
+  const on=!!improEnaState[i];
+  b.textContent=on?'An':'Aus';
+  b.style.borderColor=on?'#4dff87':'';
+  b.style.color=on?'#4dff87':'';
+}
+async function refreshInstrImproState(){
+  try{
+    const j=await(await fetch('/impro')).json();
+    for(let i=1;i<=5;i++) improEnaState[i]=(j['e'+i]!==0);
+  }catch(e){}
+  for(let i=1;i<=5;i++) applyInstrImproVisual(i);
+}
+buildImproToggleRows();
+
+document.getElementById('instropen').onclick=()=>{ document.getElementById('instrarea').classList.toggle('open'); refreshInstrImproState(); };
+document.getElementById('instrback').onclick=()=>{ document.getElementById('instrarea').classList.remove('open'); };
+document.getElementById('instr-to-preset').onclick=()=>{ document.getElementById('instrarea').classList.remove('open'); document.getElementById('presetarea').classList.add('open'); loadDPresets(); };
+document.getElementById('presetopen').onclick=()=>{ document.getElementById('presetarea').classList.toggle('open'); loadDPresets(); };
+document.getElementById('presetback').onclick=()=>{ document.getElementById('presetarea').classList.remove('open'); };
+
+// ===== Ton/Akkord-Seite =====
+function buildTonAkkordRows(){
+  const wrap=document.getElementById('tonakkordrows');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  for(let i=1;i<=5;i++){
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #1d2940';
+    const badge=document.createElement('span'); badge.className='badge'; badge.textContent='SW '+i;
+    const noteSel=mkNoteSelect(); noteSel.id='note_'+i;
+    const chordSel=mkChordSelect(); chordSel.id='chord_'+i;
+    const transSel=mkTransSel(); transSel.id='trans_'+i;
+    const stat=document.createElement('span'); stat.className='mut'; stat.style.fontSize='12px';
+
+    noteSel.onchange=async()=>{
+      stat.textContent='Ton → sende…'; stat.className='mut';
+      try{
+        const res=await fetch('/set?id='+i+'&note='+noteSel.value,{method:'POST'});
+        if(res.ok){
+          const ip=((await(await fetch('/registry')).json())[i]||{}).ip||'OK';
+          stat.textContent=ip; stat.className='ok';
+          if(i!==1){['led','mixled'].forEach(p=>{const l=document.getElementById(p+i);if(l){l.className='dot green';setTimeout(()=>l.className='dot off',700);}});}
+        } else { stat.textContent='Fehler'; stat.className='err'; }
+      }catch(e){ stat.textContent='Fehler'; stat.className='err'; }
+    };
+
+    chordSel.onchange=async()=>{
+      if(chordSel.value==='off'){
+        stat.textContent='Akkord aus…'; stat.className='mut';
+        try{
+          const res=await fetch('/chord_off?id='+i,{method:'POST'});
+          if(res.ok){
+            const ip=((await(await fetch('/registry')).json())[i]||{}).ip||'OK';
+            stat.textContent=ip; stat.className='ok';
+            } else { stat.textContent='Fehler'; stat.className='err'; }
+        }catch(e){ stat.textContent='Fehler'; stat.className='err'; }
+        return;
+      }
+      const [qual,rootStr]=chordSel.value.split('-');
+      const root=parseInt(rootStr,10);
+      stat.textContent='Akkord → sende…'; stat.className='mut';
+      try{
+        const res=await fetch('/chord?id='+i+'&root='+root+'&qual='+qual,{method:'POST'});
+        if(res.ok){
+          const ip=((await(await fetch('/registry')).json())[i]||{}).ip||'OK';
+          stat.textContent=ip; stat.className='ok';
+          if(i!==1){['led','mixled'].forEach(p=>{const l=document.getElementById(p+i);if(l){l.className='dot green';setTimeout(()=>l.className='dot off',700);}});}
+        } else { stat.textContent='Fehler'; stat.className='err'; }
+      }catch(e){ stat.textContent='Fehler'; stat.className='err'; }
+    };
+
+    transSel.onchange=async()=>{
+      stat.textContent='Transp. → speichere…'; stat.className='mut';
+      try{
+        const res=await fetch('/transpose?id='+i+'&step='+transSel.value,{method:'POST'});
+        stat.textContent=res.ok?('Transp. '+transSel.value):'Fehler';
+        stat.className=res.ok?'ok':'err';
+      }catch(e){ stat.textContent='Fehler'; stat.className='err'; }
+    };
+
+    row.append(badge,noteSel,chordSel,transSel,stat);
+    wrap.appendChild(row);
+  }
+}
+buildTonAkkordRows();
+document.getElementById('tonakkordopen').onclick=()=>{
+  document.getElementById('tonakkordarea').classList.toggle('open');
+  fetch('/transpose').then(r=>r.json()).then(t=>{
+    for(let i=1;i<=5;i++){ const ts=document.getElementById('trans_'+i); if(ts&&t[i]!=null) ts.value=t[i]; }
+  }).catch(()=>{});
+};
+document.getElementById('tonakkordback').onclick=()=>{ document.getElementById('tonakkordarea').classList.remove('open'); };
+
+let instrListData=[];
+function updateMixInstr(id){
+  const sel=document.getElementById('instrsel_'+id);
+  const span=document.getElementById('mixinstr'+id);
+  if(!span) return;
+  const idx=sel?parseInt(sel.value,10):-1;
+  span.textContent=(idx>=0&&instrListData[idx])?instrListData[idx].name:'';
+}
+function updateAllMixInstrs(){ for(let i=1;i<=5;i++) updateMixInstr(i); }
+function rebuildInstrDropdowns(){
+  for(let i=1;i<=5;i++){
+    const sel=document.getElementById('instrsel_'+i);
+    if(!sel) continue;
+    const oldP=sel.dataset.p||'', oldM=sel.dataset.m||'', oldL=sel.dataset.l||'';
+    sel.innerHTML='<option value="">— Instrument —</option>';
+    instrListData.forEach((d,idx)=>{
+      const o=document.createElement('option');
+      o.value=idx; o.text=d.name;
+      if(String(d.p)===oldP&&String(d.m)===oldM&&String(d.l)===oldL) o.selected=true;
+      sel.appendChild(o);
+    });
+  }
+  updateAllMixInstrs();
+}
+// Instrument-Liste laden → Dropdowns aufbauen → dann aktuelle Geräte-Instrumente setzen
+fetch('/instr_list').then(r=>r.json()).then(list=>{
+  instrListData=list;
+  rebuildInstrDropdowns();
+  renderInstrList();
+  // Aktuelle Instrument-Auswahl pro ID setzen
+  fetch('/instr').then(r=>r.json()).then(d=>{
+    for(let i=1;i<=5;i++){
+      if(!d[i]) continue;
+      const sel=document.getElementById('instrsel_'+i);
+      if(!sel) continue;
+      sel.dataset.p=d[i].p; sel.dataset.m=d[i].m; sel.dataset.l=d[i].l;
+      const idx=instrListData.findIndex(e=>e.p==d[i].p&&e.m==d[i].m&&e.l==d[i].l);
+      sel.value=idx>=0?idx:'';
+      updateMixInstr(i);
+    }
+  }).catch(()=>{});
+}).catch(()=>{});
+
+// ===== Einstellungen – Instrument-Liste =====
+document.getElementById('settingsopen').onclick=()=>{
+  document.getElementById('settingsarea').classList.toggle('open');
+};
+document.getElementById('settingsback').onclick=()=>{
+  document.getElementById('settingsarea').classList.remove('open');
+};
+document.querySelectorAll('.set-hdr').forEach(h=>{
+  h.onclick=()=>{
+    const body=document.getElementById(h.dataset.sec);
+    const isOpen=body.style.display==='block';
+    body.style.display=isOpen?'none':'block';
+    h.classList.toggle('open',!isOpen);
+  };
+});
+// ===== Steuerung (Tasten 1–5 oder BLE-MIDI) =====
+(function(){
+  const stat=document.getElementById('ctlStat');
+  const radios=[...document.querySelectorAll('input[name=ctlMode]')];
+  function show(){ radios.forEach(r=>{ r.checked=(r.value===window.swControl.get()); }); stat.textContent=window.swControl.state.msg||''; }
+  radios.forEach(r=>r.addEventListener('change',async()=>{ if(!r.checked) return; stat.textContent='…'; await window.swControl.set(r.value); show(); }));
+  document.getElementById('settingsopen').addEventListener('click',async()=>{ await window.swControl.refresh(); show(); });
+  show();
+})();
+
+// ===== MIDI-Kanäle =====
+(function(){
+  const rows=document.getElementById('midiChRows');
+  const stat=document.getElementById('midiChStat');
+  const sels=[], gcbs=[];
+  for(let i=1;i<=5;i++){
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px';
+    const badge=document.createElement('span'); badge.className='badge'; badge.textContent='SW '+i;
+    const sel=document.createElement('select');
+    sel.style.cssText='font-size:15px;padding:8px 12px;background:var(--card2,#0d1a2e);border:1px solid #2a3a5a;border-radius:8px;color:var(--fg)';
+    for(let c=1;c<=16;c++){ const o=document.createElement('option'); o.value=c; o.textContent='Kanal '+c+(c===10?' (Schlagzeug)':''); sel.appendChild(o); }
+    sel.value=i;
+    sel.onchange=async()=>{
+      stat.textContent='Speichere…';
+      try{
+        const r=await fetch('/midichan?c'+i+'='+sel.value,{method:'POST'});
+        stat.textContent=r.ok?'OK':'Fehler';
+      }catch(e){ stat.textContent='Fehler'; }
+    };
+    sels[i]=sel;
+    row.append(badge,sel); rows.appendChild(row);
+  }
+  window.loadMidiChanUI=async function(){
+    try{
+      const j=await(await fetch('/midichan')).json();
+      for(let i=1;i<=5;i++){
+        if(sels[i]) sels[i].value=j.c[i];
+      }
+    }catch(e){}
+  };
+  window.loadMidiChanUI();
+})();
+
+// ===== Melodie kopieren =====
+(function(){
+  const fromSel=document.getElementById('melCopyFrom');
+  function updateTargets(){
+    const from=parseInt(fromSel.value);
+    document.querySelectorAll('#melCopyTargets input').forEach(cb=>{
+      const disabled=parseInt(cb.value)===from;
+      cb.disabled=disabled;
+      if(disabled) cb.checked=false;
+    });
+  }
+  fromSel.onchange=updateTargets;
+  updateTargets();
+  document.getElementById('melCopyBtn').onclick=async function(){
+    const stat=document.getElementById('melCopyStat');
+    const from=fromSel.value;
+    const targets=[...document.querySelectorAll('#melCopyTargets input:checked')].map(c=>c.value);
+    if(targets.length===0){stat.textContent='Bitte mindestens ein Ziel wählen';return;}
+    try{
+      stat.textContent='Kopiere…';
+      const r=await fetch('/melody_copy?from='+from+'&to='+targets.join(','),{method:'POST'});
+      const j=await r.json();
+      stat.textContent=j.copied+(j.copied===1?' SW aktualisiert':' SWs aktualisiert');
+    }catch(e){stat.textContent='Fehler';}
+  };
+})();
+document.getElementById('factoryResetBtn').onclick=async function(){
+  const stat=document.getElementById('factoryResetStat');
+  if(!confirm('Alle Einstellungen wirklich löschen?\nDie App startet danach mit Standardwerten neu.')) return;
+  stat.textContent='Zurücksetzen…';
+  try{ await fetch('/factory_reset',{method:'POST'}); stat.textContent='Fertig – App startet neu'; }
+  catch(e){ stat.textContent='Fertig – App startet neu'; }
+};
+document.getElementById('hilfeopen').onclick=()=>{
+  document.getElementById('hilfearea').classList.add('open');
+};
+document.getElementById('hilfeback').onclick=()=>{
+  document.getElementById('hilfearea').classList.remove('open');
+};
+
+function renderInstrList(){
+  const wrap=document.getElementById('instrlistwrap');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  instrListData.forEach((d,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap';
+    const nm=document.createElement('input'); nm.type='text'; nm.value=d.name;
+    nm.placeholder='Name'; nm.style.cssText='width:120px;background:#0f1724;color:var(--fg);border:1px solid #25324b;border-radius:8px;padding:5px 8px;font-size:13px';
+    nm.oninput=()=>{ instrListData[i].name=nm.value; };
+    const prog=document.createElement('input'); prog.type='number';
+    prog.min=1; prog.max=128; prog.value=d.p+1; prog.style.cssText='width:52px;background:#0f1724;color:var(--fg);border:1px solid #25324b;border-radius:8px;padding:5px 4px;font-size:13px';
+    prog.title='Programm (1-128)'; prog.oninput=()=>{ instrListData[i].p=Math.max(0,(parseInt(prog.value,10)||1)-1); };
+    const msb=document.createElement('input'); msb.type='number';
+    msb.min=0; msb.max=127; msb.value=d.m; msb.style.cssText='width:48px;background:#0f1724;color:var(--fg);border:1px solid #25324b;border-radius:8px;padding:5px 4px;font-size:13px';
+    msb.title='MSB'; msb.oninput=()=>{ instrListData[i].m=parseInt(msb.value,10)||0; };
+    const lsb=document.createElement('input'); lsb.type='number';
+    lsb.min=0; lsb.max=127; lsb.value=d.l; lsb.style.cssText='width:48px;background:#0f1724;color:var(--fg);border:1px solid #25324b;border-radius:8px;padding:5px 4px;font-size:13px';
+    lsb.title='LSB'; lsb.oninput=()=>{ instrListData[i].l=parseInt(lsb.value,10)||0; };
+    const lblN=document.createElement('span'); lblN.className='mut small'; lblN.textContent='Name';
+    const lblP=document.createElement('span'); lblP.className='mut small'; lblP.textContent='Prog';
+    const lblM=document.createElement('span'); lblM.className='mut small'; lblM.textContent='MSB';
+    const lblL=document.createElement('span'); lblL.className='mut small'; lblL.textContent='LSB';
+    const del=document.createElement('button'); del.textContent='✕'; del.className='btn';
+    del.onclick=()=>{ instrListData.splice(i,1); renderInstrList(); rebuildInstrDropdowns(); };
+    row.append(lblN,nm,lblP,prog,lblM,msb,lblL,lsb,del);
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('pianoLabelBtn').onclick=()=>{
+  pianoLabels=!pianoLabels;
+  localStorage.setItem('pianoLabels',pianoLabels?'1':'0');
+  applyPianoLabels();
+};
+document.getElementById('instrAddBtn').onclick=()=>{
+  instrListData.push({name:'',p:0,m:0,l:0});
+  renderInstrList();
+};
+document.getElementById('instrSaveBtn').onclick=async()=>{
+  const stat=document.getElementById('instrSaveStat');
+  stat.textContent='Speichere…'; stat.className='mut';
+  const params=new URLSearchParams();
+  params.set('cnt',instrListData.length);
+  instrListData.forEach((d,i)=>{
+    params.set('n'+i,d.name); params.set('p'+i,d.p);
+    params.set('m'+i,d.m);   params.set('l'+i,d.l);
+  });
+  try{
+    const res=await fetch('/instr_list_save',{method:'POST',body:params});
+    stat.textContent=res.ok?'OK':'Fehler'; stat.className=res.ok?'ok':'err';
+    if(res.ok) rebuildInstrDropdowns();
+  }catch(e){ stat.textContent='Fehler'; stat.className='err'; }
+};
+
+// Transpose-Initialwerte laden
+(async ()=>{
+  try{
+    const t=await (await fetch('/transpose')).json();
+    for(let i=1;i<=5;i++){
+      const ts=document.getElementById('trans_'+i);
+      if(t[i]!=null && ts) ts.value=t[i];
+    }
+  }catch(e){}
+})();
+
+// ===== Akkord-Slots =====
+let activeSlotNum = 0;
+function mkSlotChordSel(){
+  const s=document.createElement('select'); s.style.flex='1';
+  const off=document.createElement('option'); off.value='off'; off.text='– nicht gesetzt –'; s.appendChild(off);
+  for(let n=60;n<=71;n++){
+    const oM=document.createElement('option'); oM.value='maj-'+n; oM.text=NAMES[n-60]+'-Dur';  s.appendChild(oM);
+    const om=document.createElement('option'); om.value='min-'+n; om.text=NAMES[n-60]+'-Moll'; s.appendChild(om);
+  }
+  return s;
+}
+function setSlotHighlight(num){
+  for(let i=1;i<=5;i++){
+    const row=document.getElementById('slotrow'+i);
+    if(row) row.style.border=(i===num)?'1px solid var(--acc)':'1px solid #1d2940';
+  }
+}
+function mkSlotTransSel(){
+  const s=document.createElement('select');
+  [-2,-1,0,1,2].forEach(v=>{
+    const o=document.createElement('option'); o.value=v;
+    o.text='Transp. '+(v>0?'+':'')+v; s.appendChild(o);
+  });
+  return s;
+}
+function stepToSemiJS(s){ return s===-2?-24:s===-1?-12:s===1?12:s===2?24:0; }
+
+function buildSlotUI(){
+  const list=document.getElementById('slotlist');
+  for(let i=1;i<=5;i++){
+    const row=document.createElement('div');
+    row.id='slotrow'+i;
+    row.style.cssText='display:flex;gap:8px;align-items:center;background:#0e1626;border:1px solid #1d2940;border-radius:10px;padding:8px;flex-wrap:wrap';
+    const badge=document.createElement('span'); badge.className='badge'; badge.textContent='Slot '+i; badge.style.minWidth='52px';
+    const sel=mkSlotChordSel(); sel.id='slotsel'+i;
+    const transSel=mkSlotTransSel(); transSel.id='slottrans'+i;
+    const stat=document.createElement('span'); stat.className='mut'; stat.id='slotstat'+i; stat.style.fontSize='12px';
+    async function saveSlot(){
+      const v=sel.value;
+      let url;
+      if(v==='off') url='/slot_set?slot='+i+'&root=off';
+      else{ const [q,r]=v.split('-'); url='/slot_set?slot='+i+'&root='+r+'&qual='+q; }
+      try{
+        const [r1,r2,r3]=await Promise.all([
+          fetch(url,{method:'POST'}),
+          fetch('/slot_transpose?slot='+i+'&step='+transSel.value,{method:'POST'}),
+          fetch('/slot_activate?slot='+i,{method:'POST'})
+        ]);
+        if(r1.ok&&r2.ok&&r3.ok){
+          activeSlotNum=i; setSlotHighlight(i);
+          stat.textContent='Aktiv'; stat.className='ok';
+          if(document.getElementById('livearea').classList.contains('open')) enterLiveMode();
+        } else{ stat.textContent='Fehler'; stat.className='err'; }
+      }catch(e){stat.textContent='Fehler';stat.className='err';}
+    }
+    sel.addEventListener('change', saveSlot);
+    transSel.addEventListener('change', saveSlot);
+    row.append(badge,sel,transSel,stat);
+    list.appendChild(row);
+  }
+}
+async function loadSlots(){
+  try{
+    const j=await(await fetch('/slots')).json();
+    activeSlotNum=j.active||0;
+    for(let i=1;i<=5;i++){
+      const s=document.getElementById('slotsel'+i);
+      const t=document.getElementById('slottrans'+i);
+      const slot=j.slots[i-1];
+      if(slot&&slot.root>=0) s.value=slot.qual+'-'+slot.root;
+      else s.value='off';
+      if(t&&slot) t.value=(slot.ts!=null?slot.ts:0);
+    }
+    setSlotHighlight(activeSlotNum);
+  }catch(e){}
+}
+buildSlotUI();
+loadSlots();
+
+// ===== Slot-Presets =====
+let selLPreset=0;
+function buildLPresetUI(){
+  const pg=document.getElementById('lpresetgrid');
+  for(let n=1;n<=8;n++){
+    const b=document.createElement('button'); b.className='btn'; b.id='lpbtn'+n;
+    b.style.cssText='font-size:11px;padding:5px 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.5';
+    b.textContent=n+': Preset '+n;
+    b.onclick=()=>{
+      selLPreset=n;
+      for(let k=1;k<=8;k++){const x=document.getElementById('lpbtn'+k);if(x)x.style.outline='';}
+      b.style.outline='2px solid var(--acc)';
+      document.getElementById('lpname').value=b.dataset.name||'';
+    };
+    pg.appendChild(b);
+  }
+  document.getElementById('lpsave').onclick=async()=>{
+    if(!selLPreset){lpStat('Erst Preset wählen','err');return;}
+    const nm=document.getElementById('lpname').value.trim()||('Preset '+selLPreset);
+    try{
+      const res=await fetch('/lpreset_save?num='+selLPreset+'&name='+encodeURIComponent(nm),{method:'POST'});
+      if(res.ok){ lpStat('Gespeichert','ok'); loadLPresets(); }
+      else lpStat('Fehler','err');
+    }catch(e){lpStat('Fehler','err');}
+  };
+  document.getElementById('lpload').onclick=async()=>{
+    if(!selLPreset){lpStat('Erst Preset wählen','err');return;}
+    try{
+      const res=await fetch('/lpreset_load?num='+selLPreset,{method:'POST'});
+      if(res.ok){ lpStat('Geladen','ok'); await loadSlots(); }
+      else lpStat('Fehler','err');
+    }catch(e){lpStat('Fehler','err');}
+  };
+}
+function lpStat(m,c){const s=document.getElementById('lpstat');s.textContent=m;s.className=c;}
+async function loadLPresets(){
+  try{
+    const j=await(await fetch('/lpresets')).json();
+    j.presets.forEach(p=>{
+      const b=document.getElementById('lpbtn'+p.n); if(!b) return;
+      const lbl=(p.name&&p.name.length)?p.name:('Preset '+p.n);
+      b.textContent=p.n+': '+lbl; b.dataset.name=p.name||'';
+      b.style.opacity=p.filled?'1':'0.5';
+    });
+  }catch(e){}
+}
+buildLPresetUI(); loadLPresets();
+
+// ===== Geräte-Presets =====
+let selDPreset=0;
+function buildDPresetUI(){
+  const pg=document.getElementById('dpresetgrid');
+  for(let n=1;n<=4;n++){
+    const b=document.createElement('button'); b.className='btn'; b.id='dpbtn'+n;
+    b.style.cssText='font-size:15px;padding:14px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.5;border-radius:12px;min-height:56px';
+    b.textContent=n+': Preset '+n;
+    b.onclick=()=>{
+      selDPreset=n;
+      for(let k=1;k<=8;k++){const x=document.getElementById('dpbtn'+k);if(x)x.style.outline='';}
+      b.style.outline='2px solid var(--acc)';
+      document.getElementById('dpname').value=b.dataset.name||'';
+      doLoadDPreset(n);
+    };
+    pg.appendChild(b);
+  }
+  document.getElementById('dpsave').onclick=async()=>{
+    if(!selDPreset){dpStat('Erst Preset wählen','err');return;}
+    const nm=document.getElementById('dpname').value.trim()||('Preset '+selDPreset);
+    try{
+      // Lautstärke: offene Debounce-Timer flushen (kein Extra-Request, Timer feuert selbst)
+      for(let i=1;i<=5;i++) clearTimeout(volTimers[i]);
+      const res=await fetch('/dpreset_save?num='+selDPreset+'&name='+encodeURIComponent(nm),{method:'POST'});
+      if(res.ok){ dpStat('Gespeichert','ok'); loadDPresets(); }
+      else dpStat('Fehler','err');
+    }catch(e){dpStat('Fehler','err');}
+  };
+}
+async function doLoadDPreset(num){
+  try{
+      dpStat('Lade…','mut');
+      // Timeout: 8 Sekunden, dann Fehler
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),8000);
+      let res;
+      try{ res=await fetch('/dpreset_load?num='+num,{signal:ctrl.signal}); }
+      finally{ clearTimeout(tid); }
+      if(!res.ok){dpStat('Fehler '+res.status,'err');return;}
+      const j=await res.json();
+      dpStat('Sende…','mut');
+      if(window.loadMidiChanUI) window.loadMidiChanUI();
+      // Sequenziell senden (nicht parallel) → ESP32 wird nicht überlastet
+      for(const d of j.ids){
+        const id=d.id;
+        if(d.root>=0){
+          await fetch('/chord?id='+id+'&root='+d.root+'&qual='+d.qual,{method:'POST'}).catch(()=>{});
+        } else {
+          await fetch('/chord_off?id='+id,{method:'POST'}).catch(()=>{});
+          await fetch('/set?id='+id+'&note='+d.note,{method:'POST'}).catch(()=>{});
+        }
+        await fetch('/transpose?id='+id+'&step='+d.ts,{method:'POST'}).catch(()=>{});
+        // JS-Mode-State aus Preset übernehmen (Akkord-Off + Melodie-Mode)
+        if(typeof d.ao!=='undefined') akkordOffState[id]=(d.ao===1);
+        // Dropdowns im Grid aktualisieren
+        const ns=document.getElementById('note_'+id);
+        const cs=document.getElementById('chord_'+id);
+        const ts=document.getElementById('trans_'+id);
+        if(ns) ns.value=d.note;
+        if(cs) cs.value=(d.root>=0?(d.qual+'-'+d.root):'off');
+        if(ts) ts.value=d.ts;
+        const sel=document.getElementById('instrsel_'+id);
+        if(sel){
+          sel.dataset.p=d.prog; sel.dataset.m=d.msb; sel.dataset.l=d.lsb;
+          const idx=instrListData.findIndex(e=>e.p==d.prog&&e.m==d.msb&&e.l==d.lsb);
+          sel.value=idx>=0?idx:'';
+          updateMixInstr(id);
+        }
+      }
+      // LED-Farben sequenziell setzen (C++ macht das nicht mehr beim Laden)
+      if(j.led&&j.led.length){
+        for(let i=2;i<=5;i++){
+          const c=j.led[i]||'off';
+          await fetch('/color?c='+c+'&id='+i,{method:'POST'}).catch(()=>{});
+        }
+      }
+      dpStat('Geladen \u2713','ok');
+      if(j.impro){
+        const im=j.impro;
+        if(im.root &&im.root.length)  for(let i=1;i<=5;i++) improRootSW[i] =im.root[i] ||0;
+        if(im.scale&&im.scale.length) for(let i=1;i<=5;i++) improScaleSW[i]=im.scale[i]||0;
+        if(im.oct  &&im.oct.length)   for(let i=1;i<=5;i++) improOctSW[i]  =im.oct[i]  ||4;
+        syncImproUI(melID);
+        for(let i=1;i<=5;i++) improEnaState[i]=(im['e'+i]!==0);
+        updateModeBtns(melID);
+      }
+      if(j.arpDiv&&j.arpDiv.length){
+        for(let i=1;i<=5;i++) melArpState.div[i]=j.arpDiv[i]||0;
+      }
+      if(j.arpEn&&j.arpEn.length){
+        if(!melArpState.en) melArpState.en=[0,0,0,0,0,0];
+        for(let i=1;i<=5;i++) melArpState.en[i]=j.arpEn[i]||0;
+      }
+      if(j.arpBpm) melArpState.bpm=j.arpBpm;
+      updateMelArpUI();
+      if(j.vol&&j.vol.length){
+        for(let i=1;i<=5;i++){
+          const v=j.vol[i]!=null?j.vol[i]:100;
+          const sl=document.getElementById('mixfader'+i);
+          const vl=document.getElementById('mixval'+i);
+          if(sl) sl.value=v;
+          if(vl) vl.textContent=v;
+        }
+      }
+      if(j.led&&j.led.length){
+        for(let i=1;i<=5;i++){
+          const c=j.led[i]||'off';
+          const dot=document.getElementById('leddot_'+i);
+          const sel=document.getElementById('ledsel_'+i);
+          if(dot) dot.className='dot '+c;
+          if(sel) sel.value=c;
+        }
+      }
+      if(melArea && melArea.classList.contains('open')){ loadMel(); syncMelControls(melID); }
+  }catch(e){dpStat('Fehler','err');}
+}
+function dpStat(m,c){const s=document.getElementById('dpstat');s.textContent=m;s.className=c;}
+async function loadDPresets(){
+  try{
+    const j=await(await fetch('/dpresets')).json();
+    j.presets.forEach(p=>{
+      const b=document.getElementById('dpbtn'+p.n); if(!b) return;
+      const lbl=(p.name&&p.name.length)?p.name:('Preset '+p.n);
+      b.textContent=p.n+': '+lbl; b.dataset.name=p.name||'';
+      b.style.opacity=p.filled?'1':'0.5';
+    });
+  }catch(e){}
+}
+buildDPresetUI(); loadDPresets();
+
+// ===== Preset Export / Import =====
+document.getElementById('dpexport').addEventListener('click',async()=>{
+  try{
+    const fn=(document.getElementById('dpfilename').value.trim()||'midi_hub_presets').replace(/[\\/:*?"<>|]/g,'_')+'.json';
+    const r=await fetch('/export_presets');
+    if(!r.ok){dpStat('Export Fehler','err');return;}
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=fn;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    dpStat('Exportiert','ok');
+  }catch(e){dpStat('Export Fehler','err');}
+});
+document.getElementById('dpclearall').addEventListener('click',async()=>{
+  if(!confirm('Alle 8 Geräte-Presets und alle Melodien (SW1–5) wirklich löschen?')) return;
+  try{
+    await fetch('/dpreset_clear_all',{method:'POST'});
+    await loadDPresets();
+    dpStat('Alle Presets gelöscht','ok');
+  }catch(e){dpStat('Fehler','err');}
+});
+document.getElementById('dpimport').addEventListener('change',async(e)=>{
+  const file=e.target.files[0]; if(!file) return;
+  const istat=document.getElementById('dpimportstat');
+  istat.textContent='Importiere\u2026'; istat.className='mut';
+  try{
+    const data=JSON.parse(await file.text());
+    if(!data.presets||!Array.isArray(data.presets)){istat.textContent='Ung\u00fcltige Datei';istat.className='err';return;}
+    await fetch('/dpreset_clear_all',{method:'POST'});
+    for(const pr of data.presets){
+      if(!pr.filled) continue; // leere Slots nicht importieren (auch alte Dateien ohne filled-Flag)
+      let n=pr.n;
+      if(n>=5&&n<=8) n=n-4;   // alte Slots 5-8 → neue Slots 1-4
+      if(n<1||n>4) continue;  // alles andere überspringen
+      let b='num='+n+'&name='+encodeURIComponent(pr.name||'');
+      if(pr.ids) for(const d of pr.ids){
+        const i=d.i;
+        b+='&d'+i+'n='+d.nt+'&d'+i+'r='+d.rt+'&d'+i+'q='+d.qq+'&d'+i+'t='+d.ts;
+        b+='&d'+i+'p='+d.pp+'&d'+i+'m='+d.ms+'&d'+i+'l='+d.ls;
+        b+='&d'+i+'mm='+d.mm+'&d'+i+'ml='+d.ml+'&d'+i+'md='+encodeURIComponent(d.md||'');
+        b+='&d'+i+'ao='+(d.ao||0);
+      }
+      for(let i=1;i<=5;i++){
+        b+='&ir'+i+'='+(pr.ir?pr.ir[i]:0);
+        b+='&is'+i+'='+(pr.is?pr.is[i]:0);
+        b+='&io'+i+'='+(pr.io?pr.io[i]:4);
+        b+='&ie'+i+'='+(pr.ie?pr.ie[i]:1);
+        b+='&ad'+i+'='+(pr.ad?pr.ad[i]:0);
+        b+='&ae'+i+'='+(pr.ae?pr.ae[i]:0);
+        b+='&sv'+i+'='+(pr.sv?pr.sv[i]:100);
+      }
+      if(pr.ab!=null) b+='&ab='+pr.ab;
+      if(pr.lc) for(let i=0;i<5;i++) b+='&lc'+(i+1)+'='+(pr.lc[i]||0);
+      for(let i=1;i<=5;i++){ if(pr['mel'+i]!=null) b+='&mel'+i+'='+encodeURIComponent(pr['mel'+i]||''); }
+      // Slots + TouchModi
+      if(pr.slsr) for(let i=1;i<=5;i++) b+='&slsr'+i+'='+(pr.slsr[i]??255);
+      if(pr.slsq) for(let i=1;i<=5;i++) b+='&slsq'+i+'='+(pr.slsq[i]??0);
+      if(pr.slst) for(let i=1;i<=5;i++) b+='&slst'+i+'='+(pr.slst[i]??0);
+      if(pr.slsa!=null) b+='&slsa='+pr.slsa;
+      if(pr.tgm!=null)  b+='&tgm='+pr.tgm;
+      if(pr.ch) for(let i=1;i<=5;i++) b+='&ch'+i+'='+(pr.ch[i]||i);
+      if(pr.gm!=null) b+='&gm='+pr.gm;
+      await fetch('/dpreset_raw',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+    }
+    // Melodien wiederherstellen falls vorhanden
+    if(data.mel&&Array.isArray(data.mel)){
+      for(let id=1;id<=5;id++){
+        const m=data.mel[id]; if(!m||!m.s) continue;
+        // Schritte als "60,64|62|65" kodieren
+        const stepsStr=m.s.map((step,idx)=>{const notes=Array.isArray(step)?step.join(','):String(step);const dur=(m.d&&m.d[idx]!=null)?m.d[idx]:0;return notes+':'+dur;}).join('|');
+        const md=(m.md!=null)?m.md:0;
+        await fetch('/mel_import?id='+id+'&md='+md+'&steps='+encodeURIComponent(stepsStr),{method:'POST'}).catch(()=>{});
+      }
+    }
+    // Instrument-Liste wiederherstellen falls vorhanden
+    if(data.il&&Array.isArray(data.il)&&data.il.length){
+      let b='cnt='+data.il.length;
+      data.il.forEach((e,i)=>{
+        b+='&n'+i+'='+encodeURIComponent(e.n||'')+'&p'+i+'='+e.p+'&m'+i+'='+e.m+'&l'+i+'='+e.l;
+      });
+      await fetch('/instr_list_save',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+      const list=await(await fetch('/instr_list')).json();
+      instrListData=list; rebuildInstrDropdowns(); renderInstrList();
+    }
+    istat.textContent='Importiert \u2714'; istat.className='ok';
+    loadDPresets();
+  }catch(ex){istat.textContent='Fehler: '+ex.message;istat.className='err';}
+  e.target.value='';
+});
+
+
+// ===== Melodie-Recorder =====
+const melArea=document.getElementById('melarea');
+const MNAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const WOFFS=[0,2,4,5,7,9,11]; // Halbton-Offset weißer Tasten im Oktav
+
+function noteLabel(n){ return MNAMES[n%12]+(Math.floor(n/12)-1); }
+
+let pianoKeyW=42;
+function applyPianoWidth(w){
+  pianoKeyW=w;
+  const bw=Math.round(w*26/42);
+  const h=Math.round(w*130/42);
+  const bh=Math.round(w*82/42);
+  const r=document.documentElement;
+  r.style.setProperty('--kw',w+'px');
+  r.style.setProperty('--kh',h+'px');
+  r.style.setProperty('--bkw',bw+'px');
+  r.style.setProperty('--bkh',bh+'px');
+  // schwarze Tasten neu positionieren
+  document.querySelectorAll('.bkey').forEach(k=>{
+    const n=parseInt(k.dataset.note);
+    let wIdx=0;
+    for(let i=12;i<n;i++) if(WOFFS.includes(i%12)) wIdx++;
+    k.style.left=((wIdx*w)-Math.round(bw/2))+'px';
+  });
+}
+// Notenbeschriftung ein/aus (global, auch in Einstellungen)
+let pianoLabels=localStorage.getItem('pianoLabels')!=='0';
+function applyPianoLabels(){
+  document.getElementById('piano').classList.toggle('no-labels',!pianoLabels);
+  const btn=document.getElementById('pianoLabelBtn');
+  if(btn){btn.style.borderColor=pianoLabels?'var(--acc)':'';btn.style.color=pianoLabels?'var(--acc)':'';}
+}
+function buildPiano(startNote,endNote){
+  const piano=document.getElementById('piano');
+  piano.innerHTML='';
+  const wrap=document.createElement('div');
+  wrap.style.cssText='position:relative;display:flex';
+  let wIdx=0;
+  // Weisse Tasten
+  for(let n=startNote;n<=endNote;n++){
+    if(!WOFFS.includes(n%12)) continue;
+    const k=document.createElement('div');
+    k.className=(n%12===0)?'wkey ckey':'wkey'; k.dataset.note=n;
+    k.title=noteLabel(n);
+    k.textContent=(n%12===0)?('C'+(Math.floor(n/12)-1)):MNAMES[n%12];
+    k.addEventListener('touchstart',(e)=>{e.preventDefault();tapNote(n);},{passive:false});
+    k.addEventListener('mousedown',()=>tapNote(n));
+    wrap.appendChild(k);
+  }
+  // Schwarze Tasten
+  wIdx=0;
+  const bw=Math.round(pianoKeyW*26/42);
+  for(let n=startNote;n<=endNote;n++){
+    if(WOFFS.includes(n%12)){ wIdx++; continue; }
+    const k=document.createElement('div');
+    k.className='bkey'; k.dataset.note=n;
+    k.title=noteLabel(n);
+    k.textContent=MNAMES[n%12];
+    k.style.left=((wIdx*pianoKeyW)-Math.round(bw/2))+'px';
+    k.addEventListener('touchstart',(e)=>{e.preventDefault();e.stopPropagation();tapNote(n);},{passive:false});
+    k.addEventListener('mousedown',(e)=>{e.stopPropagation();tapNote(n);});
+    wrap.appendChild(k);
+  }
+  piano.appendChild(wrap);
+  applyPianoWidth(pianoKeyW);
+}
+
+let pendingNotes = [];
+let editingStepIdx = -1; // -1 = kein Edit-Modus, >=0 = Schritt wird bearbeitet
+let currentDur = 0;     // aktuell gewählte Dauer (bleibt bis Änderung)
+const durLabels = ['1/4','1/8','1/16','1/4.','1/2.','1/2','1/1','1/8T'];
+const durMs120  = [500,250,125,750,1500,1000,2000,167]; // nur zur Anzeige (1/8T bei 120 BPM = 167ms)
+function setDur(d){
+  currentDur=d;
+  document.querySelectorAll('.mel-dur-btn').forEach(b=>{
+    const on=parseInt(b.dataset.dur)===d;
+    b.style.borderColor=on?'var(--acc)':'';
+    b.style.color=on?'var(--acc)':'';
+  });
+}
+document.querySelectorAll('.mel-dur-btn').forEach(b=>{
+  b.addEventListener('click',()=>setDur(parseInt(b.dataset.dur)));
+});
+// Notensymbole als SVG unter die Dauerbeschriftung
+(function(){
+  const durSVG=[
+    // 0=1/4: gefüllter Kopf + Stiel
+    '<svg viewBox="0 0 14 22" width="13" height="19"><ellipse cx="6" cy="17" rx="5.5" ry="3.5" fill="currentColor" transform="rotate(-20 6 17)"/><line x1="11" y1="16" x2="11" y2="2" stroke="currentColor" stroke-width="1.5"/></svg>',
+    // 1=1/8: gefüllter Kopf + Stiel + 1 Fahne
+    '<svg viewBox="0 0 18 22" width="16" height="19"><ellipse cx="6" cy="17" rx="5.5" ry="3.5" fill="currentColor" transform="rotate(-20 6 17)"/><line x1="11" y1="16" x2="11" y2="2" stroke="currentColor" stroke-width="1.5"/><path d="M11,2 C17,6 15,13 11,14" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+    // 2=1/16: gefüllter Kopf + Stiel + 2 Fahnen
+    '<svg viewBox="0 0 18 22" width="16" height="19"><ellipse cx="6" cy="17" rx="5.5" ry="3.5" fill="currentColor" transform="rotate(-20 6 17)"/><line x1="11" y1="16" x2="11" y2="2" stroke="currentColor" stroke-width="1.5"/><path d="M11,2 C17,6 15,10 11,11" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M11,6 C17,10 15,14 11,15" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+    // 3=1/4.: gefüllter Kopf + Stiel + Punkt
+    '<svg viewBox="0 0 18 22" width="16" height="19"><ellipse cx="6" cy="17" rx="5.5" ry="3.5" fill="currentColor" transform="rotate(-20 6 17)"/><line x1="11" y1="16" x2="11" y2="2" stroke="currentColor" stroke-width="1.5"/><circle cx="15" cy="15" r="1.8" fill="currentColor"/></svg>',
+    // 4=1/2.: offener Kopf + Stiel + Punkt
+    '<svg viewBox="0 0 18 22" width="16" height="19"><ellipse cx="6" cy="17" rx="5.5" ry="3.5" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(-20 6 17)"/><line x1="11" y1="16" x2="11" y2="2" stroke="currentColor" stroke-width="1.5"/><circle cx="15" cy="15" r="1.8" fill="currentColor"/></svg>',
+    // 5=1/2: offener Kopf + Stiel
+    '<svg viewBox="0 0 14 22" width="13" height="19"><ellipse cx="6" cy="17" rx="5.5" ry="3.5" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(-20 6 17)"/><line x1="11" y1="16" x2="11" y2="2" stroke="currentColor" stroke-width="1.5"/></svg>',
+    // 6=1/1: ganze Note (dicker Ring, kein Stiel)
+    '<svg viewBox="0 0 16 13" width="15" height="12"><ellipse cx="8" cy="7" rx="7" ry="4.5" fill="none" stroke="currentColor" stroke-width="2.5" transform="rotate(-15 8 7)"/></svg>',
+    // 7=1/8T: Achteltriole — wie 1/8, aber mit kleiner "3" oben am Stiel
+    '<svg viewBox="0 0 20 25" width="17" height="22"><ellipse cx="6" cy="20" rx="5.5" ry="3.5" fill="currentColor" transform="rotate(-20 6 20)"/><line x1="11" y1="19" x2="11" y2="5" stroke="currentColor" stroke-width="1.5"/><path d="M11,5 C17,9 15,16 11,17" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="13" y="5" font-size="7" fill="currentColor" font-family="sans-serif" font-weight="bold">3</text></svg>',
+  ];
+  document.querySelectorAll('.mel-dur-btn').forEach(b=>{
+    const d=parseInt(b.dataset.dur);
+    const txt=b.textContent.trim();
+    b.innerHTML=durSVG[d];
+    b.style.padding='6px 9px';
+  });
+})();
+document.getElementById('melPauseBtn').onclick=async()=>{
+  // Pause = leerer Schritt mit aktueller Dauer
+  try{ await fetch('/mel_add_step?dur='+currentDur+'&id='+melID,{method:'POST'}); loadMel(); }catch(e){}
+};
+let pianoOct=3;
+function scrollPianoToOct(oct){
+  pianoOct=Math.max(0,Math.min(6,oct));
+  document.getElementById('piano').scrollLeft=pianoOct*7*pianoKeyW;
+  document.getElementById('pianoOctLabel').textContent='C'+pianoOct;
+}
+let autoCommit   = true;
+
+async function tapNote(n){
+  const k=document.querySelector('[data-note="'+n+'"]');
+  if(k){k.classList.add('pressed');setTimeout(()=>k.classList.remove('pressed'),200);}
+  try{ await fetch('/mel_preview?note='+n+'&id='+melID,{method:'POST'}); }catch(e){}
+  if(autoCommit){
+    try{ await fetch('/mel_add_step?notes='+n+'&dur='+currentDur+'&id='+melID,{method:'POST'}); loadMel(); }catch(e){}
+  } else {
+    const idx=pendingNotes.indexOf(n);
+    if(idx>=0) pendingNotes.splice(idx,1);
+    else if(pendingNotes.length<3) pendingNotes.push(n);
+    renderPending();
+  }
+}
+
+function renderPending(){
+  const box=document.getElementById('melpending');
+  box.innerHTML='';
+  pendingNotes.forEach(n=>{
+    const el=document.createElement('div');
+    el.className='mnote'; el.textContent=noteLabel(n);
+    el.style.borderColor='var(--acc)';
+    el.onclick=()=>{pendingNotes=pendingNotes.filter(x=>x!==n);renderPending();};
+    box.appendChild(el);
+  });
+  if(!pendingNotes.length) box.innerHTML='<span class="mut" style="font-size:12px">\u2014 leer \u2014</span>';
+}
+
+let melData={steps:[],step:0,mode:false,len:0};
+let melPollTimer=null;
+let melID=1;
+function highlightMelID(){
+  for(let i=1;i<=5;i++){
+    const b=document.getElementById('melid'+i);
+    if(b) b.style.outline=(i===melID)?'2px solid var(--acc)':'';
+  }
+  updateArpPreviewBtn();
+}
+document.querySelectorAll('.melid-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    melID=parseInt(btn.dataset.id);
+    highlightMelID();
+    loadMel();
+    syncMelControls(melID);
+    syncImproUI(melID);
+    updateMelArpUI(); // aktualisiert auch Div-Buttons für neue SW
+    for(let k=1;k<=8;k++){const x=document.getElementById('mpbtn'+k);if(x)x.style.outline='';}
+  });
+});
+
+function enterStepEdit(idx){
+  // Auto-Modus ausschalten falls nötig
+  if(autoCommit){
+    autoCommit=false;
+    const b=document.getElementById('melauto');
+    b.textContent='Auto: AUS'; b.style.borderColor='';
+  }
+  editingStepIdx=idx;
+  pendingNotes=(melData.steps[idx]||[]).slice();
+  // Dauer des Schritts als aktuelle Dauer setzen
+  if(melData.durs&&melData.durs[idx]!=null) setDur(melData.durs[idx]);
+  renderPending();
+  renderMelSeq();
+  const btn=document.getElementById('melstep');
+  btn.innerHTML='\u270F Überschreiben';
+  btn.style.borderColor='#ffaa00'; btn.style.color='#ffaa00';
+}
+function exitStepEdit(){
+  editingStepIdx=-1;
+  pendingNotes=[]; renderPending();
+  renderMelSeq();
+  const btn=document.getElementById('melstep');
+  btn.innerHTML='&#10003; Schritt +';
+  btn.style.borderColor=''; btn.style.color='';
+}
+document.getElementById('melstep').onclick=async()=>{
+  if(editingStepIdx>=0){
+    const notesParam=pendingNotes.length?'&notes='+pendingNotes.join(','):'';
+    try{ await fetch('/mel_set_step?id='+melID+'&idx='+editingStepIdx+notesParam+'&dur='+currentDur,{method:'POST'}); await loadMel(); }catch(e){}
+    exitStepEdit();
+  } else {
+    if(!pendingNotes.length) return;
+    try{ await fetch('/mel_add_step?notes='+pendingNotes.join(',')+'&dur='+currentDur+'&id='+melID,{method:'POST'}); loadMel(); }catch(e){}
+    pendingNotes=[]; renderPending();
+  }
+};
+document.getElementById('melauto').onclick=()=>{
+  autoCommit=!autoCommit;
+  const b=document.getElementById('melauto');
+  b.textContent='Auto: '+(autoCommit?'EIN':'AUS');
+  b.style.borderColor=autoCommit?'var(--acc)':'';
+  if(autoCommit){ if(editingStepIdx>=0) exitStepEdit(); else{pendingNotes=[];renderPending();} }
+  renderMelSeq();
+};
+
+// Signatur der Melodie-Struktur (ohne Play-Step) – ändert sich nur bei echten Editier-Aktionen
+let melRenderedSig=null;
+function melStructSig(d){
+  return JSON.stringify(d.steps)+'|'+JSON.stringify(d.durs)+'|'+d.len+'|'+editingStepIdx;
+}
+async function loadMel(){
+  try{
+    const j=await(await fetch('/mel?id='+melID)).json();
+    melData=j;
+    // Nur bei Strukturänderung komplett neu zeichnen; sonst nur das blaue Highlight verschieben
+    if(melStructSig(j)!==melRenderedSig) renderMelSeq();
+    else updateMelSeqHighlight();
+    updateModeBtns(melID);
+    const si=document.getElementById('melstepinfo');
+    si.textContent=j.len>0?'Schritt '+(j.step%Math.max(j.len,1)+1)+' / '+j.len:'(leer)';
+  }catch(e){}
+}
+// Verschiebt nur die .current-Markierung (blau) auf den aktiven Schritt – ohne DOM-Neuaufbau
+function updateMelSeqHighlight(){
+  const box=document.getElementById('melseq');
+  if(!box) return;
+  const notes=box.querySelectorAll('.mnote');
+  notes.forEach((el,i)=>{
+    if(i===melData.step) el.classList.add('current');
+    else el.classList.remove('current');
+  });
+  const cur=box.querySelector('.mnote.current');
+  if(cur) cur.scrollIntoView({inline:'nearest',block:'nearest'});
+}
+
+// Einf\u00fcge-Button an Position idx: f\u00fcgt die aktuelle Notenauswahl (pendingNotes) dort ein
+function makeMelInsBtn(idx){
+  const ins=document.createElement('div');
+  ins.textContent='\uff0b';
+  ins.title='Hier einf\u00fcgen (aktuelle Auswahl bzw. Pause)';
+  ins.style.cssText='cursor:pointer;font-size:14px;padding:4px 6px;border-radius:6px;'
+    +'background:#152a22;color:#6ad0a0;border:1px dashed #2c5a45;line-height:1;'
+    +'display:inline-flex;align-items:center;align-self:stretch';
+  ins.onclick=(async()=>{
+    const notesParam=pendingNotes.length?'&notes='+pendingNotes.join(','):'';
+    try{ await fetch('/mel_ins_step?id='+melID+'&idx='+idx+notesParam+'&dur='+currentDur,{method:'POST'}); await loadMel(); }catch(e){}
+    if(editingStepIdx>=0) exitStepEdit();
+    pendingNotes=[]; renderPending();
+  });
+  return ins;
+}
+function renderMelSeq(){
+  const box=document.getElementById('melseq');
+  melRenderedSig=melStructSig(melData); // aktuell gezeichnete Struktur merken
+  if(!melData.len){
+    box.innerHTML='<span class="mut" style="font-size:13px;padding:4px 8px">Noch keine Schritte \u2026</span>';
+    return;
+  }
+  box.innerHTML='';
+  melData.steps.forEach((notes,i)=>{
+    box.appendChild(makeMelInsBtn(i)); // Einf\u00fcgen VOR Schritt i
+    const wrap=document.createElement('div');
+    wrap.style.cssText='display:inline-flex;align-items:center;gap:2px';
+    const dur=(melData.durs&&melData.durs[i]!=null)?melData.durs[i]:0;
+    const el=document.createElement('div');
+    el.className='mnote'+(i===melData.step?' current':'');
+    const noteText=notes.length?notes.map(n=>noteLabel(n)).join('+'):'–';
+    el.innerHTML='<span>'+noteText+'</span><br><span style="font-size:10px;opacity:0.7">'+durLabels[dur]+'</span>';
+    if(i===editingStepIdx){
+      el.style.borderColor='#ffaa00'; el.style.color='#ffaa00';
+    }
+    const editBtn=document.createElement('div');
+    editBtn.textContent='\u270F';
+    editBtn.title='Schritt '+( i+1)+' bearbeiten';
+    editBtn.style.cssText='cursor:pointer;font-size:11px;padding:2px 4px;border-radius:5px;'
+      +'background:'+(i===editingStepIdx?'#ffaa00':'#1d2940')+';'
+      +'color:'+(i===editingStepIdx?'#000':'#aaa')+';line-height:1';
+    editBtn.onclick=(function(idx){ return ()=>{
+      if(editingStepIdx===idx) exitStepEdit(); else enterStepEdit(idx);
+    };})(i);
+    const delBtn=document.createElement('div');
+    delBtn.textContent='✕';
+    delBtn.title='Schritt '+( i+1)+' löschen';
+    delBtn.style.cssText='cursor:pointer;font-size:11px;padding:2px 5px;border-radius:5px;'
+      +'background:#3a1d1d;color:#e88;line-height:1';
+    delBtn.onclick=(function(idx){ return async()=>{
+      if(editingStepIdx===idx) exitStepEdit();
+      else if(editingStepIdx>idx) editingStepIdx--; // Index nach Löschen korrigieren
+      try{ await fetch('/mel_del_step?id='+melID+'&idx='+idx,{method:'POST'}); await loadMel(); }catch(e){}
+    };})(i);
+    wrap.appendChild(el);
+    wrap.appendChild(editBtn);
+    wrap.appendChild(delBtn);
+    box.appendChild(wrap);
+  });
+  box.appendChild(makeMelInsBtn(melData.len)); // Einfügen am Ende
+  const cur=box.querySelector('.current');
+  if(cur) cur.scrollIntoView({inline:'nearest',block:'nearest'});
+}
+
+// Selbst-getakteter Poll: plant den nächsten Tick erst NACH Abschluss der Anfrage neu
+// → kein Request-Stau wenn der ESP32 unter Last langsamer antwortet.
+// Adaptiv: 150 ms während aktiver Wiedergabe (flüssiges Highlight), sonst 400 ms (geringe Last).
+let melPollActive=false;
+function startMelPoll(){
+  if(melPollActive) return;
+  melPollActive=true;
+  const tick=async()=>{
+    if(!melPollActive) return;
+    await loadMel();
+    if(!melPollActive) return;
+    const delay=(melData&&melData.playing)?150:400;
+    melPollTimer=setTimeout(tick,delay);
+  };
+  tick();
+}
+function stopMelPoll(){
+  melPollActive=false;
+  if(melPollTimer){ clearTimeout(melPollTimer); melPollTimer=null; }
+}
+
+function syncMelControls(id){
+  const ms=document.getElementById('mel-chord');
+  if(!ms.options.length){
+    const off=document.createElement('option');off.value='off';off.text='Aus (kein Akkord)';ms.appendChild(off);
+    for(let n=60;n<=71;n++){
+      const oM=document.createElement('option');oM.value='maj-'+n;oM.text=NAMES[n-60]+'-Dur';ms.appendChild(oM);
+      const om=document.createElement('option');om.value='min-'+n;om.text=NAMES[n-60]+'-Moll';ms.appendChild(om);
+    }
+    ms.onchange=async()=>{
+      const i=melID;
+      const stat=document.getElementById('mel-ctrl-stat');
+      if(ms.value==='off'){
+        await fetch('/chord_off?id='+i,{method:'POST'});
+      } else {
+        const [q,r]=ms.value.split('-');
+        await fetch('/chord?id='+i+'&root='+r+'&qual='+q,{method:'POST'});
+      }
+      const cs=document.getElementById('chord_'+i);if(cs)cs.value=ms.value;
+      stat.textContent='\u2713';stat.className='ok';setTimeout(()=>stat.textContent='',1500);
+    };
+  }
+  const cSrc=document.getElementById('chord_'+id);
+  if(cSrc) ms.value=cSrc.value;
+
+  const mt=document.getElementById('mel-trans');
+  if(!mt.options.length){
+    [-2,-1,0,1,2].forEach(v=>{
+      const o=document.createElement('option');o.value=v;o.text=(v>0?'+':'')+v;mt.appendChild(o);
+    });
+    mt.onchange=async()=>{
+      const i=melID;
+      await fetch('/transpose?id='+i+'&step='+mt.value,{method:'POST'});
+      const ts=document.getElementById('trans_'+i);if(ts)ts.value=mt.value;
+    };
+  }
+  const tSrc=document.getElementById('trans_'+id);
+  if(tSrc) mt.value=tSrc.value;
+
+  const mi=document.getElementById('mel-instr');
+  mi.innerHTML='';
+  instrListData.forEach((e,idx)=>{
+    const o=document.createElement('option');o.value=idx;o.text=e.name||('Instr. '+idx);mi.appendChild(o);
+  });
+  mi.onchange=async()=>{
+    const i=melID; const e=instrListData[parseInt(mi.value)];
+    if(!e) return;
+    await fetch('/instr_set?id='+i+'&p='+e.p+'&m='+e.m+'&l='+e.l,{method:'POST'});
+    const sel=document.getElementById('instrsel_'+i);
+    if(sel){sel.value=mi.value;sel.dataset.p=e.p;sel.dataset.m=e.m;sel.dataset.l=e.l;}
+  };
+  const iSrc=document.getElementById('instrsel_'+id);
+  if(iSrc) mi.value=iSrc.value;
+}
+
+let melArpState={bpm:120,en:[0,0,0,0,0,0],div:[0,0,0,0,0,0],tgm:[0,0,0,0,0,0]};
+const arpTouchMode=[0,0,0,0,0,0]; // Index 1..5: 0=Halten, 1=Loop, 2=Live
+const arpModeIcons=['\uD83D\uDC4C','\uD83D\uDD01','\uD83C\uDFB9']; // 👌 🔁 🎹
+function updateArpModeBtn(id){
+  const btn=document.getElementById('arpModeBtn'+id); if(!btn) return;
+  const m=arpTouchMode[id]||0;
+  btn.innerHTML=arpModeIcons[m];
+  btn.title=['Halten','Loop','Live spielen'][m];
+  const active=m>0;
+  btn.style.borderColor=active?'var(--acc)':'';
+  btn.style.color=active?'var(--acc)':'';
+}
+function updateArpModeBtns(){ for(let i=1;i<=5;i++) updateArpModeBtn(i); }
+for(let i=1;i<=5;i++){
+  document.getElementById('arpModeBtn'+i).onclick=(function(id){return async()=>{
+    const next=(arpTouchMode[id]+1)%3;
+    arpTouchMode[id]=next;
+    updateArpModeBtn(id);
+    if(next===2){
+      // Live-Modus: Arpeggio aus, live=1
+      await fetch('/mel_arp_set?id='+id+'&en=0&live=1',{method:'POST'}).catch(()=>{});
+    } else {
+      // Halten (0) oder Loop (1): Arpeggio ein + Touch-Modus setzen
+      await fetch('/mel_arp_set?id='+id+'&en=1',{method:'POST'}).catch(()=>{});
+      await fetch('/arp_touch_mode?id='+id+'&m='+next,{method:'POST'}).catch(()=>{});
+    }
+  };})(i);
+}
+async function loadMelArp(){
+  try{
+    const j=await(await fetch('/mel_arp')).json();
+    melArpState=j;
+    if(j.tgm&&Array.isArray(j.tgm)){
+      for(let i=1;i<=5;i++){
+        if(!j.en[i] && j.lv && j.lv[i]) arpTouchMode[i]=2;  // Live-Modus
+        else arpTouchMode[i]=j.tgm[i]?1:0;                   // Loop oder Halten
+      }
+      updateArpModeBtns();
+    }
+    updateMelArpUI();
+    updateAllArpBtn();
+  }catch(e){}
+}
+function updateMelArpUI(){
+  const anyOn=melArpState.en&&melArpState.en.some((v,i)=>i>0&&!!v);
+  const btn=document.getElementById('melArpBtn');
+  if(btn){
+    btn.textContent='\u{1F3B5} Arpeggio: '+(anyOn?'EIN \u25cf':'AUS');
+    btn.style.cssText='font-size:18px;padding:12px 22px;min-width:180px;border-color:'
+      +(anyOn?'var(--acc)':'')+';color:'+(anyOn?'var(--acc)':'');
+  }
+  const bpmIn=document.getElementById('melArpBpm');
+  const bpmVal=document.getElementById('melArpBpmVal');
+  if(bpmIn&&bpmVal){ bpmIn.value=melArpState.bpm||120; bpmVal.textContent=melArpState.bpm||120; }
+}
+document.getElementById('melArpBtn').onclick=async()=>{
+  const anyOn=melArpState.en&&melArpState.en.some((v,i)=>i>0&&!!v);
+  const stat=document.getElementById('melArpStat');
+  try{
+    await fetch('/mel_arp_set?on='+(anyOn?'0':'1'),{method:'POST'});
+    await loadMelArp();
+    if(stat){stat.textContent='\u2713';stat.className='ok';setTimeout(()=>stat.textContent='',1500);}
+  }catch(e){ if(stat){stat.textContent='Fehler';stat.className='err';} }
+};
+document.getElementById('melArpBpm').oninput=function(){
+  document.getElementById('melArpBpmVal').textContent=this.value;
+};
+document.getElementById('melArpBpm').onchange=async()=>{
+  const bpm=parseInt(document.getElementById('melArpBpm').value);
+  try{ await fetch('/mel_arp_bpm?bpm='+bpm,{method:'POST'}); melArpState.bpm=bpm; }catch(e){}
+};
+
+// ===== Arpeggio Vorschau =====
+const arpPreviewState=[false,false,false,false,false,false]; // Index 1..5: true=läuft
+function updateArpPreviewBtn(){
+  const btn=document.getElementById('arpPreviewBtn');
+  if(!btn) return;
+  const on=arpPreviewState[melID];
+  btn.textContent=(on?'\u23f9':'\u25b6')+' SW'+melID+' Vorh\u00f6ren'+(on?' \u25cf':'');
+  btn.style.borderColor=on?'var(--acc)':'';
+  btn.style.color=on?'var(--acc)':'';
+}
+async function setArpPreview(id, on){
+  arpPreviewState[id]=on;
+  await fetch('/arp_mute?id='+id+'&muted='+(on?'0':'1'),{method:'POST'}).catch(()=>{});
+  updateArpPreviewBtn();
+}
+document.getElementById('arpPreviewBtn').onclick=async()=>{
+  await setArpPreview(melID, !arpPreviewState[melID]);
+};
+
+// ===== Alle Arpeggios (Hauptseite) =====
+let allArpRunning=false;
+function updateAllArpBtn(){
+  const anyOn=melArpState.en&&melArpState.en.some((v,i)=>i>0&&!!v);
+  allArpRunning=anyOn;
+  const btn=document.getElementById('allArpBtn');
+  if(btn){
+    btn.textContent=(anyOn?'\u23f9 Alle Arpeggios stoppen':'\u25b6 Alle Arpeggios starten');
+    btn.style.borderColor=anyOn?'var(--acc)':'';
+    btn.style.color=anyOn?'var(--acc)':'';
+  }
+  updateSwArpBtns();
+}
+function updateSwArpBtn(id){
+  const btn=document.getElementById('swArpBtn'+id);
+  if(!btn) return;
+  const on=!!(melArpState.en&&melArpState.en[id]);
+  btn.innerHTML=(on?'\u21BA':'\u25B7')+' Arp '+id;
+  btn.style.borderColor=on?'var(--acc)':'';
+  btn.style.color=on?'var(--acc)':'';
+}
+function updateSwArpBtns(){ for(let i=1;i<=5;i++) updateSwArpBtn(i); }
+async function toggleSwArp(id){
+  const on=!!(melArpState.en&&melArpState.en[id]);
+  await fetch('/mel_arp_set?id='+id+'&en='+(on?'0':'1'),{method:'POST'}).catch(()=>{});
+  if(on){
+    swTouchState[id]=false;
+    updateSwTouchBtn(id);
+    updateSwTouchAllBtn();
+  }
+  await loadMelArp();
+}
+for(let i=1;i<=5;i++){
+  document.getElementById('swArpBtn'+i).onclick=(function(id){return()=>toggleSwArp(id);})(i);
+}
+async function setAllArp(on){
+  // on=true  → /mel_arp_set?on=1 : setzt alle melArpNextMs[id]=millis() synchron → echte Sync
+  // on=false → /mel_arp_set?on=0 : stoppt alle Arpeggios
+  await fetch('/mel_arp_set?on='+(on?'1':'0'),{method:'POST'}).catch(()=>{});
+  if(!on){
+    // Arpeggios gestoppt → Web-Mute-Buttons alle zurücksetzen
+    for(let i=1;i<=5;i++) swTouchState[i]=false;
+    for(let i=1;i<=5;i++) updateSwTouchBtn(i);
+    updateSwTouchAllBtn();
+  }
+  await loadMelArp();
+  updateAllArpBtn();
+}
+document.getElementById('allArpBtn').onclick=()=>setAllArp(!allArpRunning);
+document.getElementById('arpSyncBtn').onclick=async()=>{
+  await fetch('/arp_sync',{method:'POST'}).catch(()=>{});
+};
+
+// ===== SW Touch-Simulation (Mute/Unmute per Web-Button) =====
+const swTouchState=[false,false,false,false,false,false]; // Index 1..5: true=aktiv(unmuted)
+function updateSwTouchBtn(id){
+  const btn=document.getElementById('swTouchBtn'+id);
+  if(!btn) return;
+  const on=swTouchState[id];
+  btn.innerHTML=(on?'\uD83D\uDD0A':'\uD83D\uDD07')+' SW'+id;
+  btn.style.borderColor=on?'var(--acc)':'';
+  btn.style.color=on?'var(--acc)':'';
+}
+function updateSwTouchAllBtn(){
+  const btn=document.getElementById('swTouchAllBtn');
+  if(!btn) return;
+  const anyOn=swTouchState.some((v,i)=>i>0&&v);
+  btn.innerHTML=(anyOn?'\uD83D\uDD0A':'\uD83D\uDD07')+' Alle';
+  btn.style.borderColor=anyOn?'var(--acc)':'';
+  btn.style.color=anyOn?'var(--acc)':'';
+}
+for(let i=1;i<=5;i++){
+  document.getElementById('swTouchBtn'+i).onclick=(function(id){return async()=>{
+    swTouchState[id]=!swTouchState[id];
+    await fetch('/arp_mute?id='+id+'&muted='+(swTouchState[id]?'0':'1'),{method:'POST'}).catch(()=>{});
+    updateSwTouchBtn(id);
+    updateSwTouchAllBtn();
+  };})(i);
+}
+document.getElementById('swTouchAllBtn').onclick=async()=>{
+  const anyOn=swTouchState.some((v,i)=>i>0&&v);
+  const newOn=!anyOn;
+  // sequenziell senden (ESP32 single-threaded)
+  for(let i=1;i<=5;i++){
+    swTouchState[i]=newOn;
+    await fetch('/arp_mute?id='+i+'&muted='+(newOn?'0':'1'),{method:'POST'}).catch(()=>{});
+  }
+  for(let i=1;i<=5;i++) updateSwTouchBtn(i);
+  updateSwTouchAllBtn();
+};
+
+async function enterMelMode(){
+  buildPiano(12,84);
+  document.getElementById('pianoOctDown').onclick=()=>scrollPianoToOct(pianoOct-1);
+  document.getElementById('pianoOctUp').onclick  =()=>scrollPianoToOct(pianoOct+1);
+  // Gespeicherte Breite laden
+  const savedKw=parseInt(localStorage.getItem('pianoKeyW')||'42');
+  document.getElementById('pianoWidthSlider').value=savedKw;
+  applyPianoWidth(savedKw);
+  document.getElementById('pianoWidthSlider').oninput=function(){
+    const w=parseInt(this.value);
+    applyPianoWidth(w);
+    scrollPianoToOct(pianoOct);
+    localStorage.setItem('pianoKeyW',w);
+  };
+  applyPianoLabels();
+  pendingNotes=[];renderPending();
+  melArea.classList.add('open');
+  scrollPianoToOct(3);
+  highlightMelID();
+  await loadMel();
+  syncMelControls(melID);
+  await loadMelArp();
+  await loadImproState();
+  // KEIN Auto-Enable mehr: zuletzt gewählter Modus (Mel/Akk/Impro) bleibt erhalten
+  startMelPoll();
+}
+async function exitMelMode(){
+  stopMelPoll();
+  await applyImpro(false);
+  melArea.classList.remove('open');
+}
+
+document.getElementById('melopen').onclick=enterMelMode;
+document.getElementById('melback').onclick=exitMelMode;
+document.getElementById('mel-to-preset').onclick=async()=>{
+  await exitMelMode();
+  document.getElementById('presetarea').classList.add('open');
+  loadDPresets();
+};
+document.getElementById('preset-to-mel').onclick=()=>{
+  document.getElementById('presetarea').classList.remove('open');
+  enterMelMode();
+};
+let akkordOffState=[false,false,false,false,false,false]; // Index 1..5
+function updateModeBtns(id){
+  const isMel=!!(melData&&melData.mode);
+  const isImpro=!!(improEnaState[id]);
+  const isAkk=!isMel&&!isImpro&&!akkordOffState[id];
+  const mBtn=document.getElementById('modemelBtn');
+  const aBtn=document.getElementById('modeakkBtn');
+  const iBtn=document.getElementById('modeimproBtn');
+  if(!mBtn) return;
+  mBtn.textContent='\u266a Melodie '+(isMel?'EIN \u25cf':'AUS');
+  mBtn.style.cssText='border-color:'+(isMel?'var(--acc)':'')
+    +';color:'+(isMel?'var(--acc)':'');
+  aBtn.textContent='\u266b Akkord '+(isAkk?'EIN \u25cf':'AUS');
+  aBtn.style.cssText='border-color:'+(isAkk?'var(--acc)':'')
+    +';color:'+(isAkk?'var(--acc)':'');
+  iBtn.textContent='\u266c Impro '+(isImpro?'EIN \u25cf':'AUS');
+  iBtn.style.cssText='border-color:'+(isImpro?'var(--acc)':'')
+    +';color:'+(isImpro?'var(--acc)':'');
+}
+async function setMode(mode){
+  const id=melID;
+  const isMel=!!(melData&&melData.mode);
+  const isImpro=!!(improEnaState[id]);
+  const isAkk=!akkordOffState[id];
+
+  // Hilfsfunktionen zum Ausschalten der jeweils anderen Modi
+  async function melAus(){ if(isMel) await fetch('/mel_mode?active=0&id='+id,{method:'POST'}); }
+  async function akkAus(){ if(isAkk){ akkordOffState[id]=true; await fetch('/mel_mode?akkord=0&id='+id,{method:'POST'}); } }
+  async function improAus(){ if(isImpro){ improEnaState[id]=false; const any=improEnaState.some((v,i)=>i>=1&&v); await fetch('/impro_set?e'+id+'=0&on='+(any?1:0),{method:'POST'}); } }
+
+  if(mode==='mel'){
+    if(isMel){
+      // Melodie AUS — kein anderer springt an
+      await fetch('/mel_mode?active=0&id='+id,{method:'POST'});
+    } else {
+      // Melodie EIN — Akkord und Impro ausschalten
+      await akkAus(); await improAus();
+      await fetch('/mel_mode?active=1&id='+id,{method:'POST'});
+    }
+  } else if(mode==='akkord'){
+    if(isAkk){
+      // Akkord AUS — kein anderer springt an
+      akkordOffState[id]=true;
+      await fetch('/mel_mode?akkord=0&id='+id,{method:'POST'});
+    } else {
+      // Akkord EIN — Melodie und Impro ausschalten
+      await melAus(); await improAus();
+      akkordOffState[id]=false;
+      await fetch('/mel_mode?akkord=1&id='+id,{method:'POST'});
+    }
+  } else if(mode==='impro'){
+    if(isImpro){
+      // Impro AUS — kein anderer springt an
+      improEnaState[id]=false;
+      const any=improEnaState.some((v,i)=>i>=1&&v);
+      await fetch('/impro_set?e'+id+'=0&on='+(any?1:0),{method:'POST'});
+    } else {
+      // Impro EIN — Melodie und Akkord ausschalten
+      await melAus(); await akkAus();
+      improEnaState[id]=true;
+      await fetch('/impro_set?e'+id+'=1&on=1',{method:'POST'});
+    }
+  }
+  await loadMel();
+}
+document.getElementById('modemelBtn').onclick=()=>setMode('mel');
+document.getElementById('modeakkBtn').onclick=()=>setMode('akkord');
+document.getElementById('modeimproBtn').onclick=()=>setMode('impro');
+document.getElementById('meldel').onclick=async()=>{
+  try{ await fetch('/mel_del?id='+melID,{method:'POST'}); loadMel(); }catch(e){}
+};
+document.getElementById('melclear').onclick=async()=>{
+  if(!confirm('Melodie wirklich l\u00f6schen?')) return;
+  try{ await fetch('/mel_clear?id='+melID,{method:'POST'}); loadMel(); }catch(e){}
+};
+
+// ===== Live-Modus =====
+const liveArea = document.getElementById('livearea');
+const liveGrid = document.getElementById('livegrid');
+
+async function enterLiveMode(){
+  liveGrid.innerHTML='';
+  let j;
+  try{ j=await(await fetch('/slots')).json(); }catch(e){
+    liveGrid.innerHTML='<div class="err" style="font-size:18px">Verbindungsfehler</div>';
+    liveArea.classList.add('open'); return;
+  }
+  const act=j.active||0;
+  const slots=[]; for(let i=0;i<5;i++) if(j.slots[i]&&j.slots[i].root>=0) slots.push(i+1);
+  if(slots.length===0){
+    const msg=document.createElement('div');
+    msg.className='mut'; msg.style.cssText='font-size:18px;padding:24px';
+    msg.textContent='Keine Slots belegt. Erst Akkorde in den Slots speichern.';
+    liveGrid.appendChild(msg);
+    liveArea.classList.add('open'); return;
+  }
+  liveArea.classList.add('open');
+  updateLiveShapeBtn();
+  const hasLayout=slots.some(n=>localStorage.getItem('liveSlot'+n));
+  liveEditMode=!hasLayout;
+  updateLiveEditToggle();
+  const W=liveGrid.clientWidth, H=liveGrid.clientHeight;
+  const defPos=[
+    {xp:15,yp:20},{xp:65,yp:15},{xp:40,yp:50},
+    {xp:10,yp:70},{xp:70,yp:68}
+  ];
+  let di=0;
+  for(let i=0;i<5;i++){
+    const slot=j.slots[i];
+    if(!slot||slot.root<0) continue;
+    const num=i+1;
+    const name=NAMES[slot.root-60];
+    const qual=slot.qual==='min'?'Moll':'Dur';
+    const semi=stepToSemiJS((slot.ts!=null?slot.ts:0));
+    const transLabel=semi!==0?'<br><span style="font-size:11px;font-weight:400;opacity:.75">'+(semi>0?'+':'')+semi+' HT</span>':'';
+    const b=document.createElement('button');
+    b.className='livebtn'+(num===act?' active':'');
+    b.innerHTML=name+'<br>'+qual+transLabel;
+    b.dataset.slot=num;
+    b.style.position='absolute';
+    const saved=liveLoadLayout(num);
+    const dp=defPos[di++]||{xp:40,yp:40};
+    const sz=saved?saved.sz:130;
+    const lx=saved?(saved.xp/100*W):(dp.xp/100*W);
+    const ly=saved?(saved.yp/100*H):(dp.yp/100*H);
+    b.style.width=sz+'px'; b.style.fontSize=Math.round(sz*15/130)+'px';
+    applyShape(b, liveShape, sz);
+    b.style.left=Math.min(Math.max(0,lx),W-sz)+'px';
+    b.style.top =Math.min(Math.max(0,ly),H-Math.round(liveShape==='rect'?sz*0.6:sz))+'px';
+    if(saved&&saved.col){ b.style.background=saved.col; b.dataset.col=saved.col; }
+    const dot=document.createElement('div');
+    dot.className='liveColorDot';
+    dot.textContent='\uD83C\uDFA8';
+    dot.style.background=saved&&saved.col?saved.col:'#152035';
+    dot.addEventListener('touchstart',(e)=>{ e.preventDefault(); e.stopPropagation(); liveShowColorPicker(b); },{passive:false});
+    b.appendChild(dot);
+    b.addEventListener('touchstart',(e)=>{
+      e.preventDefault();
+      if(liveEditMode){ liveStartDrag(e,b); }
+      else{
+        liveGrid.querySelectorAll('.livebtn').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        fetch('/slot_activate?slot='+num,{method:'POST'}).catch(()=>{});
+      }
+    },{passive:false});
+    b.addEventListener('mousedown',()=>{
+      if(!liveEditMode){
+        liveGrid.querySelectorAll('.livebtn').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        fetch('/slot_activate?slot='+num,{method:'POST'}).catch(()=>{});
+      }
+    });
+    liveGrid.appendChild(b);
+  }
+}
+function exitLiveMode(){
+  liveArea.classList.remove('open');
+  liveArea.classList.remove('editmode');
+  liveGrid.innerHTML='';
+  loadSlots(); // Slot-Highlights in der normalen UI aktualisieren
+}
+document.getElementById('liveopen').onclick=enterLiveMode;
+document.getElementById('liveback').onclick=exitLiveMode;
+document.getElementById('slottoggle').addEventListener('click',()=>{
+  document.getElementById('liveslotpanel').classList.toggle('open');
+  document.getElementById('slottoggle').classList.toggle('active');
+});
+document.getElementById('liveedittoggle').addEventListener('click',()=>{
+  liveEditMode=!liveEditMode; updateLiveEditToggle();
+});
+document.getElementById('liveshapebtn').addEventListener('click',()=>{
+  liveShape=SHAPES[(SHAPES.indexOf(liveShape)+1)%SHAPES.length];
+  localStorage.setItem('liveShape',liveShape);
+  updateLiveShapeBtn();
+  liveGrid.querySelectorAll('.livebtn').forEach(b=>{ applyShape(b,liveShape,parseFloat(b.style.width)||130); });
+});
+
+// ===== Akkord-Pad =====
+const chordPadArea=document.getElementById('chordpadarea');
+const chordPadGrid=document.getElementById('chordpadgrid');
+let padEditMode=false;
+let liveEditMode=false;
+const SHAPES=['round','square','rect'];
+const SHAPE_ICONS={'round':'\u2B24','square':'\u25A0','rect':'\u25AC'};
+let padShape=localStorage.getItem('padShape')||'round';
+let liveShape=localStorage.getItem('liveShape')||'round';
+function applyShape(btn, shape, sz){
+  btn.style.borderRadius = shape==='round' ? '50%' : '12px';
+  btn.style.height = (shape==='rect' ? Math.round(sz*0.6) : sz)+'px';
+}
+function updatePadShapeBtn(){
+  document.getElementById('padshapebtn').textContent=SHAPE_ICONS[padShape];
+}
+function updateLiveShapeBtn(){
+  document.getElementById('liveshapebtn').textContent=SHAPE_ICONS[liveShape];
+}
+
+function padSaveLayout(btn){
+  const W=chordPadGrid.clientWidth, H=chordPadGrid.clientHeight;
+  localStorage.setItem('padSlot'+btn.dataset.slot, JSON.stringify({
+    xp: parseFloat(btn.style.left)/W*100,
+    yp: parseFloat(btn.style.top)/H*100,
+    sz: parseFloat(btn.style.width)||130,
+    col: btn.dataset.col||''
+  }));
+}
+function padLoadLayout(slot){
+  try{ return JSON.parse(localStorage.getItem('padSlot'+slot)); }catch(e){ return null; }
+}
+// ===== Live-Spielen Layout =====
+function liveSaveLayout(btn){
+  const W=liveGrid.clientWidth, H=liveGrid.clientHeight;
+  localStorage.setItem('liveSlot'+btn.dataset.slot, JSON.stringify({
+    xp: parseFloat(btn.style.left)/W*100,
+    yp: parseFloat(btn.style.top)/H*100,
+    sz: parseFloat(btn.style.width)||130,
+    col: btn.dataset.col||''
+  }));
+}
+function liveLoadLayout(slot){
+  try{ return JSON.parse(localStorage.getItem('liveSlot'+slot)); }catch(e){ return null; }
+}
+function liveStartDrag(e, btn){
+  if(e.targetTouches.length>=2){ liveStartResize(e,btn); return; }
+  e.preventDefault();
+  const t0=e.targetTouches[0];
+  const ox=t0.clientX-parseFloat(btn.style.left);
+  const oy=t0.clientY-parseFloat(btn.style.top);
+  const W=liveGrid.clientWidth, H=liveGrid.clientHeight;
+  const sz=parseFloat(btn.style.width)||130;
+  const sh=parseFloat(btn.style.height)||sz;
+  function onMove(ev){
+    ev.preventDefault();
+    const t=ev.targetTouches[0];
+    btn.style.left=Math.min(Math.max(0,t.clientX-ox),W-sz)+'px';
+    btn.style.top =Math.min(Math.max(0,t.clientY-oy),H-sh)+'px';
+  }
+  function onEnd(ev){
+    ev.preventDefault();
+    liveSaveLayout(btn);
+    liveGrid.removeEventListener('touchmove',onMove);
+    liveGrid.removeEventListener('touchend',onEnd);
+    liveGrid.removeEventListener('touchcancel',onEnd);
+  }
+  liveGrid.addEventListener('touchmove',  onMove, {passive:false});
+  liveGrid.addEventListener('touchend',   onEnd,  {passive:false});
+  liveGrid.addEventListener('touchcancel',onEnd,  {passive:false});
+}
+function liveStartResize(e, btn){
+  e.preventDefault();
+  const t1=e.targetTouches[0], t2=e.targetTouches[1];
+  const d0=Math.hypot(t1.clientX-t2.clientX, t1.clientY-t2.clientY);
+  const sz0=parseFloat(btn.style.width)||130;
+  function onMove(ev){
+    ev.preventDefault();
+    if(ev.targetTouches.length<2) return;
+    const a=ev.targetTouches[0], b=ev.targetTouches[1];
+    const d=Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
+    const maxSz=Math.min(liveGrid.clientWidth, liveGrid.clientHeight)*0.9;
+    const sz=Math.min(Math.max(60, sz0*(d/d0)), maxSz);
+    btn.style.width=sz+'px';
+    btn.style.fontSize=Math.round(sz*15/130)+'px';
+    applyShape(btn, liveShape, sz);
+  }
+  function onEnd(ev){
+    ev.preventDefault();
+    if(ev.targetTouches.length===0||ev.targetTouches.length===1){
+      liveSaveLayout(btn);
+      liveGrid.removeEventListener('touchmove',onMove);
+      liveGrid.removeEventListener('touchend',onEnd);
+      liveGrid.removeEventListener('touchcancel',onEnd);
+    }
+  }
+  liveGrid.addEventListener('touchmove',  onMove, {passive:false});
+  liveGrid.addEventListener('touchend',   onEnd,  {passive:false});
+  liveGrid.addEventListener('touchcancel',onEnd,  {passive:false});
+}
+function liveShowColorPicker(btn){
+  const old=document.getElementById('liveColorPicker');
+  if(old){ old.remove(); return; }
+  const pick=document.createElement('div');
+  pick.id='liveColorPicker';
+  PAD_COLORS.forEach(c=>{
+    const sw=document.createElement('div');
+    sw.className='padColorSwatch'+(btn.dataset.col===c?' sel':'');
+    sw.style.background=c;
+    sw.addEventListener('touchstart',(e)=>{
+      e.preventDefault(); e.stopPropagation();
+      btn.style.background=c; btn.dataset.col=c;
+      liveSaveLayout(btn);
+      const dot=btn.querySelector('.liveColorDot');
+      if(dot) dot.style.background=c;
+      pick.remove();
+    },{passive:false});
+    pick.appendChild(sw);
+  });
+  const W=liveGrid.clientWidth, H=liveGrid.clientHeight;
+  const bLeft=parseFloat(btn.style.left), bTop=parseFloat(btn.style.top);
+  const bSz=parseFloat(btn.style.width)||130;
+  const pW=148, pH=90;
+  pick.style.left=Math.max(0,Math.min(bLeft,W-pW))+'px';
+  pick.style.top =Math.max(0,Math.min(bTop+bSz+8,H-pH))+'px';
+  liveGrid.appendChild(pick);
+  function outsideTap(e){
+    if(!pick.contains(e.target)){ pick.remove(); liveGrid.removeEventListener('touchstart',outsideTap,true); }
+  }
+  liveGrid.addEventListener('touchstart',outsideTap,{capture:true,passive:true});
+}
+function updateLiveEditToggle(){
+  const tb=document.getElementById('liveedittoggle');
+  if(liveEditMode){
+    tb.textContent='\u2714 Fertig';
+    tb.style.borderColor='var(--acc)';
+    liveArea.classList.add('editmode');
+  } else {
+    tb.textContent='\u25B6 Spielen';
+    tb.style.borderColor='';
+    liveArea.classList.remove('editmode');
+  }
+}
+function padStartDrag(e, btn){
+  if(e.targetTouches.length>=2){ padStartResize(e,btn); return; }
+  e.preventDefault();
+  const t0=e.targetTouches[0];
+  const ox=t0.clientX-parseFloat(btn.style.left);
+  const oy=t0.clientY-parseFloat(btn.style.top);
+  const W=chordPadGrid.clientWidth, H=chordPadGrid.clientHeight;
+  const sz=parseFloat(btn.style.width)||130;
+  const sh=parseFloat(btn.style.height)||sz;
+  function onMove(ev){
+    ev.preventDefault();
+    const t=ev.targetTouches[0];
+    btn.style.left=Math.min(Math.max(0,t.clientX-ox),W-sz)+'px';
+    btn.style.top =Math.min(Math.max(0,t.clientY-oy),H-sh)+'px';
+  }
+  function onEnd(ev){
+    ev.preventDefault();
+    padSaveLayout(btn);
+    chordPadGrid.removeEventListener('touchmove',onMove);
+    chordPadGrid.removeEventListener('touchend',onEnd);
+    chordPadGrid.removeEventListener('touchcancel',onEnd);
+  }
+  chordPadGrid.addEventListener('touchmove',  onMove, {passive:false});
+  chordPadGrid.addEventListener('touchend',   onEnd,  {passive:false});
+  chordPadGrid.addEventListener('touchcancel',onEnd,  {passive:false});
+}
+function padStartResize(e, btn){
+  e.preventDefault();
+  const t1=e.targetTouches[0], t2=e.targetTouches[1];
+  const d0=Math.hypot(t1.clientX-t2.clientX, t1.clientY-t2.clientY);
+  const sz0=parseFloat(btn.style.width)||130;
+  function onMove(ev){
+    ev.preventDefault();
+    if(ev.targetTouches.length<2) return;
+    const a=ev.targetTouches[0], b=ev.targetTouches[1];
+    const d=Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
+    const maxSz=Math.min(chordPadGrid.clientWidth, chordPadGrid.clientHeight)*0.9;
+    const sz=Math.min(Math.max(60, sz0*(d/d0)), maxSz);
+    btn.style.width=sz+'px';
+    btn.style.fontSize=Math.round(sz*15/130)+'px';
+    applyShape(btn, padShape, sz);
+  }
+  function onEnd(ev){
+    ev.preventDefault();
+    if(ev.targetTouches.length===0||ev.targetTouches.length===1){
+      padSaveLayout(btn);
+      chordPadGrid.removeEventListener('touchmove',onMove);
+      chordPadGrid.removeEventListener('touchend',onEnd);
+      chordPadGrid.removeEventListener('touchcancel',onEnd);
+    }
+  }
+  chordPadGrid.addEventListener('touchmove',  onMove, {passive:false});
+  chordPadGrid.addEventListener('touchend',   onEnd,  {passive:false});
+  chordPadGrid.addEventListener('touchcancel',onEnd,  {passive:false});
+}
+const PAD_COLORS=['#152035','#1e3d80','#1a5c38','#701a1a','#501470','#1a6060','#705010','#203550'];
+function padShowColorPicker(btn){
+  const old=document.getElementById('padColorPicker');
+  if(old){ old.remove(); return; }
+  const pick=document.createElement('div');
+  pick.id='padColorPicker';
+  PAD_COLORS.forEach(c=>{
+    const sw=document.createElement('div');
+    sw.className='padColorSwatch'+(btn.dataset.col===c?' sel':'');
+    sw.style.background=c;
+    sw.addEventListener('touchstart',(e)=>{
+      e.preventDefault(); e.stopPropagation();
+      btn.style.background=c; btn.dataset.col=c;
+      padSaveLayout(btn);
+      const dot=btn.querySelector('.padColorDot');
+      if(dot) dot.style.background=c;
+      pick.remove();
+    },{passive:false});
+    pick.appendChild(sw);
+  });
+  const W=chordPadGrid.clientWidth, H=chordPadGrid.clientHeight;
+  const bLeft=parseFloat(btn.style.left), bTop=parseFloat(btn.style.top);
+  const bSz=parseFloat(btn.style.width)||130;
+  const pW=148, pH=90;
+  pick.style.left=Math.max(0,Math.min(bLeft,W-pW))+'px';
+  pick.style.top =Math.max(0,Math.min(bTop+bSz+8,H-pH))+'px';
+  chordPadGrid.appendChild(pick);
+  function outsideTap(e){
+    if(!pick.contains(e.target)){ pick.remove(); chordPadGrid.removeEventListener('touchstart',outsideTap,true); }
+  }
+  chordPadGrid.addEventListener('touchstart',outsideTap,{capture:true,passive:true});
+}
+function updatePadEditToggle(){
+  const tb=document.getElementById('padedittoggle');
+  if(padEditMode){
+    tb.textContent='\u2714 Fertig';
+    tb.style.borderColor='var(--acc)';
+    chordPadArea.classList.add('editmode');
+  } else {
+    tb.textContent='\u25B6 Spielen';
+    tb.style.borderColor='';
+    chordPadArea.classList.remove('editmode');
+  }
+}
+async function enterChordPad(){
+  chordPadArea.classList.add('open');
+  updatePadShapeBtn();
+  chordPadGrid.innerHTML='';
+  let j;
+  try{ j=await(await fetch('/slots')).json(); }catch(e){ return; }
+  const slots=[]; for(let i=0;i<5;i++) if(j.slots[i]&&j.slots[i].root>=0) slots.push(i+1);
+  const hasLayout=slots.some(n=>localStorage.getItem('padSlot'+n));
+  padEditMode=!hasLayout;
+  updatePadEditToggle();
+  const W=chordPadGrid.clientWidth, H=chordPadGrid.clientHeight;
+  const defPos=[
+    {xp:15,yp:20},{xp:65,yp:15},{xp:40,yp:50},
+    {xp:10,yp:70},{xp:70,yp:68}
+  ];
+  let di=0;
+  for(let i=0;i<5;i++){
+    const slot=j.slots[i];
+    if(!slot||slot.root<0) continue;
+    const num=i+1;
+    const name=NAMES[slot.root-60];
+    const qual=slot.qual==='min'?'Moll':'Dur';
+    const semi=stepToSemiJS((slot.ts!=null?slot.ts:0));
+    const transLabel=semi!==0?'<br><span style="font-size:11px;font-weight:400;opacity:.75">'+(semi>0?'+':'')+semi+' HT</span>':'';
+    const b=document.createElement('button');
+    b.className='livebtn padBtn';
+    b.innerHTML=name+'<br>'+qual+transLabel;
+    b.dataset.slot=num;
+    b.style.position='absolute';
+    const saved=padLoadLayout(num);
+    const dp=defPos[di++]||{xp:40,yp:40};
+    const sz=saved?saved.sz:130;
+    const lx=saved?(saved.xp/100*W):(dp.xp/100*W);
+    const ly=saved?(saved.yp/100*H):(dp.yp/100*H);
+    b.style.width=sz+'px'; b.style.fontSize=Math.round(sz*15/130)+'px';
+    applyShape(b, padShape, sz);
+    b.style.left=Math.min(Math.max(0,lx),W-sz)+'px';
+    b.style.top =Math.min(Math.max(0,ly),H-Math.round(padShape==='rect'?sz*0.6:sz))+'px';
+    if(saved&&saved.col){ b.style.background=saved.col; b.dataset.col=saved.col; }
+    const dot=document.createElement('div');
+    dot.className='padColorDot';
+    dot.textContent='\uD83C\uDFA8';
+    dot.style.background=saved&&saved.col?saved.col:'#152035';
+    dot.addEventListener('touchstart',(e)=>{ e.preventDefault(); e.stopPropagation(); padShowColorPicker(b); },{passive:false});
+    b.appendChild(dot);
+    b.addEventListener('touchstart',(e)=>{
+      e.preventDefault();
+      if(padEditMode){ padStartDrag(e,b); }
+      else{
+        b.classList.add('active');
+        fetch('/chord_play?slot='+num,{method:'POST'}).catch(()=>{});
+      }
+    },{passive:false});
+    b.addEventListener('touchend',(e)=>{
+      e.preventDefault();
+      if(!padEditMode){
+        b.classList.remove('active');
+        fetch('/chord_stop',{method:'POST'}).catch(()=>{});
+      }
+    },{passive:false});
+    b.addEventListener('touchcancel',(e)=>{
+      e.preventDefault();
+      if(!padEditMode){
+        b.classList.remove('active');
+        fetch('/chord_stop',{method:'POST'}).catch(()=>{});
+      }
+    },{passive:false});
+    chordPadGrid.appendChild(b);
+  }
+}
+async function exitChordPad(){
+  try{ await fetch('/chord_stop',{method:'POST'}); }catch(e){}
+  chordPadArea.classList.remove('open');
+  chordPadArea.classList.remove('editmode');
+  chordPadGrid.innerHTML='';
+  document.getElementById('chordpadopen').classList.remove('active');
+}
+document.getElementById('chordpadopen').onclick=()=>{
+  enterChordPad();
+  document.getElementById('chordpadopen').classList.add('active');
+};
+document.getElementById('chordpadback').onclick=exitChordPad;
+document.getElementById('padedittoggle').onclick=()=>{ padEditMode=!padEditMode; updatePadEditToggle(); };
+document.getElementById('padshapebtn').addEventListener('click',()=>{
+  padShape=SHAPES[(SHAPES.indexOf(padShape)+1)%SHAPES.length];
+  localStorage.setItem('padShape',padShape);
+  updatePadShapeBtn();
+  chordPadGrid.querySelectorAll('.livebtn').forEach(b=>{ applyShape(b,padShape,parseFloat(b.style.width)||130); });
+});
+
+// ===== Improvisieren (eingebettet in Melodie) =====
+const IMPRO_NAMES=['Dur','Pentatonik','Moll-Penta','Phrygisch-Dur'];
+const ROOT_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','H'];
+let improEnaState=[false,false,false,false,false,false]; // Index 1..5
+let improRootSW =[0,0,0,0,0,0]; // Tonart per SW, Index 1..5
+let improScaleSW=[0,0,0,0,0,0]; // Skala per SW, Index 1..5
+let improOctSW  =[0,4,4,4,4,4]; // Oktave per SW, Index 1..5
+function syncImproUI(id){
+  document.getElementById('improRoot').value  = improRootSW[id]  || 0;
+  document.getElementById('improScale').value = improScaleSW[id] || 0;
+  document.getElementById('improOct').value   = improOctSW[id]   || 4;
+}
+async function applyImpro(on){
+  const id=melID;
+  const r=document.getElementById('improRoot').value;
+  const s=document.getElementById('improScale').value;
+  const o=document.getElementById('improOct').value;
+  improRootSW[id]=parseInt(r);
+  improScaleSW[id]=parseInt(s);
+  improOctSW[id]=parseInt(o);
+  // Compute whether ANY SW still has impro enabled (respects instrarea toggles)
+  const anyImproActive=improEnaState.some((v,k)=>k>=1&&v);
+  let url='/impro_set?id='+id+'&root='+r+'&scale='+s+'&oct='+o+'&on='+(anyImproActive?1:0);
+  for(let i=1;i<=5;i++) url+='&e'+i+'='+(improEnaState[i]?1:0);
+  try{
+    await fetch(url,{method:'POST'});
+    document.getElementById('improStat').textContent=
+      on?('Aktiv: '+IMPRO_NAMES[s]+' in '+ROOT_NAMES[r]+' Okt.'+o)
+        :'Sensor oder \u25ba tippen \u2192 zuf\u00e4lliger Ton der Skala';
+  }catch(e){}
+}
+async function loadImproState(){
+  try{
+    const j=await(await fetch('/impro')).json();
+    for(let i=1;i<=5;i++) improRootSW[i] =(j.root &&j.root[i]) ||0;
+    for(let i=1;i<=5;i++) improScaleSW[i]=(j.scale&&j.scale[i])||0;
+    for(let i=1;i<=5;i++) improOctSW[i]  =(j.oct  &&j.oct[i])  ||4;
+    syncImproUI(melID);
+    for(let i=1;i<=5;i++) improEnaState[i]=(j['e'+i]!==0);
+  }catch(e){}
+  updateModeBtns(melID);
+}
+document.getElementById('improopen').onclick=enterMelMode;
+['improRoot','improScale','improOct'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',()=>applyImpro(true));
+});
+function mkPanelToggle(toggleId,panelId,label){
+  document.getElementById(toggleId).addEventListener('click',()=>{
+    const p=document.getElementById(panelId);
+    const btn=document.getElementById(toggleId);
+    const open=p.style.display==='block';
+    p.style.display=open?'none':'block';
+    btn.innerHTML=label+' '+(open?'&#9660;':'&#9650;');
+  });
+}
+mkPanelToggle('melToggle','melPanel','&#9834; Melodie');
+mkPanelToggle('improToggle','improPanel','&#9835; Improvisation');
+mkPanelToggle('akkordToggle','akkordPanel','&#9835; Akkord');
+document.getElementById('improPlayBtn').addEventListener('pointerdown',async()=>{
+  try{
+    await fetch('/impro_play?id='+melID,{method:'POST'});
+    document.getElementById('improStat').textContent='\u266a gespielt';
+    setTimeout(()=>{
+      const s=document.getElementById('improScale').value;
+      const r=document.getElementById('improRoot').value;
+      const o=document.getElementById('improOct').value;
+      document.getElementById('improStat').textContent='Aktiv: '+IMPRO_NAMES[s]+' in '+ROOT_NAMES[r]+' Okt.'+o;
+    },600);
+  }catch(e){}
+});
+document.getElementById('chordPlayBtn').addEventListener('pointerdown',async()=>{
+  const cst=document.getElementById('chordStat');
+  try{
+    const res=await fetch('/chord_preview?id='+melID,{method:'POST'});
+    const txt=await res.text();
+    if(txt==='nochord'){
+      cst.textContent='Kein Akkord gew\u00e4hlt'; cst.className='mut';
+    } else {
+      cst.textContent='\u266b gespielt'; cst.className='ok';
+      setTimeout(()=>{ cst.textContent='\u25ba tippen \u2192 ausgew\u00e4hlten Akkord h\u00f6ren'; cst.className='mut'; },800);
+    }
+  }catch(e){}
+});
+
+// ===== Mixer / Lautstärke =====
+let volTimers=[0,0,0,0,0,0];
+async function loadVolumes(){
+  try{
+    const j=await(await fetch('/volumes')).json();
+    for(let i=1;i<=5;i++){
+      const v=j.vol[i]!=null?j.vol[i]:100;
+      const sl=document.getElementById('mixfader'+i);
+      const vl=document.getElementById('mixval'+i);
+      if(sl) sl.value=v;
+      if(vl) vl.textContent=v;
+    }
+  }catch(e){}
+}
+document.querySelectorAll('.mix-fader').forEach(sl=>{
+  const id=parseInt(sl.dataset.id);
+  sl.addEventListener('input',()=>{
+    const val=parseInt(sl.value);
+    document.getElementById('mixval'+id).textContent=val;
+    clearTimeout(volTimers[id]);
+    volTimers[id]=setTimeout(async()=>{
+      try{ await fetch('/volume_set?id='+id+'&val='+val,{method:'POST'}); }catch(e){}
+    },40);
+  });
+});
+loadVolumes();
+
+
+// ===== ID-1 Touch-LED Polling =====
+(function pollTouch(){
+  fetch('/touchstates')
+    .then(r=>r.json())
+    .then(j=>{
+      for(let id=1;id<=5;id++){
+        const cls='dot '+(j[id]?'green':'off');
+        const el=document.getElementById('led'+id);
+        if(el) el.className=cls;
+        const ml=document.getElementById('mixled'+id);
+        if(ml) ml.className=cls;
+      }
+    })
+    .catch(()=>{})
+    .finally(()=>setTimeout(pollTouch,120));
+})();
+// Instrumentenliste neu aufbauen, sobald die Klangerzeugung sie aus der SoundFont gefüllt hat
+window.swOnInstrList=()=>fetch('/instr_list').then(r=>r.json()).then(list=>{ instrListData=list; rebuildInstrDropdowns(); renderInstrList(); }).catch(()=>{});
+// Offline-Speicher (gleicher Service Worker wie Looper und Kamera-App)
+if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</html>
