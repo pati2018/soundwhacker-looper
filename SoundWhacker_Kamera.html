@@ -128,7 +128,6 @@
       <label class="small mut">Hall <input type="range" id="chRevA" min="0" max="100" value="30" style="width:110px"></label>
     </div>
     <div id="chFieldsA" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
-    <div class="hint" style="margin-top:8px">Jedes der fünf Felder spielt einen <b>Akkord</b> (Dur, Moll oder Dur7) – oder einen einzelnen Ton –, so lange, wie seine Taste gedrückt bleibt; danach klingt er kurz aus. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
   </details>
 </div>
 </div>
@@ -149,7 +148,6 @@
       <label class="small mut">Hall <input type="range" id="chRevB" min="0" max="100" value="30" style="width:110px"></label>
     </div>
     <div id="chFieldsB" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
-    <div class="hint" style="margin-top:8px">Jedes der fünf Felder spielt einen einzelnen <b>Ton</b> (Grundton und Lage), so lange, wie seine Taste gedrückt bleibt. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
   </details>
 </div>
 </div>
@@ -170,7 +168,6 @@
       <label class="small mut">Hall <input type="range" id="chRevC" min="0" max="100" value="30" style="width:110px"></label>
     </div>
     <div id="chFieldsC" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
-    <div class="hint" style="margin-top:8px">Wie im SW-HUB: jeder Druck spielt einen <b>zufälligen Ton</b> aus Tonart und Skala des Feldes (nie zweimal derselbe hintereinander), so lange, wie die Taste gedrückt bleibt. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
   </details>
 </div>
 </div>
@@ -1845,7 +1842,7 @@ const GEN = (() => {
     if (f === old) return;
     S.fld = f;
     if (old >= 0 && old !== other) chStop(old);
-    if (f >= 0 && f !== other) chStart(f);
+    if (f >= 0 && f !== other) chCam(f);
   }
   function gesApplyKan(slot, target) {
     const S = ges.slots[slot], O = ges.slots[1 - slot];
@@ -2224,7 +2221,7 @@ const GEN = (() => {
   function bodySyncHeld(want) {
     body.held.forEach(ch => { if (!want.has(ch)) { body.held.delete(ch); if (ch >= BODY_FLD) chStop(ch - BODY_FLD); else press(chans[ch], false, 'body'); } });
     want.forEach(ch => {
-      if (ch >= BODY_FLD) { if (!body.held.has(ch)) { body.held.add(ch); chStart(ch - BODY_FLD); } return; }   // Feld aus Akkord/Ton/Improvisieren
+      if (ch >= BODY_FLD) { if (!body.held.has(ch)) { body.held.add(ch); chCam(ch - BODY_FLD); } return; }   // Feld aus Akkord/Ton/Improvisieren
       // neu – oder nach „Stopp“ wieder einschalten wie eine gehaltene Taste
       if (!body.held.has(ch) || (!chans[ch].open && chans[ch].mode !== 'toggle')) {
         if (!playing && chans.some(x => x.buffer)) start();
@@ -2238,7 +2235,7 @@ const GEN = (() => {
     if (id) body.cand = null;
     const tg = id ? body.cfg.trig[id].ch : -1, f = tg >= BODY_FLD ? tg - BODY_FLD : -1;
     gesApply(0, tg >= BODY_FLD ? -1 : tg);
-    if (body.fld !== f) { if (body.fld >= 0) chStop(body.fld); body.fld = f; if (f >= 0) chStart(f); }
+    if (body.fld !== f) { if (body.fld >= 0) chStop(body.fld); body.fld = f; if (f >= 0) chCam(f); }
   }
 
   function bodyDraw(g, W, H, u) {
@@ -3596,6 +3593,7 @@ const GEN = (() => {
     }
     return CH_TYPES[f.type].iv.map(x => root + x);
   }
+  const chCam = i => { if (chCfg.fields[i] && chCfg.fields[i].on) chStart(i); };   // Kamera: nur eingeschaltete Felder
   async function chStart(i) {
     if (ch.playing[i]) return;
     ch.playing[i] = [];   // sofort belegen, damit Wiederholungen nichts doppelt starten
@@ -3692,9 +3690,9 @@ const GEN = (() => {
       const box = $('chFields' + chG(i));
       // Eine Zeile je Feld, die bei wenig Platz (iPad hochkant) umbricht
       box.insertAdjacentHTML('beforeend', '<div class="row" style="gap:6px 10px;padding:6px 10px;border:1px solid var(--line);border-radius:10px">' +
-        '<label class="row" style="gap:6px;min-width:90px" title="Feld an/aus – ist es aus, schaltet seine Taste wie gewohnt den Loop"><input type="checkbox" id="chFOn' + i + '"><span class="lamp" id="chLamp' + i + '"></span><b>' + chFieldName(i) + '</b></label>' +
-        '<span class="small mut">Taste</span><b id="chKey' + i + '" style="min-width:2.5em;text-align:center"></b>' +
-        '<span class="row" style="gap:4px;flex-wrap:nowrap"><button id="chLearn' + i + '">anlernen</button><button id="chKeyClr' + i + '" title="zurück auf Taste ' + chDefKey(i) + '" hidden>&#10005;</button></span>' +
+        '<label class="row" style="gap:6px;min-width:90px" title="Feld an/aus – ist es aus, spielt die Kamera es nicht"><input type="checkbox" id="chFOn' + i + '"><span class="lamp" id="chLamp' + i + '"></span><b>' + chFieldName(i) + '</b></label>' +
+        '<span class="small mut" hidden>Taste</span><b id="chKey' + i + '" style="min-width:2.5em;text-align:center" hidden></b>' +   // Kamera-App: Tasten spielen keine Felder
+        '<span class="row" style="gap:4px;flex-wrap:nowrap;display:none"><button id="chLearn' + i + '">anlernen</button><button id="chKeyClr' + i + '" title="zurück auf Taste ' + chDefKey(i) + '" hidden>&#10005;</button></span>' +
         (i < 5 ? '<select id="chType' + i + '" title="Art"><option value="ton">Ton</option><option value="dur">Akkord Dur</option><option value="moll">Akkord Moll</option><option value="dur7">Akkord Dur7</option></select>'
           : i >= 10 ? '<select id="chScale' + i + '" title="Skala">' + Object.entries(MEL_SCALES).map(([id, sc]) => '<option value="' + id + '">' + (id === 'arabisch' ? 'Phrygisch-Dur / Arabisch' : sc.label) + '</option>').join('') + '</select>'
           : '<span id="chType' + i + '" class="small mut" style="min-width:5em">Ton</span>') +
