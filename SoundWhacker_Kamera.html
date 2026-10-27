@@ -48,7 +48,9 @@
   .clock{font-variant-numeric:tabular-nums}
   @media (max-width:520px){ .wrap{padding:12px} h1{font-size:19px} }
   /* Startseite und Unterseiten */
-  .homeTitle{text-align:center;font-size:24px;margin:18px 0 22px}
+  .homeTitle{text-align:center;margin:22px 0 26px;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .miga{font-size:64px;font-weight:800;letter-spacing:12px;padding-left:12px;line-height:1;background:linear-gradient(90deg,#FFD700,#ffb347 45%,#5ea1ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 28px rgba(255,215,0,.18)}
+  .migaSub{font-size:17px;font-weight:500;color:var(--mut);letter-spacing:1px}
   .menu{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin:0 0 24px}
   .menuBtn{padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:var(--gold);min-width:260px}
   .menuBtn:hover{border-color:#fff}
@@ -69,7 +71,7 @@
     <button id="offPrep" title="Lädt einmalig alles herunter, was die Kamera-App braucht – danach läuft sie auch ohne Internet">&#128229; Für offline vorbereiten</button>
     <span class="small mut" id="offInfo"></span>
   </div>
-  <h1 class="homeTitle">&#128247; SoundWhacker Kamera</h1>
+  <h1 class="homeTitle"><span class="miga">MIGA</span><span class="migaSub">Mimik-, Gesten- und Augensteuerung</span></h1>
   <div class="menu">
     <button class="menuBtn" data-go="pgWas">&#127926; Was soll erklingen?</button>
     <button class="menuBtn" data-go="pgKam">&#128247; Kamera-Steuerung</button>
