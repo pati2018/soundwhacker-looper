@@ -242,7 +242,7 @@
       <span class="small mut clock" id="recTime">max. 5:00</span>
     </div>
     <div class="row" style="margin-top:10px">
-      <label class="small"><input type="checkbox" id="micOn"> &#127908; Mikrofon mit aufnehmen</label>
+      <input type="checkbox" id="micOn" hidden><button id="micBtn" class="onoff" style="min-width:56px;padding:10px 14px">an</button> <span class="small">&#127908; Mikrofon mit aufnehmen</span>
       <select id="micSel" hidden></select>
       <span class="row" id="micMix" style="gap:8px" hidden>
         <span class="small mut">Lautstärke</span><input type="range" id="micVol" min="0" max="200" value="100" style="width:120px">
@@ -3245,14 +3245,14 @@ const GEN = (() => {
   async function micEnable() {
     ensureAudio(); ctx.resume();
     micDisable();
-    if (!recDest) { $('micOn').checked = false; micNote('Dieser Browser kann den Ton nicht aufnehmen.'); return; }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('micOn').checked = false; micNote('Dieser Browser gibt das Mikrofon für Webseiten nicht frei.'); return; }
+    if (!recDest) { $('micOn').checked = false; micSync(); micNote('Dieser Browser kann den Ton nicht aufnehmen.'); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('micOn').checked = false; micSync(); micNote('Dieser Browser gibt das Mikrofon für Webseiten nicht frei.'); return; }
     const id = $('micSel').value;
     try {
       mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: id ? { exact: id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
     } catch (e) {
-      $('micOn').checked = false;
-      micNote(e && e.name === 'NotAllowedError' ? 'Mikrofon wurde nicht erlaubt. Bitte für diese Seite freigeben und erneut anhaken.' : 'Mikrofon konnte nicht gestartet werden.');
+      $('micOn').checked = false; micSync();
+      micNote(e && e.name === 'NotAllowedError' ? 'Mikrofon wurde nicht erlaubt. Bitte für diese Seite freigeben und erneut einschalten.' : 'Mikrofon konnte nicht gestartet werden.');
       return;
     }
     mic.src = ctx.createMediaStreamSource(mic.stream);
@@ -3282,6 +3282,7 @@ const GEN = (() => {
     if (mic.stream) { mic.stream.getTracks().forEach(t => t.stop()); mic.stream = null; }
     mic.buf = null; $('micMix').hidden = true; $('micLvl').style.width = '0';
   }
+  function micSync() { $('micBtn').textContent = $('micOn').checked ? 'aus' : 'an'; }   // Knopf zeigt, was ein Tipp bewirkt
   $('micOn').onchange = () => { if ($('micOn').checked) micEnable(); else { micDisable(); micNote(''); } };
   $('micSel').onchange = () => { if ($('micOn').checked) micEnable(); };
   try { const v = localStorage.getItem(STORE + '.micVol'); if (v != null) $('micVol').value = v; } catch (e) {}
