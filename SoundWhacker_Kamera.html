@@ -192,6 +192,23 @@
     <span class="small mut">Gesamt</span>
     <input type="range" id="master" min="0" max="100" value="90" style="width:160px">
   </div>
+  <div class="bar" style="display:flex;flex-direction:column;gap:14px">
+    <div class="row">
+      <select id="presetSel" style="min-width:180px"><option value="">– kein Preset –</option></select>
+      <button id="presetLoad">Laden</button>
+      <button id="presetSave">Speichern …</button>
+      <button id="presetDel">Löschen</button>
+    </div>
+    <div class="row">
+      <button id="clearAllBtn" title="Alle WAV-Dateien aus den Kanälen entfernen (Presets bleiben erhalten)">Alle Kanäle leeren</button>
+    </div>
+    <div class="row">
+      <button id="presetExport" title="Alle Presets als eine Datei sichern (Backup, Umzug zwischen PC und iPad)">Presets sichern</button>
+      <button id="presetImport" title="Eine gesicherte Preset-Datei wieder einspielen">Presets einspielen</button>
+      <button id="presetShare" class="start" hidden>Datei jetzt teilen</button>
+    </div>
+    <span class="small mut" id="presetInfo"></span>
+  </div>
   <div id="status" class="small mut" style="margin:0 0 12px"></div>
   <details class="bar" id="loopBox" open>
     <summary style="cursor:pointer"><b>Looper</b> <span class="small mut">&ndash; die 5 Loop-Kanäle: WAV laden, Taste/SW anlernen, Start</span></summary>
@@ -329,10 +346,9 @@
   <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
 <div class="wrap">
   <div class="pgTitle">&#9881; Einstellungen</div>
-  <div class="small mut pgSub">SoundFonts, Presets und Fernsteuerung.</div>
+  <div class="small mut pgSub">SoundFonts und Fernsteuerung.</div>
   <div class="menu" style="justify-content:flex-start">
     <button class="menuBtn" data-go="pgSf">&#127932; SoundFonts</button>
-    <button class="menuBtn" data-go="pgPre">&#128190; Presets</button>
     <button class="menuBtn" data-go="pgFern">&#128225; Looper auf anderem iPad steuern</button>
   </div>
 </div>
@@ -357,30 +373,6 @@
       <span class="small mut" id="sfInfo"></span>
     </div>
   </details>
-</div>
-</div>
-<div class="page" id="pgPre">
-  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
-<div class="wrap">
-  <div class="pgTitle">&#128190; Presets</div>
-  <div class="small mut pgSub">Speichert die WAV-Dateien und Einstellungen der Loop-Kan&auml;le.</div>
-  <div class="bar" style="display:flex;flex-direction:column;gap:14px">
-    <div class="row">
-      <select id="presetSel" style="min-width:180px"><option value="">– kein Preset –</option></select>
-      <button id="presetLoad">Laden</button>
-      <button id="presetSave">Speichern …</button>
-      <button id="presetDel">Löschen</button>
-    </div>
-    <div class="row">
-      <button id="clearAllBtn" title="Alle WAV-Dateien aus den Kanälen entfernen (Presets bleiben erhalten)">Alle Kanäle leeren</button>
-    </div>
-    <div class="row">
-      <button id="presetExport" title="Alle Presets als eine Datei sichern (Backup, Umzug zwischen PC und iPad)">Presets sichern</button>
-      <button id="presetImport" title="Eine gesicherte Preset-Datei wieder einspielen">Presets einspielen</button>
-      <button id="presetShare" class="start" hidden>Datei jetzt teilen</button>
-    </div>
-    <span class="small mut" id="presetInfo"></span>
-  </div>
 </div>
 </div>
 <div class="page" id="pgFern">
@@ -4252,7 +4244,7 @@ const GEN = (() => {
 <script>
 // Startseite und Unterseiten (jede Unterseite hat ihre Elternseite; „Zurück“ führt dorthin)
 (function () {
-  const PARENT = { pgWas: '', pgKam: '', pgGen: '', pgSet: '', pgAkk: 'pgWas', pgTon: 'pgWas', pgImp: 'pgWas', pgLoop: 'pgWas', pgSf: 'pgSet', pgPre: 'pgSet', pgFern: 'pgSet' };
+  const PARENT = { pgWas: '', pgKam: '', pgGen: '', pgSet: '', pgAkk: 'pgWas', pgTon: 'pgWas', pgImp: 'pgWas', pgLoop: 'pgWas', pgSf: 'pgSet', pgFern: 'pgSet' };
   let cur = '';
   function go(id) {
     document.querySelectorAll('.page.open').forEach(p => p.classList.remove('open'));
