@@ -180,10 +180,10 @@
   <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
 <div class="wrap">
   <div class="pgTitle">&#128257; Looper</div>
-  <div class="small mut pgSub">Die 5 Loop-Kan&auml;le: WAV laden, Start.</div>
+  <div class="small mut pgSub">Die 5 Loop-Kan&auml;le. Sie starten von selbst, sobald die Kamera einen Kanal ausl&ouml;st.</div>
   <div class="row" style="margin:0 0 14px"><button class="menuBtn" data-go="pgGen" style="padding:12px 22px;font-size:17px;min-width:0">&#127922; Zum Loop-Generator</button></div>
   <div class="bar row">
-    <button class="big start" id="startBtn">&#9654; Start</button>
+    <button class="big start" id="startBtn" hidden>&#9654; Start</button>
     <button class="big stop" id="stopBtn">&#9632; Stopp</button>
     <button class="big" id="allBtn" title="Alle Kanäle gleichzeitig hörbar schalten (Taste 0)">&#128266; Alle vorhören</button>
     <span class="small mut">Projekt-Tempo</span>
@@ -1518,7 +1518,7 @@ const GEN = (() => {
       $('presetSel').value = name;
       try { localStorage.setItem(STORE + '.preset', name); } catch (e) {}
       save();
-      presetInfo('Geladen: ' + name + (playing ? '' : ' – jetzt Start drücken'));
+      presetInfo('Geladen: ' + name);
     } catch (e) { presetInfo('Laden fehlgeschlagen.', true); }
   }
 
@@ -3444,7 +3444,7 @@ const GEN = (() => {
         await setSample(chans[r], results[r].wav, (r + 1) + '_' + GEN.ROLES[r] + '_' + label + '_' + keyName + '_' + bpm + 'bpm.wav', bpm);
       }
       setProjBpm(bpm);
-      genInfo(note + 'Fertig: ' + GEN.STYLES[opts.style].label + ', ' + bpm + ' BPM, ' + keyName + '. Jetzt Start drücken.');
+      genInfo(note + 'Fertig: ' + GEN.STYLES[opts.style].label + ', ' + bpm + ' BPM, ' + keyName + '. Die Loops sind im Looper.');
     } catch (e) {
       genInfo('Erzeugen fehlgeschlagen: ' + e.message, true);
     }
