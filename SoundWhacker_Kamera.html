@@ -76,6 +76,7 @@
   .page details>summary{display:none}
   .row:has(> [id^=chInfo]:empty){display:none}
   #presetInfo:empty{display:none}
+  .row:has(> #sfInfo:empty){display:none}
   .page details>div:first-of-type,.page details>.row:first-of-type{margin-top:0!important}
 </style>
 </head>
@@ -344,10 +345,9 @@
   <details class="bar" id="sfBox">
     <summary style="cursor:pointer"><b>SoundFont</b> <span class="small mut">&ndash; Instrumente für Melodie- und Ganzkörper-Modus sowie für Akkord, Ton und Improvisieren</span></summary>
     <div class="row" style="margin-top:12px">
-      <span class="small mut">SoundFont</span>
       <button id="sfFileBtn">&#128193; Eigene SoundFont laden (.sf2)</button>
       <button id="sfBuiltinBtn" title="Die mitgelieferte Instrumenten-Auswahl verwenden">Eingebaute verwenden</button>
-      <span class="small" id="sfName">keine geladen</span>
+      <span class="small" id="sfName" hidden>keine geladen</span>
     </div>
     <div class="row" style="margin-top:10px">
       <label class="small mut">Instrument <select id="sfPreset" style="min-width:220px" disabled><option>– erst SoundFont laden –</option></select></label>
@@ -356,7 +356,6 @@
     <div class="row" style="margin-top:10px">
       <span class="small mut" id="sfInfo"></span>
     </div>
-    <div class="hint" style="margin-top:8px">Eingebaut ist eine Auswahl von 45 Instrumenten und 3 Schlagzeug-Kits aus <b>GeneralUser GS</b> (S. Christian Collins, frei nutzbar; Lizenz im Ordner <code>soundfonts</code>). Sie wird beim ersten Gebrauch einmal geladen (ca. 21 MB) und bleibt dann im Browser gespeichert – auch auf dem iPad. Eine eigene SoundFont ersetzt sie und bleibt ebenfalls gespeichert; mit <b>Eingebaute verwenden</b> geht es zurück. Alle fünf Loops nutzen dasselbe Instrument und Muster, Kanal 1–5 bekommt jeweils den eingestellten Akkord. Mit den Kanal-Tasten (1–5 oder angelernte Tasten), SWs oder MIDI schaltest du dann zwischen den Akkorden um.</div>
   </details>
 </div>
 </div>
@@ -3527,6 +3526,10 @@ const GEN = (() => {
     sel.disabled = false;
     melFillPresets(); chFillPresets();
     $('sfName').textContent = name + ' (' + (bytes.byteLength / 1048576).toFixed(1) + ' MB, ' + list.length + ' Instrumente)';
+    // statt Text: der Knopf der aktiven SoundFont ist grün
+    const isBuiltin = /eingebaut/i.test(name);
+    $('sfBuiltinBtn').classList.toggle('start', isBuiltin); $('sfFileBtn').classList.toggle('start', !isBuiltin);
+    $('sfFileBtn').title = isBuiltin ? '' : 'aktiv: ' + name;
   }
 
   async function sfLoadFile(file) {
@@ -3536,7 +3539,7 @@ const GEN = (() => {
       sfInfo('Lade SoundFont …');
       const bytes = await file.arrayBuffer();
       await sfUse(bytes.slice(0), file.name);
-      try { await sfDb('readwrite', s => s.put({ name: file.name, bytes }, 'main')); sfInfo('SoundFont geladen und gespeichert.'); }
+      try { await sfDb('readwrite', s => s.put({ name: file.name, bytes }, 'main')); sfInfo(''); }
       catch (e) { sfInfo('SoundFont geladen, aber nicht dauerhaft gespeichert (Browser-Speicher voll oder gesperrt).', true); }
       if (ges.mode === 'melody' || ges.mode === 'fullbody') melPrepare();
     } catch (e) {
@@ -3588,7 +3591,7 @@ const GEN = (() => {
     try {
       try { await sfDb('readwrite', s => s.delete('main')); } catch (e) {}
       await sfLoadBuiltin();
-      sfInfo('Eingebaute SoundFont aktiv.');
+      sfInfo('');
       if (ges.mode === 'melody' || ges.mode === 'fullbody') melPrepare();
     } catch (e) { sfInfo('Eingebaute SoundFont konnte nicht geladen werden: ' + ((e && e.message) || e), true); }
     sfBusy = false;
