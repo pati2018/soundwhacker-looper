@@ -245,7 +245,7 @@
       <input type="checkbox" id="micOn" hidden><button id="micBtn" class="onoff" style="min-width:56px;padding:10px 14px">an</button> <span class="small">&#127908; Mikrofon mit aufnehmen</span>
       <select id="micSel" hidden></select>
       <span class="row" id="micMix" style="gap:8px" hidden>
-        <span class="small mut">Lautstärke</span><input type="range" id="micVol" min="0" max="200" value="100" style="width:120px">
+        <span class="small mut">Lautstärke</span><input type="range" id="micVol" min="0" max="1000" value="400" style="width:160px">
         <span title="Mikrofon-Pegel" style="width:70px;height:8px;background:var(--line);border-radius:4px;overflow:hidden;display:inline-block"><b id="micLvl" style="display:block;height:100%;width:0;background:var(--on)"></b></span>
       </span>
       <span class="small mut" id="micNote"></span>
@@ -3241,7 +3241,7 @@ const GEN = (() => {
   $('recBtn').onclick = () => (recState.rec ? recStop() : recStart());
 
   // ---------- Mikrofon für die Aufnahme (geht nur ins Video, nicht auf die Lautsprecher – keine Rückkopplung) ----------
-  const mic = { stream: null, src: null, gain: null, an: null, buf: null, timer: 0 };
+  const mic = { stream: null, src: null, gain: null, comp: null, an: null, buf: null, timer: 0 };
   const micNote = t => { $('micNote').textContent = t || ''; };
   async function micEnable() {
     ensureAudio(); ctx.resume();
@@ -3253,7 +3253,7 @@ const GEN = (() => {
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     try {
       try {
-        mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: id ? { exact: id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+        mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: id ? { exact: id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: true } });   // automatische Verstärkung an: iPad-Mikrofon ist sonst sehr leise
       } catch (e1) {
         if (e1 && e1.name === 'NotAllowedError') throw e1;
         // iPad: Sonderwünsche (Gerät, Filter aus) werden teils abgelehnt – dann einfach das Standard-Mikrofon nehmen
@@ -3278,8 +3278,11 @@ const GEN = (() => {
     }
     mic.src = ctx.createMediaStreamSource(mic.stream);
     mic.gain = ctx.createGain(); mic.gain.gain.value = $('micVol').value / 100;
+    // Begrenzer hinter der Verstärkung: laut machen ohne Übersteuern
+    mic.comp = ctx.createDynamicsCompressor();
+    mic.comp.threshold.value = -18; mic.comp.knee.value = 6; mic.comp.ratio.value = 12; mic.comp.attack.value = 0.003; mic.comp.release.value = 0.2;
     mic.an = ctx.createAnalyser(); mic.an.fftSize = 512; mic.buf = new Uint8Array(mic.an.fftSize);
-    mic.src.connect(mic.gain); mic.gain.connect(recDest); mic.src.connect(mic.an);
+    mic.src.connect(mic.gain); mic.gain.connect(mic.comp); mic.comp.connect(recDest); mic.comp.connect(mic.an);   // Anzeige zeigt den aufgenommenen Pegel
     $('micMix').hidden = false;
     micNote('Tipp: Mit Kopfhörern klingt es am saubersten, sonst nimmt das Mikrofon die Lautsprecher mit auf.');
     mic.timer = setInterval(() => {
@@ -3300,16 +3303,16 @@ const GEN = (() => {
   function micDisable() {
     clearInterval(mic.timer);
     try { if (navigator.audioSession && !$('micOn').checked) navigator.audioSession.type = 'playback'; } catch (e) {}   // ohne Mikrofon wieder „nur Wiedergabe“ (klingt auch bei Stummschalter)
-    ['src', 'gain', 'an'].forEach(k => { if (mic[k]) { try { mic[k].disconnect(); } catch (e) {} mic[k] = null; } });
+    ['src', 'gain', 'comp', 'an'].forEach(k => { if (mic[k]) { try { mic[k].disconnect(); } catch (e) {} mic[k] = null; } });
     if (mic.stream) { mic.stream.getTracks().forEach(t => t.stop()); mic.stream = null; }
     mic.buf = null; $('micMix').hidden = true; $('micLvl').style.width = '0';
   }
   function micSync() { $('micBtn').textContent = $('micOn').checked ? 'aus' : 'an'; }   // Knopf zeigt, was ein Tipp bewirkt
   $('micOn').onchange = () => { if ($('micOn').checked) micEnable(); else { micDisable(); micNote(''); } };
   $('micSel').onchange = () => { if ($('micOn').checked) micEnable(); };
-  try { const v = localStorage.getItem(STORE + '.micVol'); if (v != null) $('micVol').value = v; } catch (e) {}
+  try { const v = localStorage.getItem(STORE + '.micVol2'); if (v != null) $('micVol').value = v; } catch (e) {}
   $('micVol').oninput = () => { if (mic.gain) mic.gain.gain.setTargetAtTime($('micVol').value / 100, ctx.currentTime, 0.03); };
-  $('micVol').onchange = () => { try { localStorage.setItem(STORE + '.micVol', $('micVol').value); } catch (e) {} };
+  $('micVol').onchange = () => { try { localStorage.setItem(STORE + '.micVol2', $('micVol').value); } catch (e) {} };
 
 
   // iOS/Safari: Audio wird erst nach einer echten Berührung freigegeben – mit der ersten Berührung entsperren
