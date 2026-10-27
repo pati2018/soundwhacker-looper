@@ -78,10 +78,9 @@
 </head>
 <body>
 <div class="wrap" id="home">
-  <div class="bar row" id="offBar">
-    <b>Offline</b>
+  <div class="row" id="offBar" style="justify-content:flex-start;flex-direction:row-reverse;gap:10px">
     <button id="offPrep" title="Lädt einmalig alles herunter, was die Kamera-App braucht – danach läuft sie auch ohne Internet">&#128229; Für offline vorbereiten</button>
-    <span class="small mut" id="offInfo"></span>
+    <span class="small mut" id="offInfo" style="text-align:right"></span>
   </div>
   <h1 class="homeTitle"><svg class="migaAni" viewBox="0 0 220 120" aria-hidden="true">
       <g class="mFace"><circle cx="110" cy="62" r="40" fill="#111826" stroke="#FFD700" stroke-width="4"/>
@@ -94,7 +93,7 @@
     </svg><span class="miga">MIGA</span><span class="migaSub"><b>Mi</b>mik-, <b>G</b>esten-, <b>A</b>ugensteuerung</span></h1>
   <div class="menu">
     <button class="menuBtn" data-go="pgWas">&#127926; Was soll erklingen?</button>
-    <button class="menuBtn" data-go="pgKam">&#128247; Kamera-Steuerung</button>
+    <button class="menuBtn" data-go="pgKam">&#128587; Was bewegt sich?</button>
     <button class="menuBtn" data-go="pgGen">&#127922; Loop-Generator</button>
     <button class="menuBtn" data-go="pgSet">&#9881; Einstellungen</button>
   </div>
@@ -209,7 +208,7 @@
 <div class="page" id="pgKam">
   <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
 <div class="wrap">
-  <div class="pgTitle">&#128247; Kamera-Steuerung</div>
+  <div class="pgTitle">&#128587; Was bewegt sich?</div>
   <div class="small mut pgSub">Was bewegt sich &ndash; und was soll erklingen? Dazu Hintergrund, Video-Aufnahme und Fernsteuerung.</div>
   <details class="bar" id="gesBox" open>
     <summary style="cursor:pointer"><b>Kamera-Steuerung</b> <span class="small mut">&ndash; erst w&auml;hlen, was sich bewegt (H&auml;nde, Kopf, Gesicht, Augen, Arme, ganzer K&ouml;rper), dann, was erklingt (Kan&auml;le, Akkorde, T&ouml;ne, Improvisieren, Melodie); dazu Hintergrund und Video-Aufnahme</span></summary>
