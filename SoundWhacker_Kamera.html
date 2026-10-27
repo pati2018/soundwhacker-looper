@@ -10,6 +10,7 @@
     --acc:#5ea1ff; --on:#4dff87; --warn:#ffcc4d; --err:#ff6363; --gold:#FFD700;
   }
   *{box-sizing:border-box}
+  [hidden]{display:none!important}
   body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:15px;
     padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
   .wrap{max-width:1100px;margin:0 auto;padding:16px}
@@ -200,7 +201,6 @@
   <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
 <div class="wrap">
   <div class="pgTitle">&#128587; Was bewegt sich?</div>
-  <div class="small mut pgSub">Was bewegt sich &ndash; und was soll erklingen? Dazu Hintergrund, Video-Aufnahme und Fernsteuerung.</div>
   <details class="bar" id="gesBox" open>
     <summary style="cursor:pointer"><b>Kamera-Steuerung</b> <span class="small mut">&ndash; erst w&auml;hlen, was sich bewegt (H&auml;nde, Kopf, Gesicht, Augen, Arme, ganzer K&ouml;rper), dann, was erklingt (Kan&auml;le, Akkorde, T&ouml;ne, Improvisieren, Melodie); dazu Hintergrund und Video-Aufnahme</span></summary>
     <div class="row" style="margin-top:12px">
@@ -211,21 +211,14 @@
       <span class="small mut" id="gesInfo">aus</span>
     </div>
     <div class="row" style="margin-top:10px">
-      <b class="small">Looper auf anderem iPad steuern</b>
-      <input id="rcCode" type="text" inputmode="numeric" maxlength="4" placeholder="Code" style="width:80px;font-size:18px;letter-spacing:2px;text-align:center">
-      <button id="rccBtn">&#128225; Verbinden</button>
-      <span class="small mut" id="rccInfo">Code vom Looper-iPad („Fernsteuerung erlauben“) eingeben – dann drücken Auslöser für Kanal 1–5 dort die SWs 1–5.</span>
-    </div>
-    <div class="row" style="margin-top:10px">
       <label class="small mut">Hintergrund <select id="bgSel"><option value="none">Kamerabild</option><option value="blur">unscharf</option><option value="stage">Bühne</option><option value="image">eigenes Foto …</option></select></label>
       <button id="bgFileBtn" hidden>&#128444; Foto wählen</button>
-      <label class="small mut"><input type="checkbox" id="gesOverlay" checked> Handpunkte und Kanal einblenden</label>
+      <label class="small mut"><input type="checkbox" id="gesOverlay" checked> Handpunkte einblenden</label>
       <span class="small mut" id="bgNote"></span>
     </div>
     <div class="row" style="margin-top:10px">
       <button class="big" id="recBtn">&#9679; Video aufnehmen</button>
       <span class="small mut clock" id="recTime">max. 5:00</span>
-      <span class="small mut">Aufgenommen wird das Kamerabild (mit Hintergrund), der Ton des Loopers und – wenn eingeschaltet – das Mikrofon.</span>
     </div>
     <div class="row" style="margin-top:10px">
       <label class="small"><input type="checkbox" id="micOn"> &#127908; Mikrofon mit aufnehmen</label>
@@ -239,7 +232,6 @@
     <div id="takes" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px"></div>
     <div class="row" style="margin-top:10px;align-items:flex-start">
       <canvas id="gesCv" width="320" height="240" style="width:480px;max-width:100%;border-radius:10px;border:1px solid var(--line);background:var(--card2)" hidden></canvas>
-      <div class="hint" id="handPanel" style="flex:1 1 220px"><div id="gesLearnList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>Halte eine oder beide Hände gut sichtbar vor die Kamera. <b>1–5 Finger</b> = Kanal 1–5 hörbar, so lange du sie zeigst. <b>Beide Hände</b> sind gleichberechtigt: jede schaltet ihren eigenen Kanal, so hörst du bis zu zwei Kanäle gleichzeitig (Punkte im Bild: blau = linke, grün = rechte Hand). Mit <b>Geste anlernen</b> legst du für einen Kanal zusätzlich eine eigene Handform fest (z.&nbsp;B. OK-Zeichen), sie hat Vorrang vor der Fingerzahl. Stört eine Fingerzahl, nimm in der Zeile das Häkchen bei <b>n Finger</b> weg – dann löst sie nichts mehr aus. <b>Faust</b> oder keine Hand = Stille. Ein Wechsel wird nach wenigen Bildern übernommen, damit kurze Fehlerkennungen nichts auslösen. Das Kamerabild bleibt auf deinem Gerät. Die Erkennung (Google MediaPipe, Apache-2.0) ist im Looper enthalten und läuft auch offline.</div>
     </div>
     <div id="profRow" class="row" hidden style="margin-top:12px">
       <label class="small mut">Profil <select id="bodyProf" style="min-width:150px"><option value="">– Profil wählen –</option></select></label>
@@ -259,7 +251,6 @@
       </div>
       <div id="melOnly">
       <div id="melCtrl" style="display:grid;grid-template-columns:auto minmax(170px,auto) auto auto auto minmax(140px,1fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
-      <div class="hint" style="margin-top:8px">Jede Stellung ist ein Ton der Skala: Bewegt sich das Kind in eine neue Stellung, erklingt deren Ton. Kopf drehen: links tief, rechts hoch. Kopf, Arme: unten tief, oben hoch. Mund: zu tief, weit offen hoch. Mit <b>Bereich anlernen</b> bewegt das Kind Kopf, Mund oder Arm einmal so weit es kann (4 Sekunden) – die Töne werden dann genau auf diesen Bereich verteilt, auch wenn er klein ist. <b>Töne</b> = wie viele Stufen der Skala, <b>Lage</b> = tiefster Ton. Ohne eigene SoundFont wird die eingebaute Instrumenten-Auswahl verwendet (eigene SoundFont und Hall-Regler im Bereich „SoundFont-Arpeggio“). Die Töne werden nach jeder Änderung von Instrument, Tonart oder Skala kurz vorbereitet.</div>
       </div>
     </div>
     <div id="fbPanel" hidden style="margin-top:12px">
@@ -278,7 +269,9 @@
           <b id="fbRoomT" class="small" style="position:absolute;right:6px;top:0;line-height:18px;font-weight:600"></b></span>
       </div>
       <div id="fbParts" style="display:grid;grid-template-columns:auto minmax(170px,auto) auto auto auto minmax(160px,1fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
-      <div class="hint" style="margin-top:8px">Bewegung macht Klang, Stillstand ist Stille: Bewegt sich ein Körperteil schnell genug, erklingt ein Ton. Bei den Händen und beim Kopf bestimmt die <b>Höhe</b> (Hände) bzw. die Stellung links ↔ rechts (Kopf) den Ton, die <b>Geschwindigkeit</b> die Lautstärke. Die Füße spielen tiefe Töne (Grundton und Quinte) wie ein Bass. <b>Empfindlichkeit</b>: wie viel Bewegung nötig ist. <b>Tondichte</b>: wie schnell Töne aufeinander folgen dürfen. Mit <b>anlernen</b> bewegt das Kind einen Körperteil 6 Sekunden lang so, wie es kann (Hände hoch und runter, Kopf hin und her, Füße stampfen): Danach passen Tonbereich und Empfindlichkeit genau zu diesem Kind – der Regler Empfindlichkeit wirkt dann nur noch als Feinregler. Die Höhe wird am eigenen Körper gemessen – das funktioniert auch im Sitzen oder im Rollstuhl (dann Füße ausschalten). Für den ganzen Körper etwa 2–3 m Abstand zur Kamera. <b>Raum-Klavier</b> (eigener Schalter): Wer durch den Raum geht oder fährt, spielt die Tonleiter wie auf einer riesigen Klaviatur am Boden; mit <b>Raum-Bereich anlernen</b> einmal von ganz links nach ganz rechts bewegen.</div>
+    </div>
+    <div id="handPanel" style="margin-top:12px">
+      <div id="handTrig" style="display:grid;grid-template-columns:minmax(150px,auto) auto minmax(90px,1fr) minmax(100px,2fr) auto;gap:6px 12px;align-items:center"></div>
     </div>
     <div id="zonePanel" hidden style="margin-top:12px">
       <div class="row">
@@ -287,7 +280,6 @@
           <span class="small" style="flex:1;border-right:1px solid var(--line);text-align:center;line-height:30px" id="zoneL0">1</span><span class="small" style="flex:1;border-right:1px solid var(--line);text-align:center;line-height:30px" id="zoneL1">2</span><span class="small" style="flex:1;border-right:1px solid var(--line);text-align:center;line-height:30px" id="zoneL2">3</span><span class="small" style="flex:1;border-right:1px solid var(--line);text-align:center;line-height:30px" id="zoneL3">4</span><span class="small" style="flex:1;text-align:center;line-height:30px" id="zoneL4">5</span>
           <i id="zoneM" style="position:absolute;top:0;bottom:0;width:4px;margin-left:-2px;left:0;background:var(--on)"></i></span>
       </div>
-      <div class="hint" style="margin-top:8px">Der Raum ist von links nach rechts in <b>5 Zonen</b> geteilt. Wo das Kind steht (oder hinf&auml;hrt), das erklingt &ndash; Zone&nbsp;1 = Kanal/Akkord/Ton&nbsp;1 &hellip; Zone&nbsp;5 = &hellip;&nbsp;5, so lange es dort bleibt. Mit <b>Raum-Bereich anlernen</b> bewegt sich das Kind einmal von ganz links nach ganz rechts.</div>
     </div>
     <div id="bodyPanel" hidden style="margin-top:12px">
       <div class="row">
@@ -299,7 +291,6 @@
         <label class="small mut">Haltezeit <input type="range" id="bodyHold" min="0" max="1500" step="50" value="400" style="width:140px"> <span id="bodyHoldVal" style="display:inline-block;min-width:4em">400 ms</span></label>
       </div>
       <div id="bodyTrig" style="display:grid;grid-template-columns:minmax(150px,auto) auto minmax(90px,1fr) minmax(100px,2fr) auto;gap:6px 12px;align-items:center;margin-top:10px"></div>
-      <div class="hint" style="margin-top:8px">Das Kind sitzt entspannt vor der Kamera, dann <b>Ruhe-Position anlernen</b>. Jeder Auslöser misst ab dieser Haltung. Ordne jedem Auslöser einen Loop-Kanal oder ein Feld aus <b>Akkord</b>, <b>Ton</b> oder <b>Improvisieren</b> zu (oder „–“ für aus). Mit <b>anlernen</b> neben einem Auslöser macht das Kind die Bewegung 2–3 Sekunden lang vor (z.&nbsp;B. nach links schauen), danach passt die Schwelle genau zu diesem Kind. <b>Augensteuerung:</b> Die Kamera erkennt grob, wohin die Augen schauen (links, rechts, oben, unten) – für Blick-Auslöser die Ruhe-Position mit Blick geradeaus in die Kamera anlernen, Kamera möglichst auf Augenhöhe, Gesicht gut beleuchtet; eine längere <b>Haltezeit</b> (z.&nbsp;B. 600–800 ms) verhindert, dass kurzes Umherschauen auslöst. „Augen zu“ mit Haltezeit ignoriert normales Blinzeln. Der Regler <b>Schwelle</b> legt fest, wie deutlich die Bewegung sein muss: weiter links = schon kleine Bewegungen lösen aus. Der Balken zeigt live den aktuellen Wert, der Strich die Schwelle. Normalerweise zählt nur ein Auslöser (der deutlichste). Mit <b>mehrere Auslöser gleichzeitig</b> wirkt jeder Auslöser für sich, z.&nbsp;B. Kopf links (Kanal 1) und Mund auf (Kanal 2) zusammen. Ein Kanal klingt, solange seine Bewegung gehalten wird. Die <b>Haltezeit</b> verhindert, dass kurze, unwillkürliche Bewegungen etwas auslösen. Für die Arme muss der Oberkörper mit Schultern und Händen im Bild sein. „Links“ und „rechts“ sind aus Sicht des Kindes gemeint.</div>
     </div>
     <video id="gesVideo" playsinline muted style="display:none"></video>
   </details>
@@ -337,10 +328,11 @@
   <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
 <div class="wrap">
   <div class="pgTitle">&#9881; Einstellungen</div>
-  <div class="small mut pgSub">SoundFonts und Presets.</div>
+  <div class="small mut pgSub">SoundFonts, Presets und Fernsteuerung.</div>
   <div class="menu" style="justify-content:flex-start">
     <button class="menuBtn" data-go="pgSf">&#127932; SoundFonts</button>
     <button class="menuBtn" data-go="pgPre">&#128190; Presets</button>
+    <button class="menuBtn" data-go="pgFern">&#128225; Looper auf anderem iPad steuern</button>
   </div>
 </div>
 </div>
@@ -385,6 +377,20 @@
     <button id="presetShare" class="start" hidden>Datei jetzt teilen</button>
     <span class="small mut" id="presetInfo"></span>
   </div>
+</div>
+<div class="page" id="pgFern">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+<div class="wrap">
+  <div class="pgTitle">&#128225; Looper auf anderem iPad steuern</div>
+  <div class="small mut pgSub">Am Looper-iPad &bdquo;Fernsteuerung erlauben&ldquo; einschalten und den Code hier eingeben. Dann dr&uuml;cken die Ausl&ouml;ser f&uuml;r Kanal 1&ndash;5 dort die SWs 1&ndash;5.</div>
+  <div class="bar">
+    <div class="row" >
+      <input id="rcCode" type="text" inputmode="numeric" maxlength="4" placeholder="Code" style="width:80px;font-size:18px;letter-spacing:2px;text-align:center">
+      <button id="rccBtn">&#128225; Verbinden</button>
+      <span class="small mut" id="rccInfo">Code vom Looper-iPad eingeben</span>
+    </div>
+  </div>
+</div>
 </div>
 </div>
 
@@ -1633,12 +1639,7 @@ const GEN = (() => {
     c.el.keyTag.textContent = 'Taste ' + (c.key ? c.key.label + ' / ' : '') + (c.idx + 1);
     c.el.keyShow.textContent = c.key ? 'Taste: ' + c.key.label + ' (und ' + (c.idx + 1) + ')' : '';
     c.el.keyClr.hidden = !c.key;
-    const gr = $('gesRowInfo' + c.idx);
-    if (gr) {
-      gr.textContent = c.gesture ? 'eigene Geste ✓' : (c.fingerOn ? '' : '– keine Geste –');
-      $('gesRowClr' + c.idx).hidden = !c.gesture;
-      $('gesRowFing' + c.idx).checked = c.fingerOn;
-    }
+    if ($('htL_' + c.idx)) handUi();
   }
 
   // ---------- Tasten anlernen (PC-Tastatur, zusätzlich zu den Ziffern 1–5) ----------
@@ -1813,33 +1814,48 @@ const GEN = (() => {
   // Dadurch egal: Abstand zur Kamera, Drehung in der Bildebene, linke oder rechte Hand.
   const GPAIRS = [[4, 0], [8, 0], [12, 0], [16, 0], [20, 0], [4, 8], [4, 12], [4, 16], [4, 20], [8, 12], [8, 16], [8, 20], [12, 16], [12, 20], [16, 20], [4, 2], [8, 5], [12, 9], [16, 13], [20, 17]];
   const GES_TH = 0.22;   // maximale Abweichung (RMS) für „erkannt“: gleiche Geste gemessen ≤ 0,13, verschiedene Gesten ≥ 0,5
+  const GES_MAXD = 0.44;  // Schwelle 50 = GES_TH; Schwelle 100 = sehr großzügig
+  // Hände-Auslöser k (0–4): k+1 Finger oder die eigene Geste (gespeichert am Kanal k wie bisher) → spielt Kanal/Feld
+  const HAND_KEY = STORE + '.hand';
+  const handT = { cfg: { trig: [0, 1, 2, 3, 4].map(k => ({ ch: k, th: 50 })) }, live: [0, 0, 0, 0, 0] };
+  try {
+    const c = JSON.parse(localStorage.getItem(HAND_KEY) || 'null');
+    if (c && Array.isArray(c.trig)) c.trig.slice(0, 5).forEach((t, k) => {
+      if (t && Number.isInteger(t.ch) && ((t.ch >= -1 && t.ch < 5) || (t.ch >= 100 && t.ch < 115))) handT.cfg.trig[k].ch = t.ch;
+      if (t && Number.isFinite(t.th)) handT.cfg.trig[k].th = Math.max(5, Math.min(100, t.th));
+    });
+  } catch (e) {}
+  const handSave = () => { try { localStorage.setItem(HAND_KEY, JSON.stringify(handT.cfg)); } catch (e) {} };
   function gesFeat(lm, asp) {
     const d = (a, b) => Math.hypot((lm[a].x - lm[b].x) * asp, lm[a].y - lm[b].y);
     const palm = d(0, 9) || 1e-6;
     return GPAIRS.map(([a, b]) => d(a, b) / palm);
   }
   function gesMatch(f) {
-    let best = -1, bd = Infinity;
+    let best = -1, bd = Infinity, br = Infinity;
     chans.forEach((c, i) => {
       if (!c.gesture) return;
       let s = 0;
       for (let k = 0; k < f.length; k++) s += (f[k] - c.gesture[k]) ** 2;
-      const dd = Math.sqrt(s / f.length);
-      if (dd < bd) { bd = dd; best = i; }
+      const dd = Math.sqrt(s / f.length), lim = GES_MAXD * handT.cfg.trig[i].th / 100;
+      handT.live[i] = Math.max(handT.live[i], Math.max(0, 1 - dd / GES_MAXD) * 100);
+      if (dd < lim && dd / lim < br) { br = dd / lim; bd = dd; best = i; }
     });
-    return { idx: bd < GES_TH ? best : -1, d: bd };
+    return { idx: best, d: bd };
   }
   // Erkanntes Ziel einer Hand übernehmen: ihr alter Kanal aus (falls die andere Hand ihn nicht hält), neuer an.
   // Verhalten je Kanal wie beim SW. target = Kanal-Index oder -1
-  function gesApply(slot, target) {
-    if (ges.mode === 'hands' && ges.what && ges.what !== 'kan') { gesApplyFld(slot, target); return; }
-    gesApplyKan(slot, target);
+  // Hände: Auslöser k → was er laut Tabelle spielt (Loop-Kanal oder Feld)
+  function gesApply(slot, k) {
+    const S = ges.slots[slot], tg = k >= 0 && handT.cfg.trig[k] ? handT.cfg.trig[k].ch : -1;
+    S.trig = tg >= 0 ? k : -1;
+    if (tg >= BODY_FLD) { gesApplyKan(slot, -1); gesApplyFld(slot, tg - BODY_FLD); }
+    else { gesApplyFld(slot, -1); gesApplyKan(slot, tg); }
   }
-  // Hände → Feld aus Akkord/Ton/Improvisieren (klingt, solange die Finger gezeigt werden)
-  function gesApplyFld(slot, target) {
+  // Hände → Feld aus Akkord/Ton/Improvisieren (klingt, solange die Finger gezeigt werden); f = Feld-Index oder -1
+  function gesApplyFld(slot, f) {
     const S = ges.slots[slot], O = ges.slots[1 - slot];
-    const f = target >= 0 ? pwTgt(target) - BODY_FLD : -1, old = S.fld == null ? -1 : S.fld, other = O.fld == null ? -1 : O.fld;
-    S.cur = target;
+    const old = S.fld == null ? -1 : S.fld, other = O.fld == null ? -1 : O.fld;
     if (f === old) return;
     S.fld = f;
     if (old >= 0 && old !== other) chStop(old);
@@ -1862,15 +1878,15 @@ const GEN = (() => {
   // Anlernen: kurz vorbereiten, dann 15 Bilder mit Hand mitteln
   function gesLearnStep(f) {
     const L = ges.learn, c = chans[L.idx], now = performance.now();
-    if (now < L.until) { L.msg = 'Geste für Kanal ' + (L.idx + 1) + ' zeigen … ' + Math.ceil((L.until - now) / 1000); return; }
+    if (now < L.until) { L.msg = 'Geste für Auslöser ' + (L.idx + 1) + ' zeigen … ' + Math.ceil((L.until - now) / 1000); return; }
     if (!f) { L.msg = 'Hand nicht erkannt – Geste deutlich zeigen'; return; }
     L.buf.push(f);
-    L.msg = 'Lerne Kanal ' + (L.idx + 1) + ' … ' + Math.round(L.buf.length / 15 * 100) + ' %';
+    L.msg = 'Lerne Auslöser ' + (L.idx + 1) + ' … ' + Math.round(L.buf.length / 15 * 100) + ' %';
     if (L.buf.length < 15) return;
     c.gesture = f.map((_, k) => Math.round(L.buf.reduce((s, x) => s + x[k], 0) / L.buf.length * 1000) / 1000);
     ges.learn = null;
     renderAssign(c); save(); gesLearnUi();
-    gesInfo('Geste für Kanal ' + (c.idx + 1) + ' gespeichert.');
+    gesInfo('Geste für Auslöser ' + (c.idx + 1) + ' gespeichert.');
   }
   async function gesLearnStart(i) {
     if (ges.learn) return;
@@ -1880,20 +1896,48 @@ const GEN = (() => {
     gesLearnUi();
   }
   function gesLearnUi() {
-    chans.forEach((c, i) => { const b = $('gesRowBtn' + i); if (b) { b.classList.toggle('learning', !!ges.learn && ges.learn.idx === i); b.disabled = !!ges.learn && ges.learn.idx !== i; } });
+    chans.forEach((c, i) => { const b = $('htA_' + i); if (b) { const on = !!ges.learn && ges.learn.idx === i; b.classList.toggle('learning', on); b.textContent = on ? 'Abbrechen' : 'anlernen'; b.disabled = !!ges.learn && !on; } });
   }
-  (function buildGesLearnList() {
-    const box = $('gesLearnList');
+  (function buildHandTrig() {
+    const box = $('handTrig');
+    box.innerHTML = '<b class="small mut">Auslöser</b><b class="small mut">spielt</b><b class="small mut">Schwelle</b><b class="small mut">aktuell</b><span></span>';
     chans.forEach((c, i) => {
-      box.insertAdjacentHTML('beforeend', '<div class="row" style="gap:8px"><b style="min-width:64px;color:var(--fg)">Kanal ' + (i + 1) + '</b>' +
-        '<label class="small" style="min-width:78px" title="Standard-Geste: ' + (i + 1) + ' Finger schaltet diesen Kanal"><input type="checkbox" id="gesRowFing' + i + '" checked> ' + (i + 1) + ' Finger</label>' +
-        '<button id="gesRowBtn' + i + '">Geste anlernen</button><button id="gesRowClr' + i + '" title="Angelernte Geste löschen" hidden>&#10005;</button>' +
-        '<span id="gesRowInfo' + i + '"></span></div>');
-      $('gesRowBtn' + i).onclick = () => (ges.learn && ges.learn.idx === i ? (ges.learn = null, gesLearnUi(), gesInfo('Anlernen abgebrochen.')) : gesLearnStart(i));
-      $('gesRowClr' + i).onclick = () => { chans[i].gesture = null; renderAssign(chans[i]); save(); };
-      $('gesRowFing' + i).onchange = () => { chans[i].fingerOn = $('gesRowFing' + i).checked; renderAssign(chans[i]); save(); };
-    });   // Anzeige füllt renderAssign(), sobald die Kanäle gebaut sind
+      box.insertAdjacentHTML('beforeend',
+        '<span id="htL_' + i + '"></span>' +
+        '<select id="htC_' + i + '" style="max-width:150px"><option value="-1">–</option><optgroup label="Loop-Kanal">' + chans.map((x, k) => '<option value="' + k + '">Kanal ' + (k + 1) + '</option>').join('') + '</optgroup>' +
+        ['Akkord', 'Ton', 'Improvisieren'].map((lab, g) => '<optgroup label="' + lab + '">' + [0, 1, 2, 3, 4].map(k => '<option value="' + (100 + g * 5 + k) + '">' + chFieldName(g * 5 + k) + '</option>').join('') + '</optgroup>').join('') + '</select>' +
+        '<input type="range" id="htT_' + i + '" min="5" max="100" step="1" title="nur für eine angelernte Geste: je höher, desto großzügiger wird sie erkannt">' +
+        '<span style="position:relative;height:14px;background:var(--card2);border:1px solid var(--line);border-radius:7px;overflow:hidden;display:block">' +
+        '<b id="htB_' + i + '" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc)"></b>' +
+        '<i id="htM_' + i + '" style="position:absolute;top:0;bottom:0;width:2px;background:var(--warn)"></i></span>' +
+        '<span class="row" style="gap:4px;flex-wrap:nowrap"><button id="htA_' + i + '" class="small" title="Das Kind zeigt eine eigene Handform – sie löst dann zusätzlich aus">anlernen</button><button id="htX_' + i + '" class="small" title="Angelernte Geste löschen" hidden>&#10005;</button></span>');
+      $('htA_' + i).onclick = () => (ges.learn && ges.learn.idx === i ? (ges.learn = null, gesLearnUi(), gesInfo('Anlernen abgebrochen.')) : gesLearnStart(i));
+      $('htX_' + i).onclick = () => { chans[i].gesture = null; renderAssign(chans[i]); save(); };
+      $('htC_' + i).onchange = () => { handT.cfg.trig[i].ch = +$('htC_' + i).value; gesReleaseAll(); handSave(); handUi(); };
+      $('htT_' + i).oninput = () => { handT.cfg.trig[i].th = +$('htT_' + i).value; handUi(); };
+      $('htT_' + i).onchange = handSave;
+    });
   })();
+  function handUi() {
+    chans.forEach((c, i) => {
+      const t = handT.cfg.trig[i];
+      $('htL_' + i).textContent = (i + 1) + ' Finger' + (c.gesture ? ' oder eigene Geste ✓' : '');
+      $('htL_' + i).style.opacity = t.ch < 0 ? 0.55 : 1;
+      $('htC_' + i).value = t.ch; $('htT_' + i).value = t.th;
+      $('htT_' + i).style.opacity = c.gesture ? 1 : 0.4;
+      $('htM_' + i).style.left = Math.min(99, 100 - t.th) + '%';
+      $('htX_' + i).hidden = !c.gesture;
+    });
+    gesLearnUi();
+  }
+  setInterval(() => {   // Live-Balken der Hände
+    if (ges.mode !== 'hands' || !ges.on) return;
+    chans.forEach((c, i) => {
+      const v = handT.live[i] || 0, on = ges.slots.some(S => S.trig === i);
+      $('htB_' + i).style.width = Math.min(100, v) + '%';
+      $('htB_' + i).style.background = on ? 'var(--on)' : 'var(--acc)';
+    });
+  }, 100);
 
   // ---------- Virtueller Hintergrund (MediaPipe Selfie Segmenter, wie in „handklang“) ----------
   const BG = { mode: 'none', seg: null, loading: false, failed: false, mask: false, img: null, maskImg: null };
@@ -1986,7 +2030,8 @@ const GEN = (() => {
     let x = 10 * u;
     ges.slots.forEach(S => {
       if (!S.hand) return;
-      const t = S.name + ': ' + pwName(S.cur) + '   ';
+      const tg = S.trig >= 0 ? handT.cfg.trig[S.trig].ch : -1;
+      const t = S.name + ': ' + (tg >= 0 ? bodyTgt(tg) : 'stumm') + '   ';
       g.fillStyle = S.color; g.fillText(t, x, 22 * u); x += g.measureText(t).width;
     });
   }
@@ -1994,7 +2039,8 @@ const GEN = (() => {
     const f = gesFeat(hand, asp), m = gesMatch(f);
     if (m.idx >= 0) return { f, target: m.idx, how: 'eigene Geste' };
     const n = countFingers(hand);
-    return { f, target: n >= 1 && n <= N && (ges.what !== 'kan' || chans[n - 1].fingerOn) ? n - 1 : -1, how: n + ' Finger' };
+    if (n >= 1 && n <= N) handT.live[n - 1] = 100;
+    return { f, target: n >= 1 && n <= N ? n - 1 : -1, how: n + ' Finger' };
   }
   // ---------- Modus „Kopf, Gesicht & Arme“ (MediaPipe Face Landmarker + Pose Landmarker, Modelle liegen in ./models) ----------
   // Gedacht für Kinder, die Kopf und Gesicht gezielt bewegen können (z. B. im Rollstuhl). Immer nur ein Auslöser, Kanal klingt solange gehalten.
@@ -2235,7 +2281,7 @@ const GEN = (() => {
     body.active = id; body.relSince = 0;
     if (id) body.cand = null;
     const tg = id ? body.cfg.trig[id].ch : -1, f = tg >= BODY_FLD ? tg - BODY_FLD : -1;
-    gesApply(0, tg >= BODY_FLD ? -1 : tg);
+    gesApplyKan(0, tg >= BODY_FLD ? -1 : tg);
     if (body.fld !== f) { if (body.fld >= 0) chStop(body.fld); body.fld = f; if (f >= 0) chCam(f); }
   }
 
@@ -2916,13 +2962,14 @@ const GEN = (() => {
     ges.part = part; ges.what = what;
     $('gesPart').value = part; $('gesWhat').value = what;
     [...$('gesWhat').options].forEach(o => { if (o.value === 'mel') o.disabled = part === 'hands' || part === 'augen'; });
+    if (fromUser && changed && part === 'hands' && what !== 'mel') { handT.cfg.trig.forEach((t, k) => { t.ch = pwTgt(k); }); handSave(); }
     if (fromUser && changed && PW_PART[part] && what !== 'mel') {
       PW_PART[part].forEach((id, i) => { body.cfg.trig[id].ch = pwTgt(PW_IDX[id] != null ? PW_IDX[id] : i); });
       bodySave();
     }
     try { localStorage.setItem(STORE + '.gesPW', JSON.stringify({ part, what })); } catch (e) {}
     gesSetMode(part === 'hands' ? 'hands' : part === 'koerper' ? 'fullbody' : what === 'mel' ? 'melody' : 'body');
-    bodyUi(); melUi();
+    bodyUi(); melUi(); handUi();
   }
   $('gesPart').onchange = () => pwSet($('gesPart').value, ges.what, true);
   $('gesWhat').onchange = () => pwSet(ges.part, $('gesWhat').value, true);
@@ -2963,6 +3010,7 @@ const GEN = (() => {
         const H = ges.slots.find(S => S.hand);
         gesLearnStep(H ? gesFeat(H.hand, asp) : null);
       } else {
+        handT.live = [0, 0, 0, 0, 0];
         ges.slots.forEach((S, si) => {
           const r = S.hand ? gesTarget(S.hand, asp) : { target: -1, how: '' };
           // Erst übernehmen, wenn das Ziel 3 Bilder hintereinander gleich ist (Hand weg: 6 Bilder)
@@ -4145,7 +4193,7 @@ const GEN = (() => {
 <script>
 // Startseite und Unterseiten (jede Unterseite hat ihre Elternseite; „Zurück“ führt dorthin)
 (function () {
-  const PARENT = { pgWas: '', pgKam: '', pgGen: '', pgSet: '', pgAkk: 'pgWas', pgTon: 'pgWas', pgImp: 'pgWas', pgLoop: 'pgWas', pgSf: 'pgSet', pgPre: 'pgSet' };
+  const PARENT = { pgWas: '', pgKam: '', pgGen: '', pgSet: '', pgAkk: 'pgWas', pgTon: 'pgWas', pgImp: 'pgWas', pgLoop: 'pgWas', pgSf: 'pgSet', pgPre: 'pgSet', pgFern: 'pgSet' };
   let cur = '';
   function go(id) {
     document.querySelectorAll('.page.open').forEach(p => p.classList.remove('open'));
