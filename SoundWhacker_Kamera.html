@@ -2870,7 +2870,7 @@ const GEN = (() => {
     box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><b class="small mut">an das Kind anpassen</b><b class="small mut">Bewegung (Strich = Schwelle)</b>';
     FB_PARTS.forEach(p => {
       box.insertAdjacentHTML('beforeend',
-        '<input type="checkbox" id="fpOn_' + p.id + '" hidden><button id="fpB_' + p.id + '"' + ' class="small onoff" style="min-width:44px" title="ein-/ausschalten">aus</button>' +
+        '<input type="checkbox" id="fpOn_' + p.id + '" hidden><button id="fpTog_' + p.id + '"' + ' class="small onoff" style="min-width:44px" title="ein-/ausschalten">aus</button>' +
         '<span id="fpL_' + p.id + '">' + p.label + '</span>' +
         '<select id="fpO_' + p.id + '">' + (p.kind === 'bass' ? '<option value="1">sehr tief</option><option value="2">tief</option><option value="3">mittel</option>'
           : '<option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option>') + '</select>' +
@@ -2914,7 +2914,7 @@ const GEN = (() => {
 
     FB_PARTS.forEach(p => {
       const c = fb.parts[p.id];
-      $('fpOn_' + p.id).checked = c.on; $('fpB_' + p.id).textContent = c.on ? 'aus' : 'an'; $('fpO_' + p.id).value = c.oct;
+      $('fpOn_' + p.id).checked = c.on; $('fpTog_' + p.id).textContent = c.on ? 'aus' : 'an'; $('fpO_' + p.id).value = c.oct;
       if (p.kind !== 'bass') $('fpN_' + p.id).value = c.n;
       $('fpL_' + p.id).style.opacity = c.on ? 1 : 0.5;
       $('fpM_' + p.id).style.left = Math.min(99, fbPartThr(p.id) / 4 * 100) + '%';
@@ -2986,6 +2986,7 @@ const GEN = (() => {
   function pwStd(part) {
     if (ges.what === 'mel') {   // Melodie stufenlos: nur das erste Körperteil an (Kopf drehen, linker Arm)
       if (PW_MEL[part]) { PW_MEL[part].forEach((id, i) => { mel.ctrl[id].on = i === 0; melSt[id].idx = -1; }); melSave(); melUi(); }
+      if (part === 'koerper') { FB_PARTS.forEach((q, i) => { fb.parts[q.id].on = i === 0; }); fb.room.on = false; fbSave(); fbUi(); }   // Ganzer Körper: nur das erste Körperteil
       return;
     }
     if (part === 'hands') { handT.cfg.trig.forEach((t, k) => { t.last = pwTgt(k); t.ch = k === 0 ? pwTgt(0) : -1; }); handSave(); return; }
