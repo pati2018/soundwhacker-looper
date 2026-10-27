@@ -3094,7 +3094,7 @@ const GEN = (() => {
       }
       await gesEnsureModels();
       ges.on = true; ges.slots.forEach(S => { S.cand = 'x'; S.k = 0; });
-      if ($('micOn').checked && mic.stream && !mic.stream.getAudioTracks().some(t => t.readyState === 'live')) micEnable();   // iPad: Mikrofon ging beim Kamerastart verloren
+      if ($('micOn').checked && mic.stream && !mic.stream.getAudioTracks().some(t => t.readyState === 'live') && (!isIOS || recState.rec)) micEnable();   // iPad: Mikrofon ging beim Kamerastart verloren
       if (BG.mode !== 'none') bgSetMode(BG.mode);   // lädt auch ein gespeichertes Foto
       $('gesBtn').innerHTML = '&#9632; Kamera aus'; $('gesBtn').classList.add('learning');
       requestAnimationFrame(gesLoop);
@@ -3183,6 +3183,7 @@ const GEN = (() => {
     if (!window.MediaRecorder || !$('gesCv').captureStream) { recTime('Aufnahme wird von diesem Browser nicht unterstützt.'); return; }
     if (!ges.on) { await gesStart(); if (!ges.on) return; }
     ensureAudio(); ctx.resume();
+    if (isIOS && $('micOn').checked && !mic.stream) await micEnable();   // iPad: Mikrofon erst jetzt öffnen
     const stream = $('gesCv').captureStream(30);
     if (recDest) recDest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
     const mime = recMime(), opts = mime ? { mimeType: mime } : {};
@@ -3208,6 +3209,7 @@ const GEN = (() => {
     const r = recState.rec; if (!r) return;
     recState.rec = null; clearInterval(recState.timer);
     try { r.stop(); } catch (e) {}
+    if (isIOS && mic.stream) setTimeout(() => { if (!recState.rec) { micDisable(); if ($('micOn').checked) micNote('Das Mikrofon geht beim Aufnehmen an – vorher bleibt der Ton voll laut.'); } }, 800);   // iPad: wieder volle Lautstärke
     $('recBtn').classList.remove('stop'); $('recBtn').innerHTML = '&#9679; Video aufnehmen';
     recTime('max. ' + Math.floor(REC_MAX / 60) + ':' + String(REC_MAX % 60).padStart(2, '0'));
   }
@@ -3314,13 +3316,18 @@ const GEN = (() => {
   }
   function micDisable() {
     clearInterval(mic.timer);
-    try { if (navigator.audioSession && !$('micOn').checked) navigator.audioSession.type = 'playback'; } catch (e) {}   // ohne Mikrofon wieder „nur Wiedergabe“ (klingt auch bei Stummschalter)
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}   // ohne Mikrofon wieder „nur Wiedergabe“ (volle Lautstärke, klingt auch bei Stummschalter)
     ['src', 'gain', 'comp', 'makeup', 'lim', 'gate', 'raw', 'an'].forEach(k => { if (mic[k]) { try { mic[k].disconnect(); } catch (e) {} mic[k] = null; } });
     if (mic.stream) { mic.stream.getTracks().forEach(t => t.stop()); mic.stream = null; }
     mic.buf = null; $('micMix').hidden = true; $('micLvl').style.width = '0';
   }
   function micSync() { $('micBtn').textContent = $('micOn').checked ? 'aus' : 'an'; }   // Knopf zeigt, was ein Tipp bewirkt
-  $('micOn').onchange = () => { if ($('micOn').checked) micEnable(); else { micDisable(); micNote(''); } };
+  // iPad: solange das Mikrofon offen ist, spielt das iPad leiser (Aufnahme-Modus) – deshalb dort erst beim Aufnehmen öffnen
+  $('micOn').onchange = () => {
+    if (!$('micOn').checked) { micDisable(); micNote(''); return; }
+    if (isIOS && !recState.rec) { micNote('Das Mikrofon geht beim Aufnehmen an – vorher bleibt der Ton voll laut.'); return; }
+    micEnable();
+  };
   $('micSel').onchange = () => { if ($('micOn').checked) micEnable(); };
   try { const v = localStorage.getItem(STORE + '.micVol2'); if (v != null) $('micVol').value = v; } catch (e) {}
   $('micVol').oninput = () => { if (mic.gain) mic.gain.gain.setTargetAtTime($('micVol').value / 100, ctx.currentTime, 0.03); };
