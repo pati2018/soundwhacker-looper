@@ -68,10 +68,12 @@
   </div>
 
   <details class="bar" id="gesBox" open>
-    <summary style="cursor:pointer"><b>Kamera-Steuerung</b> <span class="small mut">&ndash; Finger, Kopf, Gesicht, Augen oder Arme schalten Kanal 1 bis 5 oder spielen Akkorde/Töne; dazu Hintergrund und Video-Aufnahme</span></summary>
+    <summary style="cursor:pointer"><b>Kamera-Steuerung</b> <span class="small mut">&ndash; erst w&auml;hlen, was sich bewegt (H&auml;nde, Kopf, Gesicht, Augen, Arme, ganzer K&ouml;rper), dann, was erklingt (Kan&auml;le, Akkorde, T&ouml;ne, Improvisieren, Melodie); dazu Hintergrund und Video-Aufnahme</span></summary>
     <div class="row" style="margin-top:12px">
       <button class="big" id="gesBtn">&#128247; Kamera starten</button>
-      <label class="small mut">Erkennung <select id="gesMode"><option value="hands">Hände</option><option value="body">Kopf, Gesicht, Augen &amp; Arme → Kanäle/Akkorde</option><option value="melody">Melodie: Kopf, Mund &amp; Arme spielen Töne</option><option value="fullbody">Ganzkörper: Bewegung spielt Töne</option></select></label>
+      <label class="small mut">Was bewegt sich? <select id="gesPart" style="font-size:16px"><option value="hands">&#9995; H&auml;nde</option><option value="kopf">&#128566; Kopf</option><option value="gesicht">&#128512; Gesicht (Mund, L&auml;cheln, Augenbrauen)</option><option value="augen">&#128064; Augen</option><option value="arme">&#128170; Arme</option><option value="koerper">&#129336; Ganzer K&ouml;rper</option></select></label>
+      <label class="small mut">Was soll erklingen? <select id="gesWhat" style="font-size:16px"><option value="kan">&#128257; Kan&auml;le (Loops)</option><option value="akk">&#127929; Akkorde</option><option value="ton">&#127925; T&ouml;ne</option><option value="imp">&#127926; Improvisieren</option><option value="mel">&#12336; Melodie (stufenlos)</option></select></label>
+      <label hidden><select id="gesMode"><option value="hands">Hände</option><option value="body">Kopf, Gesicht, Augen &amp; Arme → Kanäle/Akkorde</option><option value="melody">Melodie: Kopf, Mund &amp; Arme spielen Töne</option><option value="fullbody">Ganzkörper: Bewegung spielt Töne</option></select></label>
       <span class="small mut" id="gesInfo">aus</span>
     </div>
     <div class="row" style="margin-top:10px">
@@ -143,6 +145,15 @@
       </div>
       <div id="fbParts" style="display:grid;grid-template-columns:auto minmax(170px,auto) auto auto auto minmax(160px,1fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
       <div class="hint" style="margin-top:8px">Bewegung macht Klang, Stillstand ist Stille: Bewegt sich ein Körperteil schnell genug, erklingt ein Ton. Bei den Händen und beim Kopf bestimmt die <b>Höhe</b> (Hände) bzw. die Stellung links ↔ rechts (Kopf) den Ton, die <b>Geschwindigkeit</b> die Lautstärke. Die Füße spielen tiefe Töne (Grundton und Quinte) wie ein Bass. <b>Empfindlichkeit</b>: wie viel Bewegung nötig ist. <b>Tondichte</b>: wie schnell Töne aufeinander folgen dürfen. Mit <b>anlernen</b> bewegt das Kind einen Körperteil 6 Sekunden lang so, wie es kann (Hände hoch und runter, Kopf hin und her, Füße stampfen): Danach passen Tonbereich und Empfindlichkeit genau zu diesem Kind – der Regler Empfindlichkeit wirkt dann nur noch als Feinregler. Die Höhe wird am eigenen Körper gemessen – das funktioniert auch im Sitzen oder im Rollstuhl (dann Füße ausschalten). Für den ganzen Körper etwa 2–3 m Abstand zur Kamera. <b>Raum-Klavier</b> (eigener Schalter): Wer durch den Raum geht oder fährt, spielt die Tonleiter wie auf einer riesigen Klaviatur am Boden; mit <b>Raum-Bereich anlernen</b> einmal von ganz links nach ganz rechts bewegen.</div>
+    </div>
+    <div id="zonePanel" hidden style="margin-top:12px">
+      <div class="row">
+        <button id="zoneCal">&#8596; Raum-Bereich anlernen</button>
+        <span style="position:relative;height:30px;min-width:220px;flex:1;background:var(--card2);border:1px solid var(--line);border-radius:9px;overflow:hidden;display:flex">
+          <span class="small" style="flex:1;border-right:1px solid var(--line);text-align:center;line-height:30px" id="zoneL0">1</span><span class="small" style="flex:1;border-right:1px solid var(--line);text-align:center;line-height:30px" id="zoneL1">2</span><span class="small" style="flex:1;border-right:1px solid var(--line);text-align:center;line-height:30px" id="zoneL2">3</span><span class="small" style="flex:1;border-right:1px solid var(--line);text-align:center;line-height:30px" id="zoneL3">4</span><span class="small" style="flex:1;text-align:center;line-height:30px" id="zoneL4">5</span>
+          <i id="zoneM" style="position:absolute;top:0;bottom:0;width:4px;margin-left:-2px;left:0;background:var(--on)"></i></span>
+      </div>
+      <div class="hint" style="margin-top:8px">Der Raum ist von links nach rechts in <b>5 Zonen</b> geteilt. Wo das Kind steht (oder hinf&auml;hrt), das erklingt &ndash; Zone&nbsp;1 = Kanal/Akkord/Ton&nbsp;1 &hellip; Zone&nbsp;5 = &hellip;&nbsp;5, so lange es dort bleibt. Mit <b>Raum-Bereich anlernen</b> bewegt sich das Kind einmal von ganz links nach ganz rechts.</div>
     </div>
     <div id="bodyPanel" hidden style="margin-top:12px">
       <div class="row">
@@ -272,9 +283,10 @@
   </details>
 
   <div class="bar hint" style="margin-top:14px">
-    <b>So geht's:</b> <b>Kamera starten</b> und die <b>Erkennung</b> wählen: <b>Hände</b> (1–5 Finger oder eigene Gesten), <b>Kopf, Gesicht, Augen &amp; Arme</b>,
-    <b>Melodie</b> (Kopf, Mund und Arme spielen Töne einer Skala) oder <b>Ganzkörper</b> (Bewegung spielt Töne, Raum-Klavier).
-    Hände und Kopf/Gesicht/Augen/Arme schalten die Loop-Kanäle (WAV-Dateien auf die Kanäle ziehen, dann <b>Start</b>) oder spielen Felder aus Akkord, Ton und Improvisieren.
+    <b>So geht's:</b> <b>Kamera starten</b>, dann w&auml;hlen: <b>Was bewegt sich?</b> (H&auml;nde, Kopf, Gesicht, Augen, Arme oder ganzer K&ouml;rper) und <b>Was soll erklingen?</b>
+    <b>Kan&auml;le</b> schalten die Loops (WAV-Dateien auf die Kan&auml;le ziehen, dann <b>Start</b>), <b>Akkorde</b>, <b>T&ouml;ne</b> und <b>Improvisieren</b> spielen die Felder 1&ndash;5 der jeweiligen Bereiche.
+    H&auml;nde: 1&ndash;5 Finger = 1&ndash;5. Kopf, Gesicht, Augen, Arme: jede Bewegung hat ihre Nummer (in der Liste &auml;nderbar). Ganzer K&ouml;rper: 5 Zonen im Raum.
+    <b>Melodie</b> spielt stufenlos T&ouml;ne einer Skala (Kopf, Mund, Arme) bzw. beim ganzen K&ouml;rper: Bewegung macht Klang, Raum-Klavier.
     Dazu virtueller Hintergrund und Video-Aufnahme. Diese App ist unabhängig vom SoundWhacker Looper; Presets (WAV-Dateien) und die SoundFont teilen sich beide Apps auf demselben Gerät.
   </div>
 </div>
@@ -1722,6 +1734,20 @@ const GEN = (() => {
   // Erkanntes Ziel einer Hand übernehmen: ihr alter Kanal aus (falls die andere Hand ihn nicht hält), neuer an.
   // Verhalten je Kanal wie beim SW. target = Kanal-Index oder -1
   function gesApply(slot, target) {
+    if (ges.mode === 'hands' && ges.what && ges.what !== 'kan') { gesApplyFld(slot, target); return; }
+    gesApplyKan(slot, target);
+  }
+  // Hände → Feld aus Akkord/Ton/Improvisieren (klingt, solange die Finger gezeigt werden)
+  function gesApplyFld(slot, target) {
+    const S = ges.slots[slot], O = ges.slots[1 - slot];
+    const f = target >= 0 ? pwTgt(target) - BODY_FLD : -1, old = S.fld == null ? -1 : S.fld, other = O.fld == null ? -1 : O.fld;
+    S.cur = target;
+    if (f === old) return;
+    S.fld = f;
+    if (old >= 0 && old !== other) chStop(old);
+    if (f >= 0 && f !== other) chStart(f);
+  }
+  function gesApplyKan(slot, target) {
     const S = ges.slots[slot], O = ges.slots[1 - slot];
     // Gleiches Ziel: nichts tun – außer der Kanal wurde inzwischen gestoppt (dann wieder einschalten wie eine Taste)
     if (target === S.cur && (target < 0 || chans[target].open || chans[target].mode === 'toggle')) return;
@@ -1733,7 +1759,7 @@ const GEN = (() => {
     if (!playing && chans.some(x => x.buffer)) start();
     press(chans[target], true, 'ges' + slot);
   }
-  const gesReleaseAll = () => { gesApply(0, -1); gesApply(1, -1); };
+  const gesReleaseAll = () => { [0, 1].forEach(s => { gesApplyKan(s, -1); gesApplyFld(s, -1); }); };
 
   // Anlernen: kurz vorbereiten, dann 15 Bilder mit Hand mitteln
   function gesLearnStep(f) {
@@ -1862,7 +1888,7 @@ const GEN = (() => {
     let x = 10 * u;
     ges.slots.forEach(S => {
       if (!S.hand) return;
-      const t = S.name + ': ' + (S.cur >= 0 ? 'Kanal ' + (S.cur + 1) : 'stumm') + '   ';
+      const t = S.name + ': ' + pwName(S.cur) + '   ';
       g.fillStyle = S.color; g.fillText(t, x, 22 * u); x += g.measureText(t).width;
     });
   }
@@ -1870,7 +1896,7 @@ const GEN = (() => {
     const f = gesFeat(hand, asp), m = gesMatch(f);
     if (m.idx >= 0) return { f, target: m.idx, how: 'eigene Geste' };
     const n = countFingers(hand);
-    return { f, target: n >= 1 && n <= N && chans[n - 1].fingerOn ? n - 1 : -1, how: n + ' Finger' };
+    return { f, target: n >= 1 && n <= N && (ges.what !== 'kan' || chans[n - 1].fingerOn) ? n - 1 : -1, how: n + ' Finger' };
   }
   // ---------- Modus „Kopf, Gesicht & Arme“ (MediaPipe Face Landmarker + Pose Landmarker, Modelle liegen in ./models) ----------
   // Gedacht für Kinder, die Kopf und Gesicht gezielt bewegen können (z. B. im Rollstuhl). Immer nur ein Auslöser, Kanal klingt solange gehalten.
@@ -1899,6 +1925,30 @@ const GEN = (() => {
   // Ziel eines Auslösers: 0–4 = Loop-Kanal, ab BODY_FLD = Feld in „Akkord“/„Ton“/„Improvisieren“ (15 Felder)
   const BODY_FLD = 100, BODY_FLD_N = 15;
   const bodyTgt = ch => (ch >= BODY_FLD ? chFieldName(ch - BODY_FLD) : 'Kanal ' + (ch + 1));
+  // Auswahl „Was bewegt sich?“ (ges.part) + „Was soll erklingen?“ (ges.what) – immer eins zur Zeit
+  const PW_PARTS = ['hands', 'kopf', 'gesicht', 'augen', 'arme', 'koerper'], PW_WHATS = ['kan', 'akk', 'ton', 'imp', 'mel'];
+  const PW_PART = { kopf: ['kopfL', 'kopfR', 'kopfH', 'kopfU', 'neigL', 'neigR'], gesicht: ['mund', 'laecheln', 'brauen'], augen: ['augen', 'blickL', 'blickR', 'blickH', 'blickU'], arme: ['armLH', 'armRH', 'armLS', 'armRS', 'arme'] };
+  const PW_IDX = { neigR: 4 };   // Kopf zur rechten Schulter = wie zur linken: Nummer 5
+  const PW_MEL = { kopf: ['yaw', 'pitch'], gesicht: ['mund'], arme: ['armL', 'armR'] };
+  const pwTgt = k => (ges.what === 'kan' ? k : BODY_FLD + ({ akk: 0, ton: 5, imp: 10 }[ges.what] || 0) + k);   // Nummer 0–4 → Kanal oder Feld
+  const pwName = k => (k < 0 ? 'stumm' : bodyTgt(pwTgt(k)));
+  const pwTrigOn = id => !PW_PART[ges.part] || PW_PART[ges.part].includes(id);
+  const pwMelOn = id => !PW_MEL[ges.part] || PW_MEL[ges.part].includes(id);
+  // Ganzer Körper → 5 Zonen im Raum (links → rechts)
+  const zone = { idx: -1, cand: -1, k: 0, t: 0, lost: 0 };
+  function zoneSet(i) { zone.idx = i; zone.cand = -1; zone.k = 0; bodySyncHeld(new Set(i >= 0 ? [pwTgt(i)] : [])); }
+  function zoneStep(tx) {
+    zone.lost = 0;
+    const t = Math.max(0, Math.min(1, (tx - fb.room.min) / (fb.room.max - fb.room.min)));
+    zone.t = t;
+    const pos = t * 5;
+    let n = Math.min(4, Math.floor(pos));
+    if (zone.idx >= 0 && pos > zone.idx - 0.2 && pos < zone.idx + 1.2) n = zone.idx;   // kleine Zone um die Grenze: kein Flattern
+    if (n === zone.idx) { zone.cand = -1; zone.k = 0; return; }
+    if (n === zone.cand) zone.k++; else { zone.cand = n; zone.k = 1; }
+    if (zone.k >= 3) zoneSet(n);
+  }
+  function zoneLost(now) { if (!zone.lost) zone.lost = now; else if (now - zone.lost > 700 && zone.idx >= 0) zoneSet(-1); }
   const body = {
     face: null, pose: null, loading: false, faceLm: null, poseLm: null, raw: null, vals: {},
     active: null, cand: null, candSince: 0, relSince: 0, calib: null, tlearn: null, fld: -1, ms: {}, held: new Set(),
@@ -2039,7 +2089,7 @@ const GEN = (() => {
     let best = null, bestRatio = 1;
     BODY_TRIG.forEach(t => {
       const c = body.cfg.trig[t.id];
-      if (c.ch < 0) return;
+      if (c.ch < 0 || !pwTrigOn(t.id)) return;
       const ratio = vals[t.id] / Math.max(1e-6, bodyTh(t)) * (t.id === 'arme' ? 1.5 : 1);
       if (ratio >= bestRatio) { bestRatio = ratio; best = t.id; }
     });
@@ -2061,7 +2111,7 @@ const GEN = (() => {
     const hold = body.cfg.hold;
     BODY_TRIG.forEach(t => {
       const c = body.cfg.trig[t.id], st = body.ms[t.id] || (body.ms[t.id] = { on: false, since: 0, rel: 0 });
-      if (c.ch < 0) { st.on = false; st.since = 0; st.rel = 0; return; }
+      if (c.ch < 0 || !pwTrigOn(t.id)) { st.on = false; st.since = 0; st.rel = 0; return; }
       const th = bodyTh(t), v = vals[t.id];
       if (!st.on) {
         if (v >= th) { if (!st.since) st.since = now; if (now - st.since >= hold) { st.on = true; st.rel = 0; } }
@@ -2110,7 +2160,8 @@ const GEN = (() => {
     g.fillStyle = 'rgba(5,8,14,.65)'; g.fillRect(0, 0, W, 34 * u);
     g.font = '600 ' + Math.round(15 * u) + 'px Segoe UI, Arial, sans-serif';
     let t, col = '#e8edf6';
-    if (ges.mode === 'fullbody') { t = fbHeader(); col = fbCal || fbPartCal ? '#ffcc4d' : '#4dff87'; }
+    if (ges.mode === 'fullbody' && ges.what !== 'mel') { t = fbCal ? fbCal.msg : zone.idx >= 0 ? 'Zone ' + (zone.idx + 1) + ' · ' + pwName(zone.idx) : (body.poseLm ? 'bereit' : 'niemand erkannt'); col = fbCal ? '#ffcc4d' : '#4dff87'; }
+    else if (ges.mode === 'fullbody') { t = fbHeader(); col = fbCal || fbPartCal ? '#ffcc4d' : '#4dff87'; }
     else if (ges.mode === 'melody') { t = melHeader(); col = melCal ? '#ffcc4d' : '#4dff87'; }
     else if (body.calib) { t = body.calib.msg; col = '#ffcc4d'; }
     else if (body.tlearn) { t = body.tlearn.msg || ''; col = '#ffcc4d'; }
@@ -2173,6 +2224,9 @@ const GEN = (() => {
       $('btC_' + t.id).value = c.ch; $('btT_' + t.id).value = c.th;
       $('btM_' + t.id).style.left = Math.min(99, c.th) + '%';
       $('btL_' + t.id).style.opacity = c.ch < 0 ? 0.55 : 1;
+      const vis = pwTrigOn(t.id) ? '' : 'none';
+      ['btL_', 'btC_', 'btT_', 'btA_'].forEach(p => { $(p + t.id).style.display = vis; });
+      $('btB_' + t.id).parentElement.style.display = vis;
       const lb = $('btA_' + t.id), on = !!(body.tlearn && body.tlearn.id === t.id);
       lb.textContent = on ? 'Abbrechen' : 'anlernen'; lb.classList.toggle('learning', on);
     });
@@ -2366,7 +2420,7 @@ const GEN = (() => {
     }
     MEL_CTRL.forEach(m => {
       const c = mel.ctrl[m.id], S = melSt[m.id];
-      if (!c.on) return;
+      if (!c.on || !pwMelOn(m.id)) return;
       const x = m.raw(r);
       if (x == null) return;
       const t = Math.max(0, Math.min(1, (x - c.min) / (c.max - c.min)));
@@ -2386,7 +2440,7 @@ const GEN = (() => {
   }
   function melHeader() {
     if (melCal) return melCal.msg;
-    const parts = MEL_CTRL.filter(m => mel.ctrl[m.id].on && melSt[m.id].note != null).map(m => m.label.split(' ')[0] + (m.id === 'armL' ? ' L' : m.id === 'armR' ? ' R' : m.id === 'pitch' ? ' ↕' : '') + ' ' + melName(melSt[m.id].note));
+    const parts = MEL_CTRL.filter(m => mel.ctrl[m.id].on && pwMelOn(m.id) && melSt[m.id].note != null).map(m => m.label.split(' ')[0] + (m.id === 'armL' ? ' L' : m.id === 'armR' ? ' R' : m.id === 'pitch' ? ' ↕' : '') + ' ' + melName(melSt[m.id].note));
     return parts.length ? parts.join(' · ') : (body.faceLm || body.poseLm ? 'bereit' : 'kein Gesicht erkannt');
   }
 
@@ -2437,6 +2491,9 @@ const GEN = (() => {
       const c = mel.ctrl[m.id];
       $('mcOn_' + m.id).checked = c.on; $('mcO_' + m.id).value = c.oct; $('mcN_' + m.id).value = c.n;
       $('mcL_' + m.id).style.opacity = c.on ? 1 : 0.5;
+      const vis = pwMelOn(m.id) ? '' : 'none';
+      ['mcOn_', 'mcL_', 'mcO_', 'mcN_', 'mcC_'].forEach(p => { $(p + m.id).style.display = vis; });
+      $('mcM_' + m.id).parentElement.style.display = vis;
       const b = $('mcC_' + m.id);
       b.classList.toggle('learning', !!melCal && melCal.id === m.id);
       b.textContent = melCal && melCal.id === m.id ? 'Abbrechen' : 'Bereich anlernen';
@@ -2514,7 +2571,7 @@ const GEN = (() => {
     try { if (body.pose) pr = body.pose.detectForVideo(v, now); } catch (e) {}
     const P = body.poseLm = pr && pr.landmarks && pr.landmarks[0] || null;
     body.faceLm = null;
-    if (!P || !fbVis(P[11]) || !fbVis(P[12])) { Object.values(fbSt).forEach(S => { S.prev = null; S.v = 0; }); return; }
+    if (!P || !fbVis(P[11]) || !fbVis(P[12])) { Object.values(fbSt).forEach(S => { S.prev = null; S.v = 0; }); if (ges.what !== 'mel') zoneLost(now); return; }
     const shX = (P[11].x + P[12].x) / 2, shY = (P[11].y + P[12].y) / 2;
     let T;   // Rumpflänge als Maßstab (sitzend ohne Hüfte: über die Schulterbreite)
     if (fbVis(P[23]) && fbVis(P[24])) T = Math.hypot(((P[23].x + P[24].x) / 2 - shX) * asp, (P[23].y + P[24].y) / 2 - shY);
@@ -2537,6 +2594,7 @@ const GEN = (() => {
       return;
     }
 
+    if (ges.what !== 'mel') { zoneStep(1 - shX); return; }
     const minInt = fbMinInt();
     const cal = fbPartCal;
     if (cal && now < cal.start) cal.msg = 'Gleich: ' + FB_PARTS.find(x => x.id === cal.id).label.split(' (')[0] + ' bewegen … ' + Math.ceil((cal.start - now) / 1000);
@@ -2707,6 +2765,9 @@ const GEN = (() => {
       $('fpT_' + p.id).textContent = fb.parts[p.id].on && S.note != null ? melName(S.note) : '';
     });
     $('fbRoomM').style.left = (fbSt.room.t * 100) + '%';
+    $('zoneM').style.left = (zone.t * 100) + '%';
+    for (let i = 0; i < 5; i++) { const e = $('zoneL' + i); e.style.background = zone.idx === i ? 'var(--on)' : ''; e.style.color = zone.idx === i ? '#000' : ''; }
+    $('zoneCal').innerHTML = fbCal ? 'Abbrechen' : '&#8596; Raum-Bereich anlernen';
     $('fbRoomT').textContent = fb.room.on && fbSt.room.note != null ? melName(fbSt.room.note) : '';
   }, 100);
 
@@ -2721,6 +2782,10 @@ const GEN = (() => {
     $('melOnly').hidden = ges.mode !== 'melody';
     $('fbPanel').hidden = ges.mode !== 'fullbody';
     $('profRow').hidden = ges.mode === 'hands';
+    const zm = ges.mode === 'fullbody' && ges.what !== 'mel';
+    $('zonePanel').hidden = !zm;
+    if (zm) { $('melPanel').hidden = true; $('fbPanel').hidden = true; }
+    zone.idx = -1; zone.cand = -1; zone.k = 0;
     melStopAll(); melCal = null; melUi(); fbStopAll(); fbCal = null; fbPartCal = null; fbUi();
     if (ges.mode === 'melody' || ges.mode === 'fullbody') { melFillPresets(); setTimeout(melPrepare, 0); }
     bodyCalibUi();
@@ -2732,7 +2797,7 @@ const GEN = (() => {
     if (ges.mode !== 'hands') {
       await bodyEnsure();
       if (ges.mode === 'melody' && (body.face || body.pose)) { gesInfo('läuft – Kopf, Mund und Arme spielen Töne'); melPrepare(); }
-      if (ges.mode === 'fullbody' && body.pose) { gesInfo('läuft – Bewegung macht Klang'); melPrepare(); }
+      if (ges.mode === 'fullbody' && body.pose) { gesInfo(ges.what !== 'mel' ? 'läuft – die Zone im Raum wählt, was erklingt' : 'läuft – Bewegung macht Klang'); melPrepare(); }
       return;
     }
     if (!ges.lm) {
@@ -2745,6 +2810,25 @@ const GEN = (() => {
     gesInfo('läuft – zeig 1 bis 5 Finger');
   }
   $('gesMode').onchange = () => gesSetMode($('gesMode').value);
+  // Beide Auswahlfelder → Modus; bei Änderung durch die Bedienung bekommen die Bewegungen des Körperteils die Nummern 1–5
+  function pwSet(part, what, fromUser) {
+    if (what === 'mel' && (part === 'hands' || part === 'augen')) what = 'kan';
+    const changed = part !== ges.part || what !== ges.what;
+    gesReleaseAll(); bodyReleaseAll(); if (zone.idx >= 0) zoneSet(-1);
+    ges.part = part; ges.what = what;
+    $('gesPart').value = part; $('gesWhat').value = what;
+    [...$('gesWhat').options].forEach(o => { if (o.value === 'mel') o.disabled = part === 'hands' || part === 'augen'; });
+    if (fromUser && changed && PW_PART[part] && what !== 'mel') {
+      PW_PART[part].forEach((id, i) => { body.cfg.trig[id].ch = pwTgt(PW_IDX[id] != null ? PW_IDX[id] : i); });
+      bodySave();
+    }
+    try { localStorage.setItem(STORE + '.gesPW', JSON.stringify({ part, what })); } catch (e) {}
+    gesSetMode(part === 'hands' ? 'hands' : part === 'koerper' ? 'fullbody' : what === 'mel' ? 'melody' : 'body');
+    bodyUi(); melUi();
+  }
+  $('gesPart').onchange = () => pwSet($('gesPart').value, ges.what, true);
+  $('gesWhat').onchange = () => pwSet(ges.part, $('gesWhat').value, true);
+  $('zoneCal').onclick = () => $('fbRoomCal').click();
 
   function gesLoop() {
     if (!ges.on) return;
@@ -2838,7 +2922,15 @@ const GEN = (() => {
     if (!keepMsg) gesInfo('aus');
   }
   $('gesBtn').onclick = () => (ges.on ? gesStop() : gesStart());
-  try { const gm = localStorage.getItem(STORE + '.gesMode'); if (gm === 'body' || gm === 'melody' || gm === 'fullbody') gesSetMode(gm); } catch (e) {}
+  {   // Auswahl wiederherstellen (ältere Speicherstände: „Erkennung“ umrechnen)
+    let pw = null;
+    try { pw = JSON.parse(localStorage.getItem(STORE + '.gesPW') || 'null'); } catch (e) {}
+    if (!pw) {
+      let gm = null; try { gm = localStorage.getItem(STORE + '.gesMode'); } catch (e) {}
+      pw = gm === 'body' ? { part: 'kopf', what: 'kan' } : gm === 'melody' ? { part: 'kopf', what: 'mel' } : gm === 'fullbody' ? { part: 'koerper', what: 'mel' } : { part: 'hands', what: 'kan' };
+    }
+    pwSet(PW_PARTS.includes(pw.part) ? pw.part : 'hands', PW_WHATS.includes(pw.what) ? pw.what : 'kan', false);
+  }
 
   // ---------- Hintergrund wählen (Foto bleibt im Browser gespeichert) ----------
   async function bgLoadImage(blob, persist) {
