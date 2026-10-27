@@ -51,6 +51,18 @@
   .homeTitle{text-align:center;margin:22px 0 26px;display:flex;flex-direction:column;align-items:center;gap:6px}
   .miga{font-size:64px;font-weight:800;letter-spacing:12px;padding-left:12px;line-height:1;background:linear-gradient(90deg,#FFD700,#ffb347 45%,#5ea1ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 28px rgba(255,215,0,.18)}
   .migaSub{font-size:17px;font-weight:500;color:var(--mut);letter-spacing:1px}
+  .migaSub b{color:var(--gold);font-weight:800}
+  .migaAni{width:220px;height:120px;overflow:visible}
+  .mEyes{transform-origin:110px 54px;animation:mBlink 4s infinite}
+  @keyframes mBlink{0%,44%,52%,100%{transform:scaleY(1)}48%{transform:scaleY(.1)}}
+  .mFace{transform-origin:110px 62px;animation:mNod 4s ease-in-out infinite}
+  @keyframes mNod{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+  .mHand{transform-origin:46px 104px;animation:mWave 1.6s ease-in-out infinite}
+  @keyframes mWave{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(14deg)}}
+  .mN1,.mN2{animation:mFloat 2.8s ease-out infinite;opacity:0}
+  .mN2{animation-delay:1.4s}
+  @keyframes mFloat{0%{transform:translateY(10px);opacity:0}20%{opacity:1}100%{transform:translateY(-70px);opacity:0}}
+  @media (prefers-reduced-motion:reduce){.mEyes,.mFace,.mHand,.mN1,.mN2{animation:none;opacity:1}}
   .menu{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin:0 0 24px}
   .menuBtn{padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:var(--gold);min-width:260px}
   .menuBtn:hover{border-color:#fff}
@@ -71,7 +83,15 @@
     <button id="offPrep" title="Lädt einmalig alles herunter, was die Kamera-App braucht – danach läuft sie auch ohne Internet">&#128229; Für offline vorbereiten</button>
     <span class="small mut" id="offInfo"></span>
   </div>
-  <h1 class="homeTitle"><span class="miga">MIGA</span><span class="migaSub">Mimik-, Gesten- und Augensteuerung</span></h1>
+  <h1 class="homeTitle"><svg class="migaAni" viewBox="0 0 220 120" aria-hidden="true">
+      <g class="mFace"><circle cx="110" cy="62" r="40" fill="#111826" stroke="#FFD700" stroke-width="4"/>
+        <g class="mEyes" fill="#5ea1ff"><ellipse cx="96" cy="54" rx="5" ry="7"/><ellipse cx="124" cy="54" rx="5" ry="7"/></g>
+        <path class="mMouth" d="M92 74 Q110 90 128 74" fill="none" stroke="#FFD700" stroke-width="4" stroke-linecap="round"/></g>
+      <g class="mHand" fill="none" stroke="#4dff87" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M34 96 L34 66 M42 96 L42 58 M50 96 L50 60 M58 96 L58 66 M26 84 L34 92 M30 100 Q46 112 62 100 L62 66"/></g>
+      <g class="mNotes" fill="#FFD700"><g class="mN1"><ellipse cx="170" cy="96" rx="7" ry="5"/><rect x="175" y="70" width="3" height="26"/></g>
+        <g class="mN2"><ellipse cx="192" cy="96" rx="6" ry="4.5"/><rect x="196" y="74" width="3" height="22"/></g></g>
+    </svg><span class="miga">MIGA</span><span class="migaSub"><b>Mi</b>mik-, <b>G</b>esten-, <b>A</b>ugensteuerung</span></h1>
   <div class="menu">
     <button class="menuBtn" data-go="pgWas">&#127926; Was soll erklingen?</button>
     <button class="menuBtn" data-go="pgKam">&#128247; Kamera-Steuerung</button>
