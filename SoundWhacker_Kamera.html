@@ -115,11 +115,11 @@
   <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
 <div class="wrap">
   <div class="pgTitle">&#127929; Akkorde</div>
-  <div class="small mut pgSub">Tasten (z.&nbsp;B. vom SW &uuml;ber Bluetooth) oder die Kamera spielen Akkorde, solange sie gehalten werden.</div>
+  <div class="small mut pgSub">Die Kamera spielt die Akkorde 1&ndash;5, solange die Bewegung gehalten wird. Mit &#9654; probehören.</div>
   <details class="bar" id="chordBox">
     <summary style="cursor:pointer"><b>Akkord</b> <span class="small mut">&ndash; Tasten (z.&nbsp;B. vom SW über Bluetooth) spielen Akkorde, solange sie gehalten werden</span></summary>
     <div class="row" style="margin-top:12px">
-      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpA"> <b>Tasten spielen Akkorde</b> (statt Loops)</label>
+      <input type="checkbox" id="chGrpA" hidden>
       <span class="small mut" id="chInfoA"></span>
     </div>
     <div class="row" style="margin-top:10px">
@@ -136,11 +136,11 @@
   <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
 <div class="wrap">
   <div class="pgTitle">&#127925; T&ouml;ne</div>
-  <div class="small mut pgSub">Tasten oder die Kamera spielen einzelne T&ouml;ne, solange sie gehalten werden.</div>
+  <div class="small mut pgSub">Die Kamera spielt die T&ouml;ne 1&ndash;5, solange die Bewegung gehalten wird. Mit &#9654; probehören.</div>
   <details class="bar" id="tonBox">
     <summary style="cursor:pointer"><b>Ton</b> <span class="small mut">&ndash; Tasten spielen einzelne Töne, solange sie gehalten werden</span></summary>
     <div class="row" style="margin-top:12px">
-      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpB"> <b>Tasten spielen Töne</b> (statt Loops)</label>
+      <input type="checkbox" id="chGrpB" hidden>
       <span class="small mut" id="chInfoB"></span>
     </div>
     <div class="row" style="margin-top:10px">
@@ -161,7 +161,7 @@
   <details class="bar" id="improBox">
     <summary style="cursor:pointer"><b>Improvisieren</b> <span class="small mut">&ndash; wie im SW-HUB: jeder Druck spielt einen zufälligen Ton der Skala</span></summary>
     <div class="row" style="margin-top:12px">
-      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpC"> <b>Tasten improvisieren</b> (statt Loops)</label>
+      <input type="checkbox" id="chGrpC" hidden>
       <span class="small mut" id="chInfoC"></span>
     </div>
     <div class="row" style="margin-top:10px">
@@ -3531,6 +3531,7 @@ const GEN = (() => {
   }
   let chCfg = chClean(null);
   try { const c = JSON.parse(localStorage.getItem(CH_KEY) || 'null'); if (c) chCfg = chClean(c); } catch (e) {}
+  chCfg.grpA = chCfg.grpB = chCfg.grpC = false;   // Kamera-App: Tasten schalten immer die Loops, die Felder spielt die Kamera
   const chSave = () => { try { localStorage.setItem(CH_KEY, JSON.stringify(chCfg)); } catch (e) {} };
   const chInfo = (m, err) => CH_G.forEach(g => { const el = $('chInfo' + g); el.textContent = m || ''; el.className = 'small ' + (err ? 'err' : 'mut'); });
   const ch = { synth: null, loading: null, out: null, drumKits: [], playing: new Array(CH_N).fill(null), learn: -1, lastImpro: [], shown: [] };
@@ -3748,7 +3749,7 @@ const GEN = (() => {
       b.textContent = ch.learn === i ? 'Taste drücken … (Esc)' : 'anlernen';
       b.classList.toggle('learning', ch.learn === i);
       $('chFOn' + i).checked = f.on;
-      $('chLamp' + i).parentElement.parentElement.style.opacity = chGrpOn(i) && f.on ? 1 : 0.45;
+      $('chLamp' + i).parentElement.parentElement.style.opacity = f.on ? 1 : 0.45;
       $('chName' + i).textContent = f.type === 'impro' ? (ch.shown[i] != null ? '♪ ' + NN[ch.shown[i] % 12] + (Math.floor(ch.shown[i] / 12) - 1) : '')
         : f.type === 'ton' ? NN[f.pc] + f.oct : NN[f.pc] + (f.type === 'moll' ? 'm' : f.type === 'dur7' ? '7' : '');
     }
