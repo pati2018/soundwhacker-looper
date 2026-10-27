@@ -3241,7 +3241,7 @@ const GEN = (() => {
   $('recBtn').onclick = () => (recState.rec ? recStop() : recStart());
 
   // ---------- Mikrofon für die Aufnahme (geht nur ins Video, nicht auf die Lautsprecher – keine Rückkopplung) ----------
-  const mic = { stream: null, src: null, gain: null, comp: null, an: null, buf: null, timer: 0 };
+  const mic = { stream: null, src: null, gain: null, comp: null, makeup: null, lim: null, an: null, buf: null, timer: 0 };
   const micNote = t => { $('micNote').textContent = t || ''; };
   async function micEnable() {
     ensureAudio(); ctx.resume();
@@ -3278,18 +3278,22 @@ const GEN = (() => {
     }
     mic.src = ctx.createMediaStreamSource(mic.stream);
     mic.gain = ctx.createGain(); mic.gain.gain.value = $('micVol').value / 100;
-    // Begrenzer hinter der Verstärkung: laut machen ohne Übersteuern
+    // Kompressor (gleicht leise/laut an) + Aufholverstärkung + Begrenzer kurz unter 0 dB: kräftig, aber ohne Übersteuern
     mic.comp = ctx.createDynamicsCompressor();
-    mic.comp.threshold.value = -18; mic.comp.knee.value = 6; mic.comp.ratio.value = 12; mic.comp.attack.value = 0.003; mic.comp.release.value = 0.2;
+    mic.comp.threshold.value = -30; mic.comp.knee.value = 10; mic.comp.ratio.value = 4; mic.comp.attack.value = 0.005; mic.comp.release.value = 0.25;
+    mic.makeup = ctx.createGain(); mic.makeup.gain.value = 6;
+    mic.lim = ctx.createDynamicsCompressor();
+    mic.lim.threshold.value = -2; mic.lim.knee.value = 0; mic.lim.ratio.value = 20; mic.lim.attack.value = 0.001; mic.lim.release.value = 0.1;
     mic.an = ctx.createAnalyser(); mic.an.fftSize = 512; mic.buf = new Uint8Array(mic.an.fftSize);
-    mic.src.connect(mic.gain); mic.gain.connect(mic.comp); mic.comp.connect(recDest); mic.comp.connect(mic.an);   // Anzeige zeigt den aufgenommenen Pegel
+    mic.src.connect(mic.gain); mic.gain.connect(mic.comp); mic.comp.connect(mic.makeup); mic.makeup.connect(mic.lim);
+    mic.lim.connect(recDest); mic.lim.connect(mic.an);   // Anzeige zeigt den aufgenommenen Pegel
     $('micMix').hidden = false;
     micNote('Tipp: Mit Kopfhörern klingt es am saubersten, sonst nimmt das Mikrofon die Lautsprecher mit auf.');
     mic.timer = setInterval(() => {
       if (!mic.an) return;
       mic.an.getByteTimeDomainData(mic.buf);
       let peak = 0; for (let i = 0; i < mic.buf.length; i++) peak = Math.max(peak, Math.abs(mic.buf[i] - 128));
-      $('micLvl').style.width = Math.min(100, peak / 128 * 160) + '%';
+      $('micLvl').style.width = Math.min(100, Math.sqrt(peak / 128) * 110) + '%';   // Wurzel: auch leise Stellen gut sichtbar
     }, 80);
     try {   // Mikrofon-Auswahl, wenn mehrere da sind
       const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
@@ -3303,7 +3307,7 @@ const GEN = (() => {
   function micDisable() {
     clearInterval(mic.timer);
     try { if (navigator.audioSession && !$('micOn').checked) navigator.audioSession.type = 'playback'; } catch (e) {}   // ohne Mikrofon wieder „nur Wiedergabe“ (klingt auch bei Stummschalter)
-    ['src', 'gain', 'comp', 'an'].forEach(k => { if (mic[k]) { try { mic[k].disconnect(); } catch (e) {} mic[k] = null; } });
+    ['src', 'gain', 'comp', 'makeup', 'lim', 'an'].forEach(k => { if (mic[k]) { try { mic[k].disconnect(); } catch (e) {} mic[k] = null; } });
     if (mic.stream) { mic.stream.getTracks().forEach(t => t.stop()); mic.stream = null; }
     mic.buf = null; $('micMix').hidden = true; $('micLvl').style.width = '0';
   }
