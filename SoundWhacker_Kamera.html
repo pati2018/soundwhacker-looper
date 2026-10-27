@@ -1904,8 +1904,8 @@ const GEN = (() => {
     chans.forEach((c, i) => {
       box.insertAdjacentHTML('beforeend',
         '<span id="htL_' + i + '"></span>' +
-        '<select id="htC_' + i + '" style="max-width:150px"><option value="-1">–</option><optgroup label="Loop-Kanal">' + chans.map((x, k) => '<option value="' + k + '">Kanal ' + (k + 1) + '</option>').join('') + '</optgroup>' +
-        ['Akkord', 'Ton', 'Improvisieren'].map((lab, g) => '<optgroup label="' + lab + '">' + [0, 1, 2, 3, 4].map(k => '<option value="' + (100 + g * 5 + k) + '">' + chFieldName(g * 5 + k) + '</option>').join('') + '</optgroup>').join('') + '</select>' +
+        '<span class="row" style="gap:4px;flex-wrap:nowrap"><select id="htC_' + i + '" style="max-width:150px"><option value="-1">–</option><optgroup label="Loop-Kanal">' + chans.map((x, k) => '<option value="' + k + '">Kanal ' + (k + 1) + '</option>').join('') + '</optgroup>' +
+        ['Akkord', 'Ton', 'Improvisieren'].map((lab, g) => '<optgroup label="' + lab + '">' + [0, 1, 2, 3, 4].map(k => '<option value="' + (100 + g * 5 + k) + '">' + chFieldName(g * 5 + k) + '</option>').join('') + '</optgroup>').join('') + '</select><button id="htO_' + i + '" class="small" style="min-width:44px" title="Auslöser aus- bzw. wieder einschalten">aus</button></span>' +
         '<input type="range" id="htT_' + i + '" min="5" max="100" step="1" title="nur für eine angelernte Geste: je höher, desto großzügiger wird sie erkannt">' +
         '<span style="position:relative;height:14px;background:var(--card2);border:1px solid var(--line);border-radius:7px;overflow:hidden;display:block">' +
         '<b id="htB_' + i + '" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc)"></b>' +
@@ -1914,6 +1914,11 @@ const GEN = (() => {
       $('htA_' + i).onclick = () => (ges.learn && ges.learn.idx === i ? (ges.learn = null, gesLearnUi(), gesInfo('Anlernen abgebrochen.')) : gesLearnStart(i));
       $('htX_' + i).onclick = () => { chans[i].gesture = null; renderAssign(chans[i]); save(); };
       $('htC_' + i).onchange = () => { handT.cfg.trig[i].ch = +$('htC_' + i).value; gesReleaseAll(); handSave(); handUi(); };
+      $('htO_' + i).onclick = () => {   // aus = „–“; an = letzte Zuordnung (oder Nummer i)
+        const t = handT.cfg.trig[i];
+        if (t.ch >= 0) { t.last = t.ch; t.ch = -1; } else t.ch = t.last != null && t.last >= 0 ? t.last : pwTgt(i);
+        gesReleaseAll(); handSave(); handUi();
+      };
       $('htT_' + i).oninput = () => { handT.cfg.trig[i].th = +$('htT_' + i).value; handUi(); };
       $('htT_' + i).onchange = handSave;
     });
@@ -1935,6 +1940,7 @@ const GEN = (() => {
       $('htL_' + i).textContent = (i + 1) + ' Finger' + (c.gesture ? ' oder eigene Geste ✓' : '');
       $('htL_' + i).style.opacity = t.ch < 0 ? 0.55 : 1;
       pwFillSel($('htC_' + i), t.ch);
+      $('htO_' + i).textContent = t.ch < 0 ? 'an' : 'aus';
       $('htC_' + i).value = t.ch; $('htT_' + i).value = t.th;
       $('htT_' + i).style.opacity = c.gesture ? 1 : 0.4;
       $('htM_' + i).style.left = Math.min(99, 100 - t.th) + '%';
@@ -2107,7 +2113,7 @@ const GEN = (() => {
   function zoneLost(now) { if (!zone.lost) zone.lost = now; else if (now - zone.lost > 700 && zone.idx >= 0) zoneSet(-1); }
   const body = {
     face: null, pose: null, loading: false, faceLm: null, poseLm: null, raw: null, vals: {},
-    active: null, cand: null, candSince: 0, relSince: 0, calib: null, tlearn: null, fld: -1, ms: {}, held: new Set(),
+    active: null, lastCh: {}, cand: null, candSince: 0, relSince: 0, calib: null, tlearn: null, fld: -1, ms: {}, held: new Set(),
     cfg: { neutral: Object.assign({}, BODY_NEUTRAL0), calibrated: false, hold: 400, multi: false, trig: {} }
   };
   BODY_TRIG.forEach(t => { body.cfg.trig[t.id] = { ch: t.ch, th: t.th }; });
@@ -2336,8 +2342,8 @@ const GEN = (() => {
     BODY_TRIG.forEach(t => {
       box.insertAdjacentHTML('beforeend',
         '<span id="btL_' + t.id + '">' + t.label + '</span>' +
-        '<select id="btC_' + t.id + '" style="max-width:150px"><option value="-1">–</option><optgroup label="Loop-Kanal">' + chans.map((c, i) => '<option value="' + i + '">Kanal ' + (i + 1) + '</option>').join('') + '</optgroup>' +
-        ['Akkord', 'Ton', 'Improvisieren'].map((lab, g) => '<optgroup label="' + lab + '">' + [0, 1, 2, 3, 4].map(k => '<option value="' + (BODY_FLD + g * 5 + k) + '">' + chFieldName(g * 5 + k) + '</option>').join('') + '</optgroup>').join('') + '</select>' +
+        '<span class="row" style="gap:4px;flex-wrap:nowrap"><select id="btC_' + t.id + '" style="max-width:150px"><option value="-1">–</option><optgroup label="Loop-Kanal">' + chans.map((c, i) => '<option value="' + i + '">Kanal ' + (i + 1) + '</option>').join('') + '</optgroup>' +
+        ['Akkord', 'Ton', 'Improvisieren'].map((lab, g) => '<optgroup label="' + lab + '">' + [0, 1, 2, 3, 4].map(k => '<option value="' + (BODY_FLD + g * 5 + k) + '">' + chFieldName(g * 5 + k) + '</option>').join('') + '</optgroup>').join('') + '</select><button id="btO_' + t.id + '" class="small" style="min-width:44px" title="Auslöser aus- bzw. wieder einschalten">aus</button></span>' +
         '<input type="range" id="btT_' + t.id + '" min="5" max="100" step="1">' +
         '<span style="position:relative;height:14px;background:var(--card2);border:1px solid var(--line);border-radius:7px;overflow:hidden;display:block">' +
         '<b id="btB_' + t.id + '" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc)"></b>' +
@@ -2353,6 +2359,12 @@ const GEN = (() => {
         bodyUi();
       };
       $('btC_' + t.id).onchange = () => { body.cfg.trig[t.id].ch = +$('btC_' + t.id).value; if (body.active === t.id) bodyActivate(null); bodySave(); bodyUi(); };
+      $('btO_' + t.id).onclick = () => {   // aus = „–“; an = letzte Zuordnung (oder die Nummer des Auslösers)
+        const c = body.cfg.trig[t.id];
+        if (c.ch >= 0) { body.lastCh[t.id] = c.ch; c.ch = -1; }
+        else { const pp = PW_PART[ges.part] || [], k = PW_IDX[t.id] != null ? PW_IDX[t.id] : Math.max(0, pp.indexOf(t.id)) % 5; c.ch = body.lastCh[t.id] != null ? body.lastCh[t.id] : pwTgt(k); }
+        bodyReleaseAll(); bodySave(); bodyUi();
+      };
       $('btT_' + t.id).oninput = () => { body.cfg.trig[t.id].th = +$('btT_' + t.id).value; bodyUi(); };
       $('btT_' + t.id).onchange = bodySave;
     });
@@ -2378,11 +2390,13 @@ const GEN = (() => {
     BODY_TRIG.forEach(t => {
       const c = body.cfg.trig[t.id];
       pwFillSel($('btC_' + t.id), c.ch);
+      $('btO_' + t.id).textContent = c.ch < 0 ? 'an' : 'aus';
       $('btC_' + t.id).value = c.ch; $('btT_' + t.id).value = c.th;
       $('btM_' + t.id).style.left = Math.min(99, c.th) + '%';
       $('btL_' + t.id).style.opacity = c.ch < 0 ? 0.55 : 1;
       const vis = pwTrigOn(t.id) ? '' : 'none';
-      ['btL_', 'btC_', 'btT_', 'btA_'].forEach(p => { $(p + t.id).style.display = vis; });
+      ['btL_', 'btT_', 'btA_'].forEach(p => { $(p + t.id).style.display = vis; });
+      $('btC_' + t.id).parentElement.style.display = vis;
       $('btB_' + t.id).parentElement.style.display = vis;
       const lb = $('btA_' + t.id), on = !!(body.tlearn && body.tlearn.id === t.id);
       lb.textContent = on ? 'Abbrechen' : 'anlernen'; lb.classList.toggle('learning', on);
