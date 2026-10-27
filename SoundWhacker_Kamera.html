@@ -3249,10 +3249,17 @@ const GEN = (() => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('micOn').checked = false; micSync(); micNote('Dieser Browser gibt das Mikrofon für Webseiten nicht frei.'); return; }
     const id = $('micSel').value;
     try {
-      mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: id ? { exact: id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      try {
+        mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: id ? { exact: id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      } catch (e1) {
+        if (e1 && e1.name === 'NotAllowedError') throw e1;
+        // iPad: Sonderwünsche (Gerät, Filter aus) werden teils abgelehnt – dann einfach das Standard-Mikrofon nehmen
+        mic.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
     } catch (e) {
       $('micOn').checked = false; micSync();
-      micNote(e && e.name === 'NotAllowedError' ? 'Mikrofon wurde nicht erlaubt. Bitte für diese Seite freigeben und erneut einschalten.' : 'Mikrofon konnte nicht gestartet werden.');
+      micNote(e && e.name === 'NotAllowedError' ? 'Mikrofon wurde nicht erlaubt. Bitte in den iPad-Einstellungen (Safari → Mikrofon) für diese Seite freigeben und erneut einschalten.'
+        : 'Mikrofon konnte nicht gestartet werden (' + ((e && (e.name || e.message)) || 'unbekannt') + '). Wird es gerade von einer anderen App benutzt?');
       return;
     }
     mic.src = ctx.createMediaStreamSource(mic.stream);
