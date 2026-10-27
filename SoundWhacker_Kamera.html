@@ -3876,14 +3876,17 @@ const GEN = (() => {
     return false;
   }
   async function offStatus() {
-    if (!offOk) { offInfo('Offline-Modus geht nur über die Internetadresse (https), nicht als lokale Datei.'); $('offPrep').disabled = true; return; }
+    if (!offOk) { $('offPrep').hidden = true; return; }
     try {
       const c = await caches.open(OFF_CACHE);
       let have = 0;
       for (const f of OFF_FILES) if (await c.match(new URL(f, location.href).href)) have++;
       const sf = await sfBuiltinStored();
-      if (have === OFF_FILES.length && sf) offInfo('✓ offline bereit – die Kamera-App läuft auch ohne Internet.');
-      else offInfo((have + (sf ? 1 : 0)) + ' von ' + (OFF_FILES.length + 1) + ' Teilen offline gespeichert. Einmal mit Internet vorbereiten (ca. 45 MB).');
+      // Kein Erklärtext: der Knopf zeigt den Stand
+      offInfo('');
+      const ready = have === OFF_FILES.length && sf;
+      $('offPrep').innerHTML = ready ? '&#10003; Offline bereit' : '&#128229; F&uuml;r offline vorbereiten';
+      $('offPrep').title = ready ? 'Die App läuft auch ohne Internet. Tippen lädt alles neu.' : 'Lädt einmalig alles herunter (ca. 45 MB) – danach läuft die App auch ohne Internet';
     } catch (e) { offInfo('Offline-Speicher nicht verfügbar: ' + ((e && e.message) || e), true); }
   }
   // SW-HUB: Web-App des HUB (Standard-Adresse im HUB-WLAN) in neuem Tab öffnen – LED-Farben stellt der HUB selbst ein und speichert sie
