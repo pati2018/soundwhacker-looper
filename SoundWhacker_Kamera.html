@@ -6,11 +6,12 @@
 <title>SoundWhacker Kamera</title>
 <style>
   :root{
-    --bg:#0f1420; --card:#18202f; --card2:#0d1a2e; --line:#2a3a5a; --fg:#e8edf6; --mut:#8b98ad;
-    --acc:#4ea3ff; --on:#4dff87; --warn:#ffcc4d; --err:#ff6363;
+    --bg:#0b0f14; --card:#111826; --card2:#0f1724; --line:#25324b; --fg:#e8eef7; --mut:#8aa0b3;
+    --acc:#5ea1ff; --on:#4dff87; --warn:#ffcc4d; --err:#ff6363; --gold:#FFD700;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:"Segoe UI",Arial,sans-serif;font-size:15px}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:15px;
+    padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
   .wrap{max-width:1100px;margin:0 auto;padding:16px}
   header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-bottom:14px}
   h1{font-size:22px;margin:0;flex:1 1 auto}
@@ -19,7 +20,7 @@
   select,input[type=text],input[type=number]{background:var(--card2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit}
   details>summary{list-style:none} details>summary::-webkit-details-marker{display:none}
   details>summary::before{content:"\25B8";margin-right:6px;color:var(--acc)} details[open]>summary::before{content:"\25BE"}
-  button{background:var(--card2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+  button{background:var(--card2);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;touch-action:manipulation}
   button:hover{border-color:var(--acc)}
   button.big{font-size:17px;padding:11px 22px;font-weight:600}
   button.start{background:#1d4d2e;border-color:#2f8a4c}
@@ -28,7 +29,7 @@
   .lamp{width:14px;height:14px;border-radius:50%;background:#2a3445;display:inline-block;flex:none;border:1px solid #3a4658}
   .lamp.on{background:var(--on);box-shadow:0 0 10px var(--on);border-color:var(--on)}
   .mut{color:var(--mut)} .small{font-size:13px}
-  .bar{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .bar{background:var(--card);border:1px solid #1d2940;border-radius:16px;padding:12px 14px;margin-bottom:14px;box-shadow:0 6px 30px rgba(0,0,0,.35)}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
   .ch{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;transition:border-color .1s}
   .ch.drag{border-color:var(--acc);border-style:dashed}
@@ -38,7 +39,7 @@
   .fname.ok{color:var(--fg)}
   input[type=range]{width:100%;accent-color:var(--acc)}
   .hold{width:100%;user-select:none;touch-action:none}
-  .modal{position:fixed;inset:0;background:rgba(5,8,14,.8);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;z-index:50;overflow:auto}
+  .modal{position:fixed;inset:0;background:rgba(5,8,14,.8);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;z-index:300;overflow:auto}
   .modal[hidden]{display:none}
   .modalBox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;width:min(1040px,100%);display:flex;flex-direction:column;gap:12px}
   .bpmTag{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
@@ -46,14 +47,124 @@
   .err{color:var(--err)}
   .clock{font-variant-numeric:tabular-nums}
   @media (max-width:520px){ .wrap{padding:12px} h1{font-size:19px} }
+  /* Startseite und Unterseiten */
+  .homeTitle{text-align:center;font-size:24px;margin:18px 0 22px}
+  .menu{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin:0 0 24px}
+  .menuBtn{padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:var(--gold);min-width:260px}
+  .menuBtn:hover{border-color:#fff}
+  .page{display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .page.open{display:block}
+  .page .wrap{padding-top:74px}
+  .pgBack{position:fixed;top:16px;left:16px;z-index:101;background:var(--card2);border:1px solid #fff;color:#fff;border-radius:10px;padding:10px 18px;font-size:15px}
+  .pgTitle{font-weight:700;font-size:20px;margin:0 0 4px;color:var(--gold)}
+  .pgSub{margin:0 0 14px}
+  .page details>summary{display:none}
+  .page details>div:first-of-type,.page details>.row:first-of-type{margin-top:0!important}
 </style>
 </head>
 <body>
+<div class="wrap" id="home">
+  <div class="bar row" id="offBar">
+    <b>Offline</b>
+    <button id="offPrep" title="Lädt einmalig alles herunter, was die Kamera-App braucht – danach läuft sie auch ohne Internet">&#128229; Für offline vorbereiten</button>
+    <span class="small mut" id="offInfo"></span>
+  </div>
+  <h1 class="homeTitle">&#128247; SoundWhacker Kamera</h1>
+  <div class="menu">
+    <button class="menuBtn" data-go="pgWas">&#127926; Was wird mit Kamera gesteuert</button>
+    <button class="menuBtn" data-go="pgKam">&#128247; Kamera-Steuerung</button>
+    <button class="menuBtn" data-go="pgGen">&#127922; Loop-Generator</button>
+    <button class="menuBtn" data-go="pgSet">&#9881; Einstellungen</button>
+  </div>
+  <div class="bar hint" style="margin-top:14px">
+    <b>So geht's:</b> <b>Kamera starten</b>, dann w&auml;hlen: <b>Was bewegt sich?</b> (H&auml;nde, Kopf, Gesicht, Augen, Arme oder ganzer K&ouml;rper) und <b>Was soll erklingen?</b>
+    <b>Kan&auml;le</b> schalten die Loops (WAV-Dateien auf die Kan&auml;le ziehen, dann <b>Start</b>), <b>Akkorde</b>, <b>T&ouml;ne</b> und <b>Improvisieren</b> spielen die Felder 1&ndash;5 der jeweiligen Bereiche.
+    H&auml;nde: 1&ndash;5 Finger = 1&ndash;5. Kopf, Gesicht, Augen, Arme: jede Bewegung hat ihre Nummer (in der Liste &auml;nderbar). Ganzer K&ouml;rper: 5 Zonen im Raum.
+    <b>Melodie</b> spielt stufenlos T&ouml;ne einer Skala (Kopf, Mund, Arme) bzw. beim ganzen K&ouml;rper: Bewegung macht Klang, Raum-Klavier.
+    Dazu virtueller Hintergrund und Video-Aufnahme. Diese App ist unabhängig vom SoundWhacker Looper; Presets (WAV-Dateien) und die SoundFont teilen sich beide Apps auf demselben Gerät.
+  </div>
+</div>
+<div class="page" id="pgWas">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
 <div class="wrap">
-  <header>
-    <h1>SoundWhacker Kamera</h1>
-  </header>
-
+  <div class="pgTitle">&#127926; Was wird mit Kamera gesteuert</div>
+  <div class="small mut pgSub">Hier stellst du ein, was erklingt: Akkorde, T&ouml;ne, Improvisieren oder die Loops im Looper.</div>
+  <div class="menu" style="justify-content:flex-start">
+    <button class="menuBtn" data-go="pgAkk">&#127929; Akkorde</button>
+    <button class="menuBtn" data-go="pgTon">&#127925; T&ouml;ne</button>
+    <button class="menuBtn" data-go="pgImp">&#127926; Improvisieren</button>
+    <button class="menuBtn" data-go="pgLoop">&#128257; Looper</button>
+  </div>
+</div>
+</div>
+<div class="page" id="pgAkk">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+<div class="wrap">
+  <div class="pgTitle">&#127929; Akkorde</div>
+  <div class="small mut pgSub">Tasten (z.&nbsp;B. vom SW &uuml;ber Bluetooth) oder die Kamera spielen Akkorde, solange sie gehalten werden.</div>
+  <details class="bar" id="chordBox">
+    <summary style="cursor:pointer"><b>Akkord</b> <span class="small mut">&ndash; Tasten (z.&nbsp;B. vom SW über Bluetooth) spielen Akkorde, solange sie gehalten werden</span></summary>
+    <div class="row" style="margin-top:12px">
+      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpA"> <b>Tasten spielen Akkorde</b> (statt Loops)</label>
+      <span class="small mut" id="chInfoA"></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetA" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
+      <label class="small mut">Lautstärke <input type="range" id="chVolA" min="0" max="100" value="80" style="width:110px"></label>
+      <label class="small mut">Hall <input type="range" id="chRevA" min="0" max="100" value="30" style="width:110px"></label>
+    </div>
+    <div id="chFieldsA" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+    <div class="hint" style="margin-top:8px">Jedes der fünf Felder spielt einen <b>Akkord</b> (Dur, Moll oder Dur7) – oder einen einzelnen Ton –, so lange, wie seine Taste gedrückt bleibt; danach klingt er kurz aus. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
+  </details>
+</div>
+</div>
+<div class="page" id="pgTon">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+<div class="wrap">
+  <div class="pgTitle">&#127925; T&ouml;ne</div>
+  <div class="small mut pgSub">Tasten oder die Kamera spielen einzelne T&ouml;ne, solange sie gehalten werden.</div>
+  <details class="bar" id="tonBox">
+    <summary style="cursor:pointer"><b>Ton</b> <span class="small mut">&ndash; Tasten spielen einzelne Töne, solange sie gehalten werden</span></summary>
+    <div class="row" style="margin-top:12px">
+      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpB"> <b>Tasten spielen Töne</b> (statt Loops)</label>
+      <span class="small mut" id="chInfoB"></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetB" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
+      <label class="small mut">Lautstärke <input type="range" id="chVolB" min="0" max="100" value="80" style="width:110px"></label>
+      <label class="small mut">Hall <input type="range" id="chRevB" min="0" max="100" value="30" style="width:110px"></label>
+    </div>
+    <div id="chFieldsB" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+    <div class="hint" style="margin-top:8px">Jedes der fünf Felder spielt einen einzelnen <b>Ton</b> (Grundton und Lage), so lange, wie seine Taste gedrückt bleibt. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
+  </details>
+</div>
+</div>
+<div class="page" id="pgImp">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+<div class="wrap">
+  <div class="pgTitle">&#127926; Improvisieren</div>
+  <div class="small mut pgSub">Wie im SW-HUB: jeder Druck spielt einen zuf&auml;lligen Ton der Skala.</div>
+  <details class="bar" id="improBox">
+    <summary style="cursor:pointer"><b>Improvisieren</b> <span class="small mut">&ndash; wie im SW-HUB: jeder Druck spielt einen zufälligen Ton der Skala</span></summary>
+    <div class="row" style="margin-top:12px">
+      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpC"> <b>Tasten improvisieren</b> (statt Loops)</label>
+      <span class="small mut" id="chInfoC"></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetC" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
+      <label class="small mut">Lautstärke <input type="range" id="chVolC" min="0" max="100" value="80" style="width:110px"></label>
+      <label class="small mut">Hall <input type="range" id="chRevC" min="0" max="100" value="30" style="width:110px"></label>
+    </div>
+    <div id="chFieldsC" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+    <div class="hint" style="margin-top:8px">Wie im SW-HUB: jeder Druck spielt einen <b>zufälligen Ton</b> aus Tonart und Skala des Feldes (nie zweimal derselbe hintereinander), so lange, wie die Taste gedrückt bleibt. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
+  </details>
+</div>
+</div>
+<div class="page" id="pgLoop">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+<div class="wrap">
+  <div class="pgTitle">&#128257; Looper</div>
+  <div class="small mut pgSub">Die 5 Loop-Kan&auml;le: WAV laden, Taste/SW anlernen, Start.</div>
   <div class="bar row">
     <button class="big start" id="startBtn">&#9654; Start</button>
     <button class="big stop" id="stopBtn">&#9632; Stopp</button>
@@ -66,7 +177,18 @@
     <span class="small mut">Gesamt</span>
     <input type="range" id="master" min="0" max="100" value="90" style="width:160px">
   </div>
-
+  <div id="status" class="small mut" style="margin:0 0 12px"></div>
+  <details class="bar" id="loopBox" open>
+    <summary style="cursor:pointer"><b>Looper</b> <span class="small mut">&ndash; die 5 Loop-Kanäle: WAV laden, Taste/SW anlernen, Start</span></summary>
+    <div class="grid" id="channels" style="margin-top:12px"></div>
+  </details>
+</div>
+</div>
+<div class="page" id="pgKam">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+<div class="wrap">
+  <div class="pgTitle">&#128247; Kamera-Steuerung</div>
+  <div class="small mut pgSub">Was bewegt sich &ndash; und was soll erklingen? Dazu Hintergrund, Video-Aufnahme und Fernsteuerung.</div>
   <details class="bar" id="gesBox" open>
     <summary style="cursor:pointer"><b>Kamera-Steuerung</b> <span class="small mut">&ndash; erst w&auml;hlen, was sich bewegt (H&auml;nde, Kopf, Gesicht, Augen, Arme, ganzer K&ouml;rper), dann, was erklingt (Kan&auml;le, Akkorde, T&ouml;ne, Improvisieren, Melodie); dazu Hintergrund und Video-Aufnahme</span></summary>
     <div class="row" style="margin-top:12px">
@@ -169,26 +291,13 @@
     </div>
     <video id="gesVideo" playsinline muted style="display:none"></video>
   </details>
-
-  <div class="bar row">
-    <b>Preset</b>
-    <select id="presetSel" style="min-width:180px"><option value="">– kein Preset –</option></select>
-    <button id="presetLoad">Laden</button>
-    <button id="presetSave">Speichern …</button>
-    <button id="presetDel">Löschen</button>
-    <button id="clearAllBtn" title="Alle WAV-Dateien aus den Kanälen entfernen (Presets bleiben erhalten)">Alle Kanäle leeren</button>
-    <button id="presetExport" title="Alle Presets als eine Datei sichern (Backup, Umzug zwischen PC und iPad)">Presets sichern</button>
-    <button id="presetImport" title="Eine gesicherte Preset-Datei wieder einspielen">Presets einspielen</button>
-    <button id="presetShare" class="start" hidden>Datei jetzt teilen</button>
-    <span class="small mut" id="presetInfo"></span>
-  </div>
-
-  <div class="bar row" id="offBar">
-    <b>Offline</b>
-    <button id="offPrep" title="Lädt einmalig alles herunter, was die Kamera-App braucht – danach läuft sie auch ohne Internet">&#128229; Für offline vorbereiten</button>
-    <span class="small mut" id="offInfo"></span>
-  </div>
-
+</div>
+</div>
+<div class="page" id="pgGen">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+<div class="wrap">
+  <div class="pgTitle">&#127922; Loop-Generator</div>
+  <div class="small mut pgSub">Erzeugt f&uuml;nf passende Loops und l&auml;dt sie in die Kan&auml;le des Loopers.</div>
   <details class="bar" id="genBox" open>
     <summary style="cursor:pointer"><b>Loop-Generator</b> <span class="small mut">&ndash; erzeugt fünf passende Loops und lädt sie in die Kanäle</span></summary>
     <div class="row" style="margin-top:12px">
@@ -210,7 +319,24 @@
     </div>
     <div class="hint" style="margin-top:8px">Jeder Klick auf <b>Neu erzeugen</b> ergibt eine neue Variation im gewählten Stil. Das Textfeld erkennt Stichworte (Stil, Zahl mit &bdquo;bpm&ldquo;, Tonart wie &bdquo;E-Moll&ldquo;, dunkel/hell, sanft/druckvoll); &bdquo;B&ldquo; bedeutet B-Dur/Moll wie im Deutschen (=&nbsp;H&#9837;).</div>
   </details>
-
+</div>
+</div>
+<div class="page" id="pgSet">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+<div class="wrap">
+  <div class="pgTitle">&#9881; Einstellungen</div>
+  <div class="small mut pgSub">SoundFonts und Presets.</div>
+  <div class="menu" style="justify-content:flex-start">
+    <button class="menuBtn" data-go="pgSf">&#127932; SoundFonts</button>
+    <button class="menuBtn" data-go="pgPre">&#128190; Presets</button>
+  </div>
+</div>
+</div>
+<div class="page" id="pgSf">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+<div class="wrap">
+  <div class="pgTitle">&#127932; SoundFonts</div>
+  <div class="small mut pgSub">Instrumente f&uuml;r Akkorde, T&ouml;ne, Improvisieren, Melodie und Ganzk&ouml;rper.</div>
   <details class="bar" id="sfBox">
     <summary style="cursor:pointer"><b>SoundFont</b> <span class="small mut">&ndash; Instrumente für Melodie- und Ganzkörper-Modus sowie für Akkord, Ton und Improvisieren</span></summary>
     <div class="row" style="margin-top:12px">
@@ -228,68 +354,28 @@
     </div>
     <div class="hint" style="margin-top:8px">Eingebaut ist eine Auswahl von 45 Instrumenten und 3 Schlagzeug-Kits aus <b>GeneralUser GS</b> (S. Christian Collins, frei nutzbar; Lizenz im Ordner <code>soundfonts</code>). Sie wird beim ersten Gebrauch einmal geladen (ca. 21 MB) und bleibt dann im Browser gespeichert – auch auf dem iPad. Eine eigene SoundFont ersetzt sie und bleibt ebenfalls gespeichert; mit <b>Eingebaute verwenden</b> geht es zurück. Alle fünf Loops nutzen dasselbe Instrument und Muster, Kanal 1–5 bekommt jeweils den eingestellten Akkord. Mit den Kanal-Tasten (1–5 oder angelernte Tasten), SWs oder MIDI schaltest du dann zwischen den Akkorden um.</div>
   </details>
-
-  <details class="bar" id="chordBox">
-    <summary style="cursor:pointer"><b>Akkord</b> <span class="small mut">&ndash; Tasten (z.&nbsp;B. vom SW über Bluetooth) spielen Akkorde, solange sie gehalten werden</span></summary>
-    <div class="row" style="margin-top:12px">
-      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpA"> <b>Tasten spielen Akkorde</b> (statt Loops)</label>
-      <span class="small mut" id="chInfoA"></span>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetA" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
-      <label class="small mut">Lautstärke <input type="range" id="chVolA" min="0" max="100" value="80" style="width:110px"></label>
-      <label class="small mut">Hall <input type="range" id="chRevA" min="0" max="100" value="30" style="width:110px"></label>
-    </div>
-    <div id="chFieldsA" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
-    <div class="hint" style="margin-top:8px">Jedes der fünf Felder spielt einen <b>Akkord</b> (Dur, Moll oder Dur7) – oder einen einzelnen Ton –, so lange, wie seine Taste gedrückt bleibt; danach klingt er kurz aus. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
-  </details>
-
-  <details class="bar" id="tonBox">
-    <summary style="cursor:pointer"><b>Ton</b> <span class="small mut">&ndash; Tasten spielen einzelne Töne, solange sie gehalten werden</span></summary>
-    <div class="row" style="margin-top:12px">
-      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpB"> <b>Tasten spielen Töne</b> (statt Loops)</label>
-      <span class="small mut" id="chInfoB"></span>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetB" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
-      <label class="small mut">Lautstärke <input type="range" id="chVolB" min="0" max="100" value="80" style="width:110px"></label>
-      <label class="small mut">Hall <input type="range" id="chRevB" min="0" max="100" value="30" style="width:110px"></label>
-    </div>
-    <div id="chFieldsB" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
-    <div class="hint" style="margin-top:8px">Jedes der fünf Felder spielt einen einzelnen <b>Ton</b> (Grundton und Lage), so lange, wie seine Taste gedrückt bleibt. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
-  </details>
-
-  <details class="bar" id="improBox">
-    <summary style="cursor:pointer"><b>Improvisieren</b> <span class="small mut">&ndash; wie im SW-HUB: jeder Druck spielt einen zufälligen Ton der Skala</span></summary>
-    <div class="row" style="margin-top:12px">
-      <label class="small" title="An: die Tasten der eingeschalteten Felder spielen hier und schalten keine Loops. Aus: die Tasten schalten wie gewohnt die Loops."><input type="checkbox" id="chGrpC"> <b>Tasten improvisieren</b> (statt Loops)</label>
-      <span class="small mut" id="chInfoC"></span>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <label class="small mut" title="Setzt das Instrument aller fünf Felder auf einmal">Alle Felder auf <select id="chPresetC" style="min-width:200px" disabled><option>– SoundFont wird geladen –</option></select></label>
-      <label class="small mut">Lautstärke <input type="range" id="chVolC" min="0" max="100" value="80" style="width:110px"></label>
-      <label class="small mut">Hall <input type="range" id="chRevC" min="0" max="100" value="30" style="width:110px"></label>
-    </div>
-    <div id="chFieldsC" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
-    <div class="hint" style="margin-top:8px">Wie im SW-HUB: jeder Druck spielt einen <b>zufälligen Ton</b> aus Tonart und Skala des Feldes (nie zweimal derselbe hintereinander), so lange, wie die Taste gedrückt bleibt. Standard-Tasten sind 1–5 (auch Ziffernblock – so sendet sie der SW-HUB über Bluetooth); mit <b>anlernen</b> legst du eine andere Taste fest. Mit dem Häkchen vor einem Feld schaltest du es aus – dann steuert seine Taste weiter den Loop (z.&nbsp;B. SW&nbsp;1 Loop, SW&nbsp;2 Akkord). Jedes Feld hat sein eigenes <b>Instrument</b>; <b>Alle Felder auf</b> stellt alle fünf auf einmal um. Mit <b>▶</b> ein Feld gedrückt halten zum Anhören. Sind mehrere Bereiche an (Akkord, Ton, Improvisieren, Melodie), klingt eine Taste in allen zusammen – z.&nbsp;B. Akkord + Basston. Alles funktioniert auch offline.</div>
-  </details>
-
-
-  <div id="status" class="small mut" style="margin:-4px 0 12px"></div>
-
-  <details class="bar" id="loopBox" open>
-    <summary style="cursor:pointer"><b>Looper</b> <span class="small mut">&ndash; die 5 Loop-Kanäle: WAV laden, Taste/SW anlernen, Start</span></summary>
-    <div class="grid" id="channels" style="margin-top:12px"></div>
-  </details>
-
-  <div class="bar hint" style="margin-top:14px">
-    <b>So geht's:</b> <b>Kamera starten</b>, dann w&auml;hlen: <b>Was bewegt sich?</b> (H&auml;nde, Kopf, Gesicht, Augen, Arme oder ganzer K&ouml;rper) und <b>Was soll erklingen?</b>
-    <b>Kan&auml;le</b> schalten die Loops (WAV-Dateien auf die Kan&auml;le ziehen, dann <b>Start</b>), <b>Akkorde</b>, <b>T&ouml;ne</b> und <b>Improvisieren</b> spielen die Felder 1&ndash;5 der jeweiligen Bereiche.
-    H&auml;nde: 1&ndash;5 Finger = 1&ndash;5. Kopf, Gesicht, Augen, Arme: jede Bewegung hat ihre Nummer (in der Liste &auml;nderbar). Ganzer K&ouml;rper: 5 Zonen im Raum.
-    <b>Melodie</b> spielt stufenlos T&ouml;ne einer Skala (Kopf, Mund, Arme) bzw. beim ganzen K&ouml;rper: Bewegung macht Klang, Raum-Klavier.
-    Dazu virtueller Hintergrund und Video-Aufnahme. Diese App ist unabhängig vom SoundWhacker Looper; Presets (WAV-Dateien) und die SoundFont teilen sich beide Apps auf demselben Gerät.
+</div>
+</div>
+<div class="page" id="pgPre">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+<div class="wrap">
+  <div class="pgTitle">&#128190; Presets</div>
+  <div class="small mut pgSub">Speichert die WAV-Dateien und Einstellungen der Loop-Kan&auml;le.</div>
+  <div class="bar row">
+    <b>Preset</b>
+    <select id="presetSel" style="min-width:180px"><option value="">– kein Preset –</option></select>
+    <button id="presetLoad">Laden</button>
+    <button id="presetSave">Speichern …</button>
+    <button id="presetDel">Löschen</button>
+    <button id="clearAllBtn" title="Alle WAV-Dateien aus den Kanälen entfernen (Presets bleiben erhalten)">Alle Kanäle leeren</button>
+    <button id="presetExport" title="Alle Presets als eine Datei sichern (Backup, Umzug zwischen PC und iPad)">Presets sichern</button>
+    <button id="presetImport" title="Eine gesicherte Preset-Datei wieder einspielen">Presets einspielen</button>
+    <button id="presetShare" class="start" hidden>Datei jetzt teilen</button>
+    <span class="small mut" id="presetInfo"></span>
   </div>
 </div>
+</div>
+
 
 <div class="modal" id="askModal" hidden style="z-index:80;align-items:center">
   <div class="modalBox" style="width:min(420px,100%)">
@@ -4037,6 +4123,28 @@ const GEN = (() => {
   } else {
     presetInfo('Presets sind in diesem Browser nicht verfügbar.', true);
   }
+})();
+</script>
+<script>
+// Startseite und Unterseiten (jede Unterseite hat ihre Elternseite; „Zurück“ führt dorthin)
+(function () {
+  const PARENT = { pgWas: '', pgKam: '', pgGen: '', pgSet: '', pgAkk: 'pgWas', pgTon: 'pgWas', pgImp: 'pgWas', pgLoop: 'pgWas', pgSf: 'pgSet', pgPre: 'pgSet' };
+  let cur = '';
+  function go(id) {
+    document.querySelectorAll('.page.open').forEach(p => p.classList.remove('open'));
+    cur = id || '';
+    if (cur) {
+      const p = document.getElementById(cur);
+      p.classList.add('open'); p.scrollTop = 0;
+      // aufklappbare Bereiche öffnen (lädt z. B. Instrumente beim ersten Öffnen)
+      p.querySelectorAll('details').forEach(d => { if (!d.open) d.open = true; });
+    }
+    try { sessionStorage.setItem('swkamera.page', cur); } catch (e) {}
+  }
+  document.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => go(b.dataset.go); });
+  document.querySelectorAll('[data-back]').forEach(b => { b.onclick = () => go(PARENT[cur] || ''); });
+  let last = ''; try { last = sessionStorage.getItem('swkamera.page') || ''; } catch (e) {}
+  if (last && PARENT[last] !== undefined) go(last);
 })();
 </script>
 </body>
