@@ -3637,7 +3637,8 @@ const GEN = (() => {
   }
   let chCfg = chClean(null);
   try { const c = JSON.parse(localStorage.getItem(CH_KEY) || 'null'); if (c) chCfg = chClean(c); } catch (e) {}
-  chCfg.grpA = chCfg.grpB = chCfg.grpC = false;   // Kamera-App: Tasten schalten immer die Loops, die Felder spielt die Kamera
+  chCfg.grpA = chCfg.grpB = chCfg.grpC = false;
+  chCfg.fields.forEach(f => { f.on = true; });   // Felder sind immer bereit – an/aus gibt es an den Auslösern   // Kamera-App: Tasten schalten immer die Loops, die Felder spielt die Kamera
   const chSave = () => { try { localStorage.setItem(CH_KEY, JSON.stringify(chCfg)); } catch (e) {} };
   const chInfo = (m, err) => CH_G.forEach(g => { const el = $('chInfo' + g); el.textContent = m || ''; el.className = 'small ' + (err ? 'err' : 'mut'); });
   const ch = { synth: null, loading: null, out: null, drumKits: [], playing: new Array(CH_N).fill(null), learn: -1, lastImpro: [], shown: [] };
@@ -3822,7 +3823,7 @@ const GEN = (() => {
       const box = $('chFields' + chG(i));
       // Eine Zeile je Feld, die bei wenig Platz (iPad hochkant) umbricht
       box.insertAdjacentHTML('beforeend', '<div class="row" style="gap:6px 10px;padding:6px 10px;border:1px solid var(--line);border-radius:10px">' +
-        '<label class="row" style="gap:6px;min-width:90px" title="Feld an/aus – ist es aus, spielt die Kamera es nicht"><input type="checkbox" id="chFOn' + i + '"><span class="lamp" id="chLamp' + i + '"></span><b>' + chFieldName(i) + '</b></label>' +
+        '<label class="row" style="gap:6px;min-width:90px" ><input type="checkbox" id="chFOn' + i + '" hidden><span class="lamp" id="chLamp' + i + '"></span><b>' + chFieldName(i) + '</b></label>' +
         '<span class="small mut" hidden>Taste</span><b id="chKey' + i + '" style="min-width:2.5em;text-align:center" hidden></b>' +   // Kamera-App: Tasten spielen keine Felder
         '<span class="row" style="gap:4px;flex-wrap:nowrap;display:none"><button id="chLearn' + i + '">anlernen</button><button id="chKeyClr' + i + '" title="zurück auf Taste ' + chDefKey(i) + '" hidden>&#10005;</button></span>' +
         (i < 5 ? '<select id="chType' + i + '" title="Art"><option value="ton">Ton</option><option value="dur">Akkord Dur</option><option value="moll">Akkord Moll</option><option value="dur7">Akkord Dur7</option></select>'
