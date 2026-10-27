@@ -3094,6 +3094,7 @@ const GEN = (() => {
       }
       await gesEnsureModels();
       ges.on = true; ges.slots.forEach(S => { S.cand = 'x'; S.k = 0; });
+      if ($('micOn').checked && mic.stream && !mic.stream.getAudioTracks().some(t => t.readyState === 'live')) micEnable();   // iPad: Mikrofon ging beim Kamerastart verloren
       if (BG.mode !== 'none') bgSetMode(BG.mode);   // lädt auch ein gespeichertes Foto
       $('gesBtn').innerHTML = '&#9632; Kamera aus'; $('gesBtn').classList.add('learning');
       requestAnimationFrame(gesLoop);
@@ -3254,7 +3255,18 @@ const GEN = (() => {
       } catch (e1) {
         if (e1 && e1.name === 'NotAllowedError') throw e1;
         // iPad: Sonderwünsche (Gerät, Filter aus) werden teils abgelehnt – dann einfach das Standard-Mikrofon nehmen
-        mic.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        try { mic.stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+        catch (e2) {
+          if (!ges.stream || (e2 && e2.name === 'NotAllowedError')) throw e2;
+          // iPad gibt das Mikrofon oft nicht neben einer laufenden Kamera frei: Kamera und Mikrofon gemeinsam neu anfordern
+          const VID = { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, v = $('gesVideo');
+          ges.stream.getTracks().forEach(t => t.stop());
+          let both;
+          try { both = await navigator.mediaDevices.getUserMedia({ video: VID, audio: true }); }
+          catch (e3) { ges.stream = await navigator.mediaDevices.getUserMedia({ video: VID, audio: false }); v.srcObject = ges.stream; v.play().catch(() => {}); throw e3; }
+          ges.stream = new MediaStream(both.getVideoTracks()); v.srcObject = ges.stream; v.play().catch(() => {});
+          mic.stream = new MediaStream(both.getAudioTracks());
+        }
       }
     } catch (e) {
       $('micOn').checked = false; micSync();
