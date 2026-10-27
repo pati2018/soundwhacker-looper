@@ -2953,7 +2953,7 @@ const GEN = (() => {
     $('melPanel').hidden = ges.mode !== 'melody' && ges.mode !== 'fullbody';
     $('melOnly').hidden = ges.mode !== 'melody';
     $('fbPanel').hidden = ges.mode !== 'fullbody';
-    $('profRow').hidden = ges.mode === 'hands';
+    $('profRow').hidden = true;   // Profile gibt es nicht mehr in der Oberfläche
     const zm = ges.mode === 'fullbody' && ges.what !== 'mel';
     $('zonePanel').hidden = !zm;
     if (zm) { $('melPanel').hidden = true; $('fbPanel').hidden = true; }
