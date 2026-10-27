@@ -367,6 +367,7 @@
     </div>
     <div class="row" style="margin-top:10px">
       <label class="small mut">Instrument <select id="sfPreset" style="min-width:220px" disabled><option>– erst SoundFont laden –</option></select></label>
+      <button id="sfTry" title="gedrückt halten zum Anhören" style="touch-action:none">&#9654; Vorhören</button>
       <label class="small mut">Hall: trocken <input type="range" id="sfRev" min="0" max="100" value="30" style="width:140px"> viel <span id="sfRevVal" style="display:inline-block;min-width:3.2em">30 %</span></label>
     </div>
     <div class="row" style="margin-top:10px">
@@ -3673,6 +3674,29 @@ const GEN = (() => {
     })();
     return ch.loading;
   }
+  // SoundFonts: gewähltes Instrument vorhören (gedrückt halten) – leiht sich kurz den letzten Feld-Kanal
+  (function sfTryBtn() {
+    const b = $('sfTry'), k = 15, notes = [60, 64, 67, 72];
+    let on = false;
+    b.onpointerdown = async ev => {
+      ev.preventDefault(); try { b.setPointerCapture(ev.pointerId); } catch (e) {}
+      on = true;
+      try { await chEnsure(); } catch (e) { return; }
+      await ctx.resume();
+      if (!on || !ch.synth || $('sfPreset').disabled) return;
+      const [msb, lsb, program] = ($('sfPreset').value || '0:0:0').split(':').map(Number);
+      ch.synth.controllerChange(k, 0, msb); ch.synth.controllerChange(k, 32, lsb); ch.synth.programChange(k, program);
+      ch.synth.controllerChange(k, 7, 110); ch.synth.controllerChange(k, 91, Math.round(+$('sfRev').value / 100 * 127));
+      notes.forEach((n, i) => setTimeout(() => { if (on) ch.synth.noteOn(k, n, 100); }, i * 120));
+      b.classList.add('start');
+    };
+    b.onpointerup = b.onpointercancel = () => {
+      on = false; b.classList.remove('start');
+      if (!ch.synth) return;
+      notes.forEach(n => ch.synth.noteOff(k, n));
+      setTimeout(chProgram, 400);   // Feld-Kanal wieder auf sein Instrument
+    };
+  })();
   function chProgram() {   // Instrument + Hall auf allen fünf Kanälen (je Feld ein MIDI-Kanal, Kanal 10 = Schlagzeug wird nicht benutzt)
     if (!ch.synth) return;
     for (let i = 0; i < CH_N; i++) {
