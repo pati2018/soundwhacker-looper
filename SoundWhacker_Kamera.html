@@ -250,7 +250,7 @@
         <span class="small mut" id="melInfo"></span>
       </div>
       <div id="melOnly">
-      <div id="melCtrl" style="display:grid;grid-template-columns:auto minmax(170px,auto) auto auto auto minmax(140px,1fr);gap:12px 12px;align-items:center;margin-top:30px"></div>
+      <div id="melCtrl" style="display:grid;grid-template-columns:auto minmax(100px,auto) auto auto minmax(70px,1fr) minmax(80px,2fr) auto;gap:12px 12px;align-items:center;margin-top:30px"></div>
       </div>
     </div>
     <div id="fbPanel" hidden style="margin-top:12px">
@@ -268,7 +268,7 @@
           <i id="fbRoomM" style="position:absolute;top:0;bottom:0;width:4px;margin-left:-2px;left:0;background:var(--on)"></i>
           <b id="fbRoomT" class="small" style="position:absolute;right:6px;top:0;line-height:18px;font-weight:600"></b></span>
       </div>
-      <div id="fbParts" style="display:grid;grid-template-columns:auto minmax(170px,auto) auto auto auto minmax(160px,1fr);gap:6px 12px;align-items:center;margin-top:10px"></div>
+      <div id="fbParts" style="display:grid;grid-template-columns:auto minmax(100px,auto) auto auto minmax(70px,1fr) minmax(80px,2fr) auto;gap:6px 12px;align-items:center;margin-top:10px"></div>
     </div>
     <div id="handPanel" style="margin-top:12px">
       <div id="handTrig" style="display:grid;grid-template-columns:minmax(150px,auto) auto minmax(90px,1fr) minmax(100px,2fr) auto;gap:6px 12px;align-items:center"></div>
@@ -2478,7 +2478,8 @@ const GEN = (() => {
       const s = (c && c.ctrl && c.ctrl[m.id]) || {}, d = m.def;
       o.ctrl[m.id] = { on: s.on == null ? d.on : !!s.on, oct: [2, 3, 4, 5, 6].includes(s.oct) ? s.oct : d.oct,
         n: Number.isInteger(s.n) && s.n >= 2 && s.n <= 15 ? s.n : d.n,
-        min: Number.isFinite(s.min) ? s.min : d.min, max: Number.isFinite(s.max) && s.max > (Number.isFinite(s.min) ? s.min : d.min) ? s.max : d.max };
+        min: Number.isFinite(s.min) ? s.min : d.min, max: Number.isFinite(s.max) && s.max > (Number.isFinite(s.min) ? s.min : d.min) ? s.max : d.max,
+        th: Number.isFinite(s.th) ? Math.max(5, Math.min(100, s.th)) : 50 };
     });
     return o;
   }
@@ -2595,7 +2596,8 @@ const GEN = (() => {
       if (!c.on || !pwMelOn(m.id)) return;
       const x = m.raw(r);
       if (x == null) return;
-      const t = Math.max(0, Math.min(1, (x - c.min) / (c.max - c.min)));
+      const mid = (c.min + c.max) / 2, half = (c.max - c.min) / 2 * (c.th || 50) / 50;
+      const t = Math.max(0, Math.min(1, (x - (mid - half)) / (2 * half)));
       S.t = t;
       const pos = t * c.n;
       let nIdx = Math.min(c.n - 1, Math.floor(pos));
@@ -2627,17 +2629,20 @@ const GEN = (() => {
     MEL_NOTE.forEach((n, i) => { const o = document.createElement('option'); o.value = i; o.textContent = n; $('melKey').appendChild(o); });
     Object.entries(MEL_SCALES).forEach(([id, s]) => { const o = document.createElement('option'); o.value = id; o.textContent = s.label; $('melScale').appendChild(o); });
     const box = $('melCtrl');
-    box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><span></span><b class="small mut">aktuell</b>';
+    box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><b class="small mut">Schwelle</b><b class="small mut">aktuell</b><span></span>';
     MEL_CTRL.forEach(m => {
       box.insertAdjacentHTML('beforeend',
         '<input type="checkbox" id="mcOn_' + m.id + '" hidden><button id="mcB_' + m.id + '"' + ' class="small onoff" style="min-width:44px" title="ein-/ausschalten">aus</button>' +
         '<span id="mcL_' + m.id + '">' + m.label + '</span>' +
         '<select id="mcO_' + m.id + '"><option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option></select>' +
         '<select id="mcN_' + m.id + '">' + Array.from({ length: 14 }, (_, i) => '<option>' + (i + 2) + '</option>').join('') + '</select>' +
-        '<button id="mcC_' + m.id + '">Bereich anlernen</button>' +
+        '<input type="range" id="mcS_' + m.id + '" min="5" max="100" step="1" title="wie weit sich das Kind bewegen muss, um alle Töne zu spielen: klein = schon kleine Bewegungen reichen">' +
         '<span style="position:relative;height:18px;background:var(--card2);border:1px solid var(--line);border-radius:9px;overflow:hidden;display:block">' +
         '<i id="mcM_' + m.id + '" style="position:absolute;top:0;bottom:0;width:4px;margin-left:-2px;left:0;background:var(--on)"></i>' +
-        '<b id="mcT_' + m.id + '" class="small" style="position:absolute;right:6px;top:0;line-height:18px;font-weight:600"></b></span>');
+        '<b id="mcT_' + m.id + '" class="small" style="position:absolute;right:6px;top:0;line-height:18px;font-weight:600"></b></span>' +
+        '<button id="mcC_' + m.id + '" class="small" title="Das Kind bewegt sich einmal so weit es kann – die Töne werden auf diesen Bereich verteilt">anlernen</button>');
+      $('mcS_' + m.id).oninput = () => { mel.ctrl[m.id].th = +$('mcS_' + m.id).value; melSt[m.id].idx = -1; };
+      $('mcS_' + m.id).onchange = melSave;
       $('mcOn_' + m.id).onchange = () => { mel.ctrl[m.id].on = $('mcOn_' + m.id).checked; melSave(); melUi(); melPrepare(); };
       $('mcO_' + m.id).onchange = () => { mel.ctrl[m.id].oct = +$('mcO_' + m.id).value; melSt[m.id].idx = -1; melSave(); melPrepare(); };
       $('mcN_' + m.id).onchange = () => { mel.ctrl[m.id].n = +$('mcN_' + m.id).value; melSt[m.id].idx = -1; melSave(); melPrepare(); };
@@ -2661,14 +2666,14 @@ const GEN = (() => {
     if (!$('melPreset').disabled && [...$('melPreset').options].some(o => o.value === mel.preset)) $('melPreset').value = mel.preset;
     MEL_CTRL.forEach(m => {
       const c = mel.ctrl[m.id];
-      $('mcOn_' + m.id).checked = c.on; $('mcB_' + m.id).textContent = c.on ? 'aus' : 'an'; $('mcO_' + m.id).value = c.oct; $('mcN_' + m.id).value = c.n;
+      $('mcOn_' + m.id).checked = c.on; $('mcB_' + m.id).textContent = c.on ? 'aus' : 'an'; $('mcS_' + m.id).value = c.th || 50; $('mcO_' + m.id).value = c.oct; $('mcN_' + m.id).value = c.n;
       $('mcL_' + m.id).style.opacity = c.on ? 1 : 0.5;
       const vis = pwMelOn(m.id) ? '' : 'none';
-      ['mcB_', 'mcL_', 'mcO_', 'mcN_', 'mcC_'].forEach(p => { $(p + m.id).style.display = vis; });
+      ['mcB_', 'mcL_', 'mcO_', 'mcN_', 'mcS_', 'mcC_'].forEach(p => { $(p + m.id).style.display = vis; });
       $('mcM_' + m.id).parentElement.style.display = vis;
       const b = $('mcC_' + m.id);
       b.classList.toggle('learning', !!melCal && melCal.id === m.id);
-      b.textContent = melCal && melCal.id === m.id ? 'Abbrechen' : 'Bereich anlernen';
+      b.textContent = melCal && melCal.id === m.id ? 'Abbrechen' : 'anlernen';
     });
   }
   melUi();
@@ -2867,7 +2872,7 @@ const GEN = (() => {
   (function fbBuildUi() {
     $('fbRoomN').innerHTML = Array.from({ length: 14 }, (_, i) => '<option>' + (i + 2) + '</option>').join('');
     const box = $('fbParts');
-    box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><b class="small mut">an das Kind anpassen</b><b class="small mut">Bewegung (Strich = Schwelle)</b>';
+    box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><b class="small mut">Schwelle</b><b class="small mut">aktuell</b><span></span>';
     FB_PARTS.forEach(p => {
       box.insertAdjacentHTML('beforeend',
         '<input type="checkbox" id="fpOn_' + p.id + '" hidden><button id="fpTog_' + p.id + '"' + ' class="small onoff" style="min-width:44px" title="ein-/ausschalten">aus</button>' +
@@ -2875,11 +2880,15 @@ const GEN = (() => {
         '<select id="fpO_' + p.id + '">' + (p.kind === 'bass' ? '<option value="1">sehr tief</option><option value="2">tief</option><option value="3">mittel</option>'
           : '<option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option>') + '</select>' +
         (p.kind === 'bass' ? '<span class="small mut">Bass</span>' : '<select id="fpN_' + p.id + '">' + Array.from({ length: 14 }, (_, i) => '<option>' + (i + 2) + '</option>').join('') + '</select>') +
-        '<span class="row" style="gap:6px;flex-wrap:nowrap"><button id="fpC_' + p.id + '">anlernen</button><button id="fpX_' + p.id + '" title="Angelerntes zurücksetzen" hidden>&#10005;</button><span id="fpI_' + p.id + '" class="small mut"></span></span>' +
+        '<input type="range" id="fpS_' + p.id + '" min="5" max="100" step="1" title="wie schnell sich das Körperteil bewegen muss, damit ein Ton erklingt">' +
         '<span style="position:relative;height:18px;background:var(--card2);border:1px solid var(--line);border-radius:9px;overflow:hidden;display:block">' +
         '<b id="fpB_' + p.id + '" style="position:absolute;left:0;top:0;bottom:0;width:0;background:var(--acc)"></b>' +
         '<i id="fpM_' + p.id + '" style="position:absolute;top:0;bottom:0;width:2px;background:var(--warn)"></i>' +
-        '<b id="fpT_' + p.id + '" class="small" style="position:absolute;right:6px;top:0;line-height:18px;font-weight:600"></b></span>');
+        '<b id="fpT_' + p.id + '" class="small" style="position:absolute;right:6px;top:0;line-height:18px;font-weight:600"></b></span>' +
+        '<span class="row" style="gap:4px;flex-wrap:nowrap"><button id="fpC_' + p.id + '" class="small">anlernen</button><button id="fpX_' + p.id + '" class="small" title="Angelerntes zurücksetzen" hidden>&#10005;</button><span id="fpI_' + p.id + '" class="small mut"></span></span>');
+      // Schwelle: Bewegung, ab der ein Ton erklingt (Balken bis 4 = 100 %)
+      $('fpS_' + p.id).oninput = () => { fb.parts[p.id].thr = (+$('fpS_' + p.id).value / 25) / Math.pow(2, (50 - fb.sens) / 50); fbUi(); };
+      $('fpS_' + p.id).onchange = fbSave;
       $('fpOn_' + p.id).onchange = () => { fb.parts[p.id].on = $('fpOn_' + p.id).checked; fbSave(); fbUi(); melPrepare(); };
       $('fpO_' + p.id).onchange = () => { fb.parts[p.id].oct = +$('fpO_' + p.id).value; fbSave(); melPrepare(); };
       if (p.kind !== 'bass') $('fpN_' + p.id).onchange = () => { fb.parts[p.id].n = +$('fpN_' + p.id).value; fbSave(); melPrepare(); };
@@ -2918,6 +2927,7 @@ const GEN = (() => {
       if (p.kind !== 'bass') $('fpN_' + p.id).value = c.n;
       $('fpL_' + p.id).style.opacity = c.on ? 1 : 0.5;
       $('fpM_' + p.id).style.left = Math.min(99, fbPartThr(p.id) / 4 * 100) + '%';
+      $('fpS_' + p.id).value = Math.round(Math.max(5, Math.min(100, fbPartThr(p.id) / 4 * 100)));
       const learned = c.thr != null, now = fbPartCal && fbPartCal.id === p.id;
       $('fpC_' + p.id).textContent = now ? 'Abbrechen' : 'anlernen';
       $('fpC_' + p.id).classList.toggle('learning', !!now);
