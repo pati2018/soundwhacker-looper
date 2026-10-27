@@ -4854,6 +4854,7 @@ const GEN = (() => {
     const c = chans[learnKeyIdx];
     if (e.code === 'Escape') { stopKeyLearn(); return; }
     if (MODIFIER_CODES.includes(e.code)) return;
+    if (/^(Digit|Numpad)[1-5]$/.test(e.code)) { status('Die Tasten 1–5 sind die SWs – bitte eine andere Taste wählen.', true); return; }
     if (e.code === 'Digit0' || e.code === 'Numpad0') { status('Die Taste 0 ist für „Alle vorhören“ reserviert.', true); return; }
     chans.forEach(o => { if (o !== c && o.key && o.key.code === e.code) { o.key = null; renderAssign(o); status('Taste ' + keyLabel(e) + ' gehörte zu Kanal ' + (o.idx + 1) + ' und ist jetzt bei Kanal ' + (c.idx + 1) + '.'); } });
     c.key = { code: e.code, label: keyLabel(e) };
@@ -5602,11 +5603,12 @@ const GEN = (() => {
     }
   };
   // Angelernte Tasten vor dem virtuellen HUB abfangen (capture), damit sie nicht zusätzlich einen SW drücken
+  const SW_KEY = /^(Digit|Numpad)[1-5]$/;   // Tasten 1–5 = SW 1–5 (HUB): die Betriebsart des SW entscheidet, nicht eine angelernte Looper-Taste
   const typingIn = t => t && (t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || (t.tagName === 'INPUT' && !['range', 'checkbox', 'button', 'radio'].includes(t.type)));
   document.addEventListener('keydown', e => {
     if (!$('askModal').hidden) return;
     if (learnKeyIdx >= 0) { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) learnKeyFrom(e); return; }
-    const i = chans.findIndex(c => c.key && c.key.code === e.code);
+    const i = chans.findIndex(c => c.key && c.key.code === e.code && !SW_KEY.test(e.code));   // Tasten 1–5 gehören den SWs
     if (i < 0 || e.ctrlKey || e.altKey || e.metaKey || typingIn(e.target)) return;
     e.preventDefault(); e.stopImmediatePropagation();
     if (e.repeat) return;
@@ -5615,7 +5617,7 @@ const GEN = (() => {
     chans[i].keyHeld = true; press(chans[i], true, 'key');
   }, true);
   document.addEventListener('keyup', e => {
-    const i = chans.findIndex(c => c.key && c.key.code === e.code);
+    const i = chans.findIndex(c => c.key && c.key.code === e.code && !SW_KEY.test(e.code));   // Tasten 1–5 gehören den SWs
     if (i < 0) return;
     e.stopImmediatePropagation();
     if (chans[i].keyHeld) { chans[i].keyHeld = false; press(chans[i], false, 'key'); }
