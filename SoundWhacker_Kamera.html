@@ -65,8 +65,9 @@
   .mN2{animation-delay:1.4s}
   @keyframes mFloat{0%{transform:translateY(10px);opacity:0}20%{opacity:1}100%{transform:translateY(-70px);opacity:0}}
   @media (prefers-reduced-motion:reduce){.mEyes,.mFace,.mHand,.mN1,.mN2{animation:none;opacity:1}}
-  .menu{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin:0 0 24px}
-  .menuBtn{padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:var(--gold);min-width:260px}
+  .menu{display:grid;grid-template-columns:repeat(2,300px);gap:16px;justify-content:center;margin:0 0 24px}
+  @media (max-width:660px){ .menu{grid-template-columns:min(300px,100%)} }
+  .menuBtn{padding:22px 20px;font-size:22px;font-weight:600;border-radius:16px;border-color:var(--gold);width:100%;min-height:96px;user-select:none;-webkit-user-select:none}
   .menuBtn:hover{border-color:#fff}
   .page{display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch}
   .page.open{display:block}
@@ -108,7 +109,7 @@
 <div class="wrap">
   <div class="pgTitle">&#127926; Was soll erklingen?</div>
   <div class="small mut pgSub">Hier stellst du ein, was erklingt: Akkorde, T&ouml;ne, Improvisieren oder die Loops im Looper.</div>
-  <div class="menu" style="justify-content:flex-start">
+  <div class="menu">
     <button class="menuBtn" data-go="pgAkk">&#127929; Akkorde</button>
     <button class="menuBtn" data-go="pgTon">&#127925; T&ouml;ne</button>
     <button class="menuBtn" data-go="pgImp">&#127926; Improvisieren</button>
@@ -181,7 +182,7 @@
 <div class="wrap">
   <div class="pgTitle">&#128257; Looper</div>
   <div class="small mut pgSub">Die 5 Loop-Kan&auml;le. Sie starten von selbst, sobald die Kamera einen Kanal ausl&ouml;st.</div>
-  <div class="row" style="margin:0 0 14px"><button class="menuBtn" data-go="pgGen" style="padding:12px 22px;font-size:17px;min-width:0">&#127922; Zum Loop-Generator</button></div>
+  <div class="row" style="margin:0 0 14px"><button class="menuBtn" data-go="pgGen" style="padding:12px 22px;font-size:17px;width:auto;min-height:0">&#127922; Zum Loop-Generator</button></div>
   <div class="bar row">
     <button class="big start" id="startBtn" hidden>&#9654; Start</button>
     <button class="big stop" id="stopBtn">&#9632; Stopp</button>
@@ -321,7 +322,7 @@
 <div class="wrap">
   <div class="pgTitle">&#127922; Loop-Generator</div>
   <div class="small mut pgSub">Erzeugt f&uuml;nf passende Loops und l&auml;dt sie in die Kan&auml;le des Loopers.</div>
-  <div class="row" style="margin:0 0 14px"><button class="menuBtn" data-go="pgLoop" style="padding:12px 22px;font-size:17px;min-width:0">&#128257; Zum Looper</button></div>
+  <div class="row" style="margin:0 0 14px"><button class="menuBtn" data-go="pgLoop" style="padding:12px 22px;font-size:17px;width:auto;min-height:0">&#128257; Zum Looper</button></div>
   <details class="bar" id="genBox" open>
     <summary style="cursor:pointer"><b>Loop-Generator</b> <span class="small mut">&ndash; erzeugt fünf passende Loops und lädt sie in die Kanäle</span></summary>
     <div class="row" style="margin-top:12px" hidden>
@@ -349,7 +350,7 @@
 <div class="wrap">
   <div class="pgTitle">&#9881; Einstellungen</div>
   <div class="small mut pgSub">SoundFonts und Fernsteuerung.</div>
-  <div class="menu" style="justify-content:flex-start">
+  <div class="menu">
     <button class="menuBtn" data-go="pgSf">&#127932; SoundFonts</button>
     <button class="menuBtn" data-go="pgFern">&#128225; Looper auf anderem iPad steuern</button>
   </div>
