@@ -286,7 +286,7 @@
         <button id="bodyCalib">&#127919; Ruhe-Position anlernen</button>
         <span class="small mut" id="bodyCalibInfo">noch nicht angelernt – Bewegungen werden von einer Standard-Haltung aus gemessen</span>
       </div>
-      <div class="row" style="margin-top:8px">
+      <div class="row" style="margin-top:8px" hidden>
         <label class="small"><input type="checkbox" id="bodyMulti"> mehrere Auslöser gleichzeitig</label>
         <label class="small mut">Haltezeit <input type="range" id="bodyHold" min="0" max="1500" step="50" value="400" style="width:140px"> <span id="bodyHoldVal" style="display:inline-block;min-width:4em">400 ms</span></label>
       </div>
@@ -2130,6 +2130,7 @@ const GEN = (() => {
   }
   function bodySave() { try { localStorage.setItem(BODY_KEY, JSON.stringify(body.cfg)); } catch (e) {} }
   try { const c = JSON.parse(localStorage.getItem(BODY_KEY) || 'null'); if (c) body.cfg = bodyCfgClean(c); } catch (e) {}
+  body.cfg.multi = false;   // „mehrere Auslöser gleichzeitig“ gibt es nicht mehr in der Oberfläche
 
   async function bodyEnsure() {
     if ((body.face && body.pose) || body.loading || !ges.vision) return;
@@ -2436,7 +2437,7 @@ const GEN = (() => {
     const name = $('bodyProf').value, p = bodyProfiles();
     if (!name || !p[name]) return;
     bodyReleaseAll();
-    body.cfg = bodyCfgClean(p[name]); bodySave(); bodyUi();
+    body.cfg = bodyCfgClean(p[name]); body.cfg.multi = false; bodySave(); bodyUi();
     if (p[name].mel) { mel = melClean(p[name].mel); melSave(); MEL_CTRL.forEach(m => { melSt[m.id].idx = -1; }); melUi(); if (ges.mode === 'melody') melPrepare(); }
     if (p[name].fb) { fb = fbClean(p[name].fb); fbSave(); fbUi(); if (ges.mode === 'fullbody') melPrepare(); }
     gesInfo('Profil geladen: ' + name);
