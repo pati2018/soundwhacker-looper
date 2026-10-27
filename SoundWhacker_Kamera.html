@@ -245,7 +245,7 @@
       <input type="checkbox" id="micOn" hidden><button id="micBtn" class="onoff" style="min-width:56px;padding:10px 14px">an</button> <span class="small">&#127908; Mikrofon mit aufnehmen</span>
       <select id="micSel" hidden></select>
       <span class="row" id="micMix" style="gap:8px" hidden>
-        <span class="small mut">Lautstärke</span><input type="range" id="micVol" min="0" max="1000" value="400" style="width:160px">
+        <span class="small mut">Lautstärke</span><input type="range" id="micVol" min="0" max="1000" value="200" style="width:160px">
         <span title="Mikrofon-Pegel" style="width:70px;height:8px;background:var(--line);border-radius:4px;overflow:hidden;display:inline-block"><b id="micLvl" style="display:block;height:100%;width:0;background:var(--on)"></b></span>
       </span>
       <span class="small mut" id="micNote"></span>
@@ -3282,7 +3282,7 @@ const GEN = (() => {
     // Kompressor (gleicht leise/laut an) + Aufholverstärkung + Begrenzer kurz unter 0 dB: kräftig, aber ohne Übersteuern
     mic.comp = ctx.createDynamicsCompressor();
     mic.comp.threshold.value = -30; mic.comp.knee.value = 10; mic.comp.ratio.value = 4; mic.comp.attack.value = 0.005; mic.comp.release.value = 0.25;
-    mic.makeup = ctx.createGain(); mic.makeup.gain.value = 6;
+    mic.makeup = ctx.createGain(); mic.makeup.gain.value = 2.5;
     mic.lim = ctx.createDynamicsCompressor();
     mic.lim.threshold.value = -2; mic.lim.knee.value = 0; mic.lim.ratio.value = 20; mic.lim.attack.value = 0.001; mic.lim.release.value = 0.1;
     mic.an = ctx.createAnalyser(); mic.an.fftSize = 512; mic.buf = new Uint8Array(mic.an.fftSize);
@@ -3301,7 +3301,7 @@ const GEN = (() => {
       mic.gate.gain.setTargetAtTime(open ? 1 : (mic.quiet >= 300 ? 0 : 1), ctx.currentTime, open ? 0.01 : 0.08);
       mic.an.getByteTimeDomainData(mic.buf);
       let peak = 0; for (let i = 0; i < mic.buf.length; i++) peak = Math.max(peak, Math.abs(mic.buf[i] - 128));
-      $('micLvl').style.width = Math.min(100, Math.sqrt(peak / 128) * 110) + '%';   // Wurzel: auch leise Stellen gut sichtbar
+      $('micLvl').style.width = Math.min(100, peak / 128 * 100) + '%';
     }, 80);
     try {   // Mikrofon-Auswahl, wenn mehrere da sind
       const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
@@ -3322,9 +3322,9 @@ const GEN = (() => {
   function micSync() { $('micBtn').textContent = $('micOn').checked ? 'aus' : 'an'; }   // Knopf zeigt, was ein Tipp bewirkt
   $('micOn').onchange = () => { if ($('micOn').checked) micEnable(); else { micDisable(); micNote(''); } };
   $('micSel').onchange = () => { if ($('micOn').checked) micEnable(); };
-  try { const v = localStorage.getItem(STORE + '.micVol2'); if (v != null) $('micVol').value = v; } catch (e) {}
+  try { const v = localStorage.getItem(STORE + '.micVol3'); if (v != null) $('micVol').value = v; } catch (e) {}
   $('micVol').oninput = () => { if (mic.gain) mic.gain.gain.setTargetAtTime($('micVol').value / 100, ctx.currentTime, 0.03); };
-  $('micVol').onchange = () => { try { localStorage.setItem(STORE + '.micVol2', $('micVol').value); } catch (e) {} };
+  $('micVol').onchange = () => { try { localStorage.setItem(STORE + '.micVol3', $('micVol').value); } catch (e) {} };
 
 
   // iOS/Safari: Audio wird erst nach einer echten Berührung freigegeben – mit der ersten Berührung entsperren
