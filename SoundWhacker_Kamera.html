@@ -34,6 +34,7 @@
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
   .ch{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;transition:border-color .1s}
   .ch.drag{border-color:var(--acc);border-style:dashed}
+  .ch{border-color:var(--gold)}
   .ch.open{border-color:var(--on)}
   .ch h2{font-size:16px;margin:0;display:flex;align-items:center;gap:8px}
   .fname{font-size:13px;color:var(--mut);word-break:break-all;min-height:18px}
@@ -179,7 +180,7 @@
   <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
 <div class="wrap">
   <div class="pgTitle">&#128257; Looper</div>
-  <div class="small mut pgSub">Die 5 Loop-Kan&auml;le: WAV laden, Taste/SW anlernen, Start.</div>
+  <div class="small mut pgSub">Die 5 Loop-Kan&auml;le: WAV laden, Start.</div>
   <div class="bar row">
     <button class="big start" id="startBtn">&#9654; Start</button>
     <button class="big stop" id="stopBtn">&#9632; Stopp</button>
@@ -1684,12 +1685,12 @@ const GEN = (() => {
     const card = document.createElement('div');
     card.className = 'ch';
     card.innerHTML =
-      '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '<span class="keyTag small mut" style="font-weight:400;margin-left:auto" title="Tasten auf der PC-Tastatur"></span></h2>' +
+      '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '<span class="keyTag small mut" style="font-weight:400;margin-left:auto" title="Tasten auf der PC-Tastatur" hidden></span></h2>' +
       '<div class="row" style="gap:6px"><button class="fileBtn">WAV laden</button><button class="delBtn" title="Datei aus diesem Kanal entfernen">&#128465; Entfernen</button><button class="dlBtn" title="Datei dieses Kanals speichern">&#11015;</button><input type="file" hidden></div>' +
       '<div class="fname">keine Datei – hierher ziehen</div>' +
       '<div class="row small"><span class="bpmTag mut">Tempo –</span></div>' +
-      '<div class="row small" style="gap:6px"><button class="keyBtn" title="Eine Taste der PC-Tastatur für diesen Kanal festlegen (gilt zusätzlich zur Ziffer)">Taste anlernen</button><button class="keyClr" title="Angelernte Taste entfernen" hidden>&#10005;</button><span class="keyShow mut"></span></div>' +
-      '<select class="modeSel"><option value="hold">Hörbar solange berührt</option><option value="toggle">Umschalten bei Berührung</option></select>' +
+      '<div class="row small" style="gap:6px" hidden><button class="keyBtn" title="Eine Taste der PC-Tastatur für diesen Kanal festlegen (gilt zusätzlich zur Ziffer)">Taste anlernen</button><button class="keyClr" title="Angelernte Taste entfernen" hidden>&#10005;</button><span class="keyShow mut"></span></div>' +
+      '<select class="modeSel" title="Wie die Kamera diesen Kanal schaltet"><option value="hold">Klingt, solange die Bewegung bleibt</option><option value="toggle">Jede Bewegung: an / aus</option></select>' +
       '<div><div class="small mut">Lautstärke</div><input type="range" class="vol" min="0" max="100"></div>' +
       '<button class="hold">&#128266; Vorhören</button>';
     const q = s => card.querySelector(s);
