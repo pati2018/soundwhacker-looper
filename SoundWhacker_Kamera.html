@@ -259,7 +259,7 @@
         <label class="small mut">Tondichte: ruhig <input type="range" id="fbDens" min="0" max="100" value="50" style="width:130px"> dicht</label>
       </div>
       <div class="row" style="margin-top:10px;padding:8px 10px;border:1px dashed var(--line);border-radius:10px">
-        <label class="small"><input type="checkbox" id="fbRoomOn"> <b>Raum-Klavier</b></label>
+        <input type="checkbox" id="fbRoomOn" hidden><button id="fbRoomB" class="small onoff" style="min-width:44px" title="ein-/ausschalten">an</button> <b class="small">Raum-Klavier</b>
         <span class="small mut">Position im Raum (links ↔ rechts) spielt die Tonleiter</span>
         <label class="small mut">Lage <select id="fbRoomOct"><option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option></select></label>
         <label class="small mut">Töne <select id="fbRoomN"></select></label>
@@ -2630,7 +2630,7 @@ const GEN = (() => {
     box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><span></span><b class="small mut">aktuell</b>';
     MEL_CTRL.forEach(m => {
       box.insertAdjacentHTML('beforeend',
-        '<input type="checkbox" id="mcOn_' + m.id + '" title="ein/aus">' +
+        '<input type="checkbox" id="mcOn_' + m.id + '" hidden><button id="mcB_' + m.id + '"' + ' class="small onoff" style="min-width:44px" title="ein-/ausschalten">aus</button>' +
         '<span id="mcL_' + m.id + '">' + m.label + '</span>' +
         '<select id="mcO_' + m.id + '"><option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option></select>' +
         '<select id="mcN_' + m.id + '">' + Array.from({ length: 14 }, (_, i) => '<option>' + (i + 2) + '</option>').join('') + '</select>' +
@@ -2661,10 +2661,10 @@ const GEN = (() => {
     if (!$('melPreset').disabled && [...$('melPreset').options].some(o => o.value === mel.preset)) $('melPreset').value = mel.preset;
     MEL_CTRL.forEach(m => {
       const c = mel.ctrl[m.id];
-      $('mcOn_' + m.id).checked = c.on; $('mcO_' + m.id).value = c.oct; $('mcN_' + m.id).value = c.n;
+      $('mcOn_' + m.id).checked = c.on; $('mcB_' + m.id).textContent = c.on ? 'aus' : 'an'; $('mcO_' + m.id).value = c.oct; $('mcN_' + m.id).value = c.n;
       $('mcL_' + m.id).style.opacity = c.on ? 1 : 0.5;
       const vis = pwMelOn(m.id) ? '' : 'none';
-      ['mcOn_', 'mcL_', 'mcO_', 'mcN_', 'mcC_'].forEach(p => { $(p + m.id).style.display = vis; });
+      ['mcB_', 'mcL_', 'mcO_', 'mcN_', 'mcC_'].forEach(p => { $(p + m.id).style.display = vis; });
       $('mcM_' + m.id).parentElement.style.display = vis;
       const b = $('mcC_' + m.id);
       b.classList.toggle('learning', !!melCal && melCal.id === m.id);
@@ -2870,7 +2870,7 @@ const GEN = (() => {
     box.innerHTML = '<span></span><b class="small mut">Körperteil</b><b class="small mut">Lage</b><b class="small mut">Töne</b><b class="small mut">an das Kind anpassen</b><b class="small mut">Bewegung (Strich = Schwelle)</b>';
     FB_PARTS.forEach(p => {
       box.insertAdjacentHTML('beforeend',
-        '<input type="checkbox" id="fpOn_' + p.id + '">' +
+        '<input type="checkbox" id="fpOn_' + p.id + '" hidden><button id="fpB_' + p.id + '"' + ' class="small onoff" style="min-width:44px" title="ein-/ausschalten">aus</button>' +
         '<span id="fpL_' + p.id + '">' + p.label + '</span>' +
         '<select id="fpO_' + p.id + '">' + (p.kind === 'bass' ? '<option value="1">sehr tief</option><option value="2">tief</option><option value="3">mittel</option>'
           : '<option value="2">sehr tief</option><option value="3">tief</option><option value="4">mittel</option><option value="5">hoch</option><option value="6">sehr hoch</option>') + '</select>' +
@@ -2909,12 +2909,12 @@ const GEN = (() => {
   })();
   function fbUi() {
     $('fbSens').value = fb.sens; $('fbDens').value = fb.dens;
-    $('fbRoomOn').checked = fb.room.on; $('fbRoomOct').value = fb.room.oct; $('fbRoomN').value = fb.room.n;
+    $('fbRoomOn').checked = fb.room.on; $('fbRoomB').textContent = fb.room.on ? 'aus' : 'an'; $('fbRoomOct').value = fb.room.oct; $('fbRoomN').value = fb.room.n;
     $('fbRoomCal').classList.toggle('learning', !!fbCal); $('fbRoomCal').textContent = fbCal ? 'Abbrechen' : 'Raum-Bereich anlernen';
 
     FB_PARTS.forEach(p => {
       const c = fb.parts[p.id];
-      $('fpOn_' + p.id).checked = c.on; $('fpO_' + p.id).value = c.oct;
+      $('fpOn_' + p.id).checked = c.on; $('fpB_' + p.id).textContent = c.on ? 'aus' : 'an'; $('fpO_' + p.id).value = c.oct;
       if (p.kind !== 'bass') $('fpN_' + p.id).value = c.n;
       $('fpL_' + p.id).style.opacity = c.on ? 1 : 0.5;
       $('fpM_' + p.id).style.left = Math.min(99, fbPartThr(p.id) / 4 * 100) + '%';
@@ -4245,6 +4245,18 @@ const GEN = (() => {
   let last = ''; try { last = sessionStorage.getItem('swkamera.page') || ''; } catch (e) {}
   if (last && PARENT[last] !== undefined) go(last);
 })();
+</script>
+<script>
+// Knöpfe „an/aus“ statt Checkboxen (Melodie stufenlos, Ganzkörper): schalten die versteckte Checkbox davor um
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('button.onoff');
+  if (!b) return;
+  const cb = b.previousElementSibling;
+  if (!cb || cb.type !== 'checkbox') return;
+  cb.checked = !cb.checked;
+  cb.dispatchEvent(new Event('change'));
+  b.textContent = cb.checked ? 'aus' : 'an';
+});
 </script>
 </body>
 </html>
