@@ -73,6 +73,7 @@
   .pgTitle{font-weight:700;font-size:20px;margin:0 0 4px;color:var(--gold)}
   .pgSub{margin:0 0 14px}
   .page details>summary{display:none}
+  .row:has(> [id^=chInfo]:empty){display:none}
   .page details>div:first-of-type,.page details>.row:first-of-type{margin-top:0!important}
 </style>
 </head>
@@ -3562,7 +3563,7 @@ const GEN = (() => {
         synth.connect(ch.out);
         ch.synth = synth;
         chFillPresets(); chProgram();
-        chInfo('bereit');
+        chInfo('');   // fertig geladen: nichts anzeigen
         return synth;
       } catch (e) {
         try { if (synth) synth.destroy(); } catch (e2) {}   // halb gestarteten Synth freigeben, damit ein neuer Versuch genug Speicher hat
