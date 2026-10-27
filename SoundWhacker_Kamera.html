@@ -1918,11 +1918,23 @@ const GEN = (() => {
       $('htT_' + i).onchange = handSave;
     });
   })();
+  // „spielt“-Auswahl: nur die 5 Ziele passend zu „Was soll erklingen?“ (z. B. nur Ton 1–5)
+  function pwFillSel(sel, cur) {
+    const w = $('gesWhat').value, base = { kan: 0, akk: 100, ton: 105, imp: 110 }[w];
+    if (base == null) return;
+    const vals = [-1, 0, 1, 2, 3, 4].map(k => (k < 0 ? -1 : base + k));
+    if (!vals.includes(cur)) vals.push(cur);   // ältere Zuordnung trotzdem anzeigen
+    const key = vals.join(',');
+    if (sel.dataset.opts === key) return;
+    sel.dataset.opts = key;
+    sel.innerHTML = vals.map(v => '<option value="' + v + '">' + (v < 0 ? '–' : v >= 100 ? chFieldName(v - 100) : 'Kanal ' + (v + 1)) + '</option>').join('');
+  }
   function handUi() {
     chans.forEach((c, i) => {
       const t = handT.cfg.trig[i];
       $('htL_' + i).textContent = (i + 1) + ' Finger' + (c.gesture ? ' oder eigene Geste ✓' : '');
       $('htL_' + i).style.opacity = t.ch < 0 ? 0.55 : 1;
+      pwFillSel($('htC_' + i), t.ch);
       $('htC_' + i).value = t.ch; $('htT_' + i).value = t.th;
       $('htT_' + i).style.opacity = c.gesture ? 1 : 0.4;
       $('htM_' + i).style.left = Math.min(99, 100 - t.th) + '%';
@@ -2365,6 +2377,7 @@ const GEN = (() => {
   function bodyUi() {   // Einstellungen in die Bedienelemente schreiben
     BODY_TRIG.forEach(t => {
       const c = body.cfg.trig[t.id];
+      pwFillSel($('btC_' + t.id), c.ch);
       $('btC_' + t.id).value = c.ch; $('btT_' + t.id).value = c.th;
       $('btM_' + t.id).style.left = Math.min(99, c.th) + '%';
       $('btL_' + t.id).style.opacity = c.ch < 0 ? 0.55 : 1;
