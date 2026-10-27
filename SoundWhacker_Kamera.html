@@ -3249,6 +3249,8 @@ const GEN = (() => {
     if (!recDest) { $('micOn').checked = false; micSync(); micNote('Dieser Browser kann den Ton nicht aufnehmen.'); return; }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('micOn').checked = false; micSync(); micNote('Dieser Browser gibt das Mikrofon für Webseiten nicht frei.'); return; }
     const id = $('micSel').value;
+    // iPad: bei Audio-Sitzung „playback“ gibt es kein Mikrofon (InvalidStateError) – für die Aufnahme auf „play-and-record“ umstellen
+    try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     try {
       try {
         mic.stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: id ? { exact: id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
@@ -3297,6 +3299,7 @@ const GEN = (() => {
   }
   function micDisable() {
     clearInterval(mic.timer);
+    try { if (navigator.audioSession && !$('micOn').checked) navigator.audioSession.type = 'playback'; } catch (e) {}   // ohne Mikrofon wieder „nur Wiedergabe“ (klingt auch bei Stummschalter)
     ['src', 'gain', 'an'].forEach(k => { if (mic[k]) { try { mic[k].disconnect(); } catch (e) {} mic[k] = null; } });
     if (mic.stream) { mic.stream.getTracks().forEach(t => t.stop()); mic.stream = null; }
     mic.buf = null; $('micMix').hidden = true; $('micLvl').style.width = '0';
