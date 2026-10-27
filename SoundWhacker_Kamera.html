@@ -2984,6 +2984,10 @@ const GEN = (() => {
   $('gesMode').onchange = () => gesSetMode($('gesMode').value);
   // Standard: nur der 1. Auslöser des Körperteils ist an, die anderen aus („an“ gibt ihnen ihre Nummer 2–5)
   function pwStd(part) {
+    if (ges.what === 'mel') {   // Melodie stufenlos: nur das erste Körperteil an (Kopf drehen, linker Arm)
+      if (PW_MEL[part]) { PW_MEL[part].forEach((id, i) => { mel.ctrl[id].on = i === 0; melSt[id].idx = -1; }); melSave(); melUi(); }
+      return;
+    }
     if (part === 'hands') { handT.cfg.trig.forEach((t, k) => { t.last = pwTgt(k); t.ch = k === 0 ? pwTgt(0) : -1; }); handSave(); return; }
     if (!PW_PART[part]) return;
     PW_PART[part].forEach((id, i) => { const k = PW_IDX[id] != null ? PW_IDX[id] : i; body.lastCh[id] = pwTgt(k); body.cfg.trig[id].ch = i === 0 ? pwTgt(k) : -1; });
@@ -2997,7 +3001,7 @@ const GEN = (() => {
     ges.part = part; ges.what = what;
     $('gesPart').value = part; $('gesWhat').value = what;
     [...$('gesWhat').options].forEach(o => { if (o.value === 'mel') o.disabled = part === 'hands' || part === 'augen'; });
-    if (fromUser && changed && what !== 'mel') pwStd(part);
+    if (fromUser && changed) pwStd(part);
     try { localStorage.setItem(STORE + '.gesPW', JSON.stringify({ part, what })); } catch (e) {}
     gesSetMode(part === 'hands' ? 'hands' : part === 'koerper' ? 'fullbody' : what === 'mel' ? 'melody' : 'body');
     bodyUi(); melUi(); handUi();
@@ -3110,6 +3114,8 @@ const GEN = (() => {
     // einmalig: neuer Standard (nur 1. Auslöser an) für die aktuelle Auswahl
     let std = null; try { std = localStorage.getItem(STORE + '.std1'); } catch (e) {}
     if (!std && ges.what !== 'mel') { pwStd(ges.part); bodyUi(); handUi(); try { localStorage.setItem(STORE + '.std1', '1'); } catch (e) {} }
+    let std2 = null; try { std2 = localStorage.getItem(STORE + '.std2'); } catch (e) {}
+    if (!std2) { if (ges.what === 'mel') pwStd(ges.part); try { localStorage.setItem(STORE + '.std2', '1'); } catch (e) {} }
   }
 
   // ---------- Hintergrund wählen (Foto bleibt im Browser gespeichert) ----------
