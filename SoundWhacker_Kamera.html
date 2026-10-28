@@ -3292,6 +3292,8 @@ const GEN = (() => {
         : 'Mikrofon konnte nicht gestartet werden (' + ((e && (e.name || e.message)) || 'unbekannt') + '). Wird es gerade von einer anderen App benutzt?');
       return;
     }
+    const trk = mic.stream.getAudioTracks()[0];
+    if (trk) trk.onended = () => { if (recState.rec && $('micOn').checked) { micNote('Mikrofon war kurz weg – wird neu verbunden …'); micEnable(); } };
     mic.src = ctx.createMediaStreamSource(mic.stream);
     mic.gain = ctx.createGain(); mic.gain.gain.value = $('micVol').value / 100;
     // Kompressor (gleicht leise/laut an) + Aufholverstärkung + Begrenzer kurz unter 0 dB: kräftig, aber ohne Übersteuern
@@ -3303,17 +3305,21 @@ const GEN = (() => {
     mic.an = ctx.createAnalyser(); mic.an.fftSize = 512; mic.buf = new Uint8Array(mic.an.fftSize);
     mic.src.connect(mic.gain); mic.gain.connect(mic.comp); mic.comp.connect(mic.makeup); mic.makeup.connect(mic.lim);
     mic.gate = ctx.createGain(); mic.raw = ctx.createAnalyser(); mic.raw.fftSize = 512; mic.rawBuf = new Float32Array(512); mic.quiet = 0;
-    mic.src.connect(mic.raw);
+    mic.gain.connect(mic.raw);   // Pegel nach der Verstärkung messen
     mic.lim.connect(mic.gate); mic.gate.connect(recDest); mic.gate.connect(mic.an);   // Anzeige zeigt den aufgenommenen Pegel
+    ctx.resume().catch(() => {});
+    if (!ctx.swWatch) { ctx.swWatch = true; ctx.addEventListener('statechange', () => { if (ctx.state !== 'running' && (recState.rec || mic.stream)) ctx.resume().catch(() => {}); }); }
     $('micMix').hidden = false;
     micNote('Tipp: Mit Kopfhörern klingt es am saubersten, sonst nimmt das Mikrofon die Lautsprecher mit auf.');
     mic.timer = setInterval(() => {
       if (!mic.an) return;
-      mic.raw.getFloatTimeDomainData(mic.rawBuf);   // Rausch-Sperre: ist das Mikrofon selbst sehr leise (unter ca. -46 dB), nach 0,3 s stumm
-      let rp = 0; for (let i = 0; i < mic.rawBuf.length; i++) rp = Math.max(rp, Math.abs(mic.rawBuf[i]));
-      const open = rp > 0.005;
-      mic.quiet = open ? 0 : mic.quiet + 80;
-      mic.gate.gain.setTargetAtTime(open ? 1 : (mic.quiet >= 300 ? 0 : 1), ctx.currentTime, open ? 0.01 : 0.08);
+      if (!isIOS) {   // Rausch-Sperre (nur PC): in Sprechpausen nach 0,5 s stumm, damit das verstärkte PC-Rauschen nicht zu hören ist
+        mic.raw.getFloatTimeDomainData(mic.rawBuf);
+        let rp = 0; for (let i = 0; i < mic.rawBuf.length; i++) rp = Math.max(rp, Math.abs(mic.rawBuf[i]));
+        const open = rp > 0.02;
+        mic.quiet = open ? 0 : mic.quiet + 80;
+        mic.gate.gain.setTargetAtTime(open ? 1 : (mic.quiet >= 500 ? 0 : 1), ctx.currentTime, open ? 0.01 : 0.1);
+      }
       mic.an.getByteTimeDomainData(mic.buf);
       let peak = 0; for (let i = 0; i < mic.buf.length; i++) peak = Math.max(peak, Math.abs(mic.buf[i] - 128));
       $('micLvl').style.width = Math.min(100, Math.sqrt(peak / 128) * 110) + '%';   // Wurzel: auch leise Stellen gut sichtbar
