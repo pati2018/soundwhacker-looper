@@ -2000,10 +2000,8 @@ const GEN = (() => {
       const data = m.getAsFloat32Array(), mw = m.width, mh = m.height;
       if (maskC.width !== mw || maskC.height !== mh || !BG.maskImg) { maskC.width = mw; maskC.height = mh; BG.maskImg = maskG.createImageData(mw, mh); BG.maskImg.data.fill(255); }
       const px = BG.maskImg.data;
-      let sum = 0;
-      for (let i = 0, j = 3; i < data.length; i++, j += 4) { const a = (data[i] - 0.25) / 0.5; px[j] = a <= 0 ? 0 : a >= 1 ? 255 : a * 255; sum += px[j]; }
-      const pct = Math.round(sum / 255 / Math.max(1, data.length) * 100), now = performance.now();
-      if (!BG.noteT || now - BG.noteT > 1000) { BG.noteT = now; bgNote('Hintergrund aktiv ✓ – Person ' + pct + ' % des Bildes'); }
+      for (let i = 0, j = 3; i < data.length; i++, j += 4) { const a = (data[i] - 0.25) / 0.5; px[j] = a <= 0 ? 0 : a >= 1 ? 255 : a * 255; }
+      if (!BG.mask) bgNote('Hintergrund aktiv ✓');
       maskG.putImageData(BG.maskImg, 0, 0);
       BG.mask = true;
       } catch (e) { bgErr(e); }
