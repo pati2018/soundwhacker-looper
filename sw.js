@@ -28,7 +28,8 @@ self.addEventListener('fetch', e => {
   if (url.pathname.endsWith('.sf2')) return;
   const isPage = req.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('.html');
   if (isPage) {
-    e.respondWith(fetch(req).then(res => remember(req, res))
+    // no-cache: beim Server nachfragen, ob es eine neue Version gibt (sonst liefert der Browser-Zwischenspeicher bis zu 10 Min. die alte Seite)
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then(res => remember(req, res))
       .catch(() => caches.match(req, { ignoreSearch: true })
         .then(hit => hit || caches.match(/Kamera/i.test(url.pathname) ? './SoundWhacker_Kamera.html' : /Spielen/i.test(url.pathname) ? './SoundWhacker_Spielen.html' : './SoundWhacker_Looper.html'))));
     return;
