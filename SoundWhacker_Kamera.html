@@ -2000,9 +2000,11 @@ const GEN = (() => {
       const data = m.getAsFloat32Array(), mw = m.width, mh = m.height;
       if (maskC.width !== mw || maskC.height !== mh || !BG.maskImg) { maskC.width = mw; maskC.height = mh; BG.maskImg = maskG.createImageData(mw, mh); BG.maskImg.data.fill(255); }
       const px = BG.maskImg.data;
-      for (let i = 0, j = 3; i < data.length; i++, j += 4) { const a = (data[i] - 0.25) / 0.5; px[j] = a <= 0 ? 0 : a >= 1 ? 255 : a * 255; }
+      let sum = 0;
+      for (let i = 0, j = 3; i < data.length; i++, j += 4) { const a = (data[i] - 0.25) / 0.5; px[j] = a <= 0 ? 0 : a >= 1 ? 255 : a * 255; sum += px[j]; }
+      const pct = Math.round(sum / 255 / Math.max(1, data.length) * 100), now = performance.now();
+      if (!BG.noteT || now - BG.noteT > 1000) { BG.noteT = now; bgNote('Hintergrund aktiv ✓ – Person ' + pct + ' % des Bildes'); }
       maskG.putImageData(BG.maskImg, 0, 0);
-      if (!BG.mask) bgNote('Hintergrund aktiv ✓');
       BG.mask = true;
       } catch (e) { bgErr(e); }
     });
@@ -2030,11 +2032,12 @@ const GEN = (() => {
   }
   function bgDrawPerson(g, v, W, H) {
     if (persC.width !== W || persC.height !== H) { persC.width = W; persC.height = H; }
+    // erst das (gespiegelte) Kamerabild, dann mit der Maske ausstanzen (destination-in) – zuverlässiger in Safari als source-in mit Video
     persG.globalCompositeOperation = 'source-over'; persG.clearRect(0, 0, W, H);
     persG.imageSmoothingEnabled = true; persG.imageSmoothingQuality = 'high';
-    persG.drawImage(maskC, 0, 0, W, H);
-    persG.globalCompositeOperation = 'source-in';
     persG.save(); persG.translate(W, 0); persG.scale(-1, 1); persG.drawImage(v, 0, 0, W, H); persG.restore();
+    persG.globalCompositeOperation = 'destination-in';
+    persG.drawImage(maskC, 0, 0, W, H);
     persG.globalCompositeOperation = 'source-over';
     g.drawImage(persC, 0, 0);
   }
