@@ -1963,7 +1963,7 @@ const GEN = (() => {
   }, 100);
 
   // ---------- Virtueller Hintergrund (MediaPipe Selfie Segmenter, wie in „handklang“) ----------
-  const BG = { mode: 'none', seg: null, loading: false, failed: false, mask: false, img: null, maskImg: null };
+  const BG = { mode: 'none', seg: null, loading: false, failed: false, mask: false, img: null, maskImg: null, skip: false };
   const segC = document.createElement('canvas'), segG = segC.getContext('2d');
   const maskC = document.createElement('canvas'), maskG = maskC.getContext('2d');
   const persC = document.createElement('canvas'), persG = persC.getContext('2d');
@@ -1974,15 +1974,18 @@ const GEN = (() => {
     if (BG.seg || BG.loading || BG.failed || !ges.vision) return;
     BG.loading = true; bgNote('Hintergrund-Erkennung wird geladen …');
     const opts = d => ({ baseOptions: { modelAssetPath: MP_BASE + 'models/selfie_segmenter.tflite', delegate: d }, runningMode: 'VIDEO', outputCategoryMask: false, outputConfidenceMasks: true });
-    try { BG.seg = await ges.vision.ImageSegmenter.createFromOptions(ges.fs, opts('GPU')); }
+    // iPad: das kleine Hintergrund-Modell auf dem Prozessor rechnen – die Grafikkarte ist mit Gesicht/Körper/Händen schon voll ausgelastet
+    const order = isIOS ? ['CPU', 'GPU'] : ['GPU', 'CPU'];
+    try { BG.seg = await ges.vision.ImageSegmenter.createFromOptions(ges.fs, opts(order[0])); }
     catch (e) {
-      try { BG.seg = await ges.vision.ImageSegmenter.createFromOptions(ges.fs, opts('CPU')); }
+      try { BG.seg = await ges.vision.ImageSegmenter.createFromOptions(ges.fs, opts(order[1])); }
       catch (e2) { BG.failed = true; bgNote('Hintergrund-Erkennung konnte nicht geladen werden.'); }
     }
     BG.loading = false;
     if (BG.seg) bgNote('Funktioniert ohne Greenscreen, am besten mit gutem Licht.');
   }
   function bgSegment(v) {
+    if (isIOS && (BG.skip = !BG.skip)) return;   // iPad: nur jedes 2. Bild – spart Rechenzeit, die Maske bleibt dazwischen stehen
     const sw = 256, sh = Math.round(256 * (v.videoHeight || 480) / (v.videoWidth || 640));
     if (segC.width !== sw || segC.height !== sh) { segC.width = sw; segC.height = sh; }
     segG.save(); segG.translate(sw, 0); segG.scale(-1, 1); segG.drawImage(v, 0, 0, sw, sh); segG.restore();
@@ -3084,7 +3087,7 @@ const GEN = (() => {
       const v = $('gesVideo');
       v.srcObject = ges.stream; await v.play();
       const cv = $('gesCv');
-      cv.width = Math.min(1280, v.videoWidth || 640);                 // volle Auflösung, damit Aufnahmen scharf sind
+      cv.width = Math.min(isIOS ? 960 : 1280, v.videoWidth || 640);   // volle Auflösung, damit Aufnahmen scharf sind (iPad etwas kleiner: weniger Speicher beim Aufnehmen)
       cv.height = Math.round(cv.width * (v.videoHeight || 480) / (v.videoWidth || 640));
       cv.hidden = false;
       if (!ges.vision) {
@@ -3187,7 +3190,7 @@ const GEN = (() => {
     const stream = $('gesCv').captureStream(30);
     if (recDest) recDest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
     const mime = recMime(), opts = mime ? { mimeType: mime } : {};
-    opts.videoBitsPerSecond = 5000000; opts.audioBitsPerSecond = 192000;
+    opts.videoBitsPerSecond = isIOS ? 2500000 : 5000000; opts.audioBitsPerSecond = 192000;   // iPad: halbe Datenrate, die Aufnahme liegt bis zum Speichern im Arbeitsspeicher
     let r;
     try { r = new MediaRecorder(stream, opts); }
     catch (e) { try { r = new MediaRecorder(stream); } catch (e2) { recTime('Aufnahme konnte nicht starten: ' + e2.message); return; } }
