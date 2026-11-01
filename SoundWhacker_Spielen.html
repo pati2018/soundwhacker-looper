@@ -2965,43 +2965,20 @@ document.getElementById('arpSyncBtn').onclick=async()=>{
   await fetch('/arp_sync',{method:'POST'}).catch(()=>{});
 };
 
-// ===== SW Touch-Simulation (Mute/Unmute per Web-Button) =====
-const swTouchState=[false,false,false,false,false,false]; // Index 1..5: true=aktiv(unmuted)
-function updateSwTouchBtn(id){
-  const btn=document.getElementById('swTouchBtn'+id);
-  if(!btn) return;
-  const on=swTouchState[id];
-  btn.innerHTML=(on?'\uD83D\uDD0A':'\uD83D\uDD07')+' SW'+id;
-  btn.style.borderColor=on?'var(--acc)':'';
-  btn.style.color=on?'var(--acc)':'';
+// ===== SW vorhören (Hauptseite): gedrückt halten = SW berühren – spielt, was der SW eingestellt hat =====
+const swTouchState=[false,false,false,false,false,false]; // bleibt für andere Stellen (immer „aus“)
+function updateSwTouchBtn(){}      // Anzeige folgt jetzt dem Drücken (siehe swPressBtn)
+function updateSwTouchAllBtn(){}
+function swPressBtn(btn, ids, label){
+  let held=false;
+  btn.innerHTML=label; btn.style.touchAction='none';
+  const down=ev=>{ ev.preventDefault(); try{btn.setPointerCapture(ev.pointerId);}catch(e){} if(held) return; held=true;
+    ids.forEach(id=>{ if(window.swTouch) window.swTouch(id,true); }); btn.style.borderColor='var(--acc)'; btn.style.color='var(--acc)'; };
+  const up=()=>{ if(!held) return; held=false; ids.forEach(id=>{ if(window.swTouch) window.swTouch(id,false); }); btn.style.borderColor=''; btn.style.color=''; };
+  btn.onpointerdown=down; btn.onpointerup=up; btn.onpointercancel=up; btn.onlostpointercapture=up;
 }
-function updateSwTouchAllBtn(){
-  const btn=document.getElementById('swTouchAllBtn');
-  if(!btn) return;
-  const anyOn=swTouchState.some((v,i)=>i>0&&v);
-  btn.innerHTML=(anyOn?'\uD83D\uDD0A':'\uD83D\uDD07')+' Alle';
-  btn.style.borderColor=anyOn?'var(--acc)':'';
-  btn.style.color=anyOn?'var(--acc)':'';
-}
-for(let i=1;i<=5;i++){
-  document.getElementById('swTouchBtn'+i).onclick=(function(id){return async()=>{
-    swTouchState[id]=!swTouchState[id];
-    await fetch('/arp_mute?id='+id+'&muted='+(swTouchState[id]?'0':'1'),{method:'POST'}).catch(()=>{});
-    updateSwTouchBtn(id);
-    updateSwTouchAllBtn();
-  };})(i);
-}
-document.getElementById('swTouchAllBtn').onclick=async()=>{
-  const anyOn=swTouchState.some((v,i)=>i>0&&v);
-  const newOn=!anyOn;
-  // sequenziell senden (ESP32 single-threaded)
-  for(let i=1;i<=5;i++){
-    swTouchState[i]=newOn;
-    await fetch('/arp_mute?id='+i+'&muted='+(newOn?'0':'1'),{method:'POST'}).catch(()=>{});
-  }
-  for(let i=1;i<=5;i++) updateSwTouchBtn(i);
-  updateSwTouchAllBtn();
-};
+for(let i=1;i<=5;i++){ const b=document.getElementById('swTouchBtn'+i); b.title='gedr\u00fcckt halten = SW'+i+' ber\u00fchren'; swPressBtn(b,[i],'\u25B6 SW'+i); }
+swPressBtn(document.getElementById('swTouchAllBtn'),[1,2,3,4,5],'\u25B6 Alle');
 
 async function enterMelMode(){
   buildPiano(12,84);
