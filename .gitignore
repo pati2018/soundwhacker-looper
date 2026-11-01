@@ -2,3 +2,4 @@ backup/
 *.sf2
 *.sf3
 !soundfonts/*.sf2
+*.zip
