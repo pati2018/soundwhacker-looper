@@ -1449,6 +1449,26 @@ button.btn{font-size:13px;white-space:nowrap}
     P.filled = true; S.dpresets[n] = P; save();
   }
 
+  // ---------- Geräte-Presets importieren (mit WAV-Dateien der zugeteilten Loops) ----------
+  const b64enc = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+  const b64dec = s => { const bin = atob(s), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; };
+  async function dpresetImport(arr) {
+    for (let n = 1; n <= 4; n++) {
+      const P = arr[n];
+      if (!(P && Array.isArray(P.sw) && P.sw.length >= 6)) { S.dpresets[n] = null; continue; }
+      const L = P.loops; delete P.loops;   // die WAV-Daten nicht im Browser-Zwischenspeicher der Einstellungen ablegen
+      if (L && P.lp && window.swLooper && window.swLooper.putPresetRaw) {
+        try {
+          await window.swLooper.putPresetRaw({ name: P.lp, master: L.master, projBpm: L.projBpm,
+            ch: (L.ch || []).map(d => Object.assign({}, d, { b64: undefined, bytes: d.b64 ? b64dec(d.b64) : null })) });
+        } catch (e) { console.warn('[Spielen] Loops konnten nicht eingespielt werden', e); }
+      }
+      S.dpresets[n] = P;
+    }
+    save();
+  }
+  window.swDpresetImport = dpresetImport;
+
   // ---------- Antworten auf die Anfragen der Oberfläche (statt HTTP zum ESP32) ----------
   const ok = (body, type) => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status: 200, headers: { 'Content-Type': type || (typeof body === 'string' ? 'text/plain' : 'application/json') } });
   const bad = m => new Response(m || 'bad', { status: 400 });
@@ -1596,13 +1616,29 @@ button.btn{font-size:13px;white-space:nowrap}
       const im = { root: S.improRoot, scale: S.improScale, oct: S.improOct }; for (let i = 1; i <= 5; i++) im['e' + i] = S.improEn[i] ? 1 : 0;
       return ok({ ids, impro: im, arpDiv: S.arpDiv, arpEn: R.arpEn.map((v, i) => (i && v ? 1 : 0)), arpBpm: S.arpBpm, vol: S.vol, led: [] });
     },
-    '/export_presets': () => ok(exportJson()),
+    '/export_presets': async () => {   // mit den WAV-Dateien der Loop-Kanäle, die einem SW mit „Looper EIN“ zugeteilt sind
+      const j = exportJson();
+      if (window.swLooper && window.swLooper.getPresetNamed) {
+        for (let n = 1; n <= 4; n++) {
+          const P = j.raw[n];
+          if (!P || !P.lp) continue;
+          const used = new Set();
+          for (let i = 1; i <= 5; i++) if ((P.lo || [])[i]) used.add(((P.lch || [])[i] || i) - 1);
+          if (!used.size) continue;
+          let L = null; try { L = await window.swLooper.getPresetNamed(P.lp); } catch (e) {}
+          if (!L) continue;
+          P.loops = { name: L.name, master: L.master, projBpm: L.projBpm || null,
+            ch: (L.ch || []).map((d, k) => Object.assign({}, d, { bytes: undefined, b64: used.has(k) && d.bytes ? b64enc(d.bytes) : null })) };
+        }
+      }
+      return ok(j);
+    },
     '/dpreset_raw': q => { presetFromRaw(q); return ok('ok'); },
-    '/dpreset_import': q => {   // vollständige Presets aus einer Spielen-Exportdatei
+    '/dpreset_import': async q => {   // vollständige Presets aus einer Spielen-Exportdatei
       let arr; try { arr = JSON.parse(q.get('json') || 'null'); } catch (e) { return bad('json'); }
       if (!Array.isArray(arr)) return bad('json');
-      for (let n = 1; n <= 4; n++) { const P = arr[n]; S.dpresets[n] = P && Array.isArray(P.sw) && P.sw.length >= 6 ? P : null; }
-      save(); return ok('ok');
+      await dpresetImport(arr);
+      return ok('ok');
     },
     '/dpreset_clear_all': () => { S.dpresets = [null, null, null, null, null]; for (let i = 1; i <= 5; i++) { melStop(i); arpStop(i); S.mel[i] = []; R.melStep[i] = 0; } save(); return ok('ok'); },
     '/midichan': (q, m) => {
@@ -2322,7 +2358,8 @@ document.getElementById('dpimport').addEventListener('change',async(e)=>{
     if(!data.presets||!Array.isArray(data.presets)){istat.textContent='Ung\u00fcltige Datei';istat.className='err';return;}
     await fetch('/dpreset_clear_all',{method:'POST'});
     if(Array.isArray(data.raw)){   // Datei aus SoundWhacker Spielen: Presets vollständig übernehmen
-      await fetch('/dpreset_import',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'json='+encodeURIComponent(JSON.stringify(data.raw))});
+      istat.textContent='Importiere (mit Loops)\u2026';
+      await window.swDpresetImport(data.raw);
     } else for(const pr of data.presets){
       if(!pr.filled) continue; // leere Slots nicht importieren (auch alte Dateien ohne filled-Flag)
       let n=pr.n;
@@ -5732,7 +5769,10 @@ const GEN = (() => {
       try { localStorage.setItem(STORE + '.preset', name); } catch (e) {}
       return true;
     },
-    loadPresetNamed: name => loadPreset(name)
+    loadPresetNamed: name => loadPreset(name),
+    // Export/Import der Geräte-Presets: Looper-Preset roh lesen bzw. wieder ablegen (WAV-Daten als ArrayBuffer)
+    getPresetNamed: name => dbDo('readonly', s => s.get(name)),
+    async putPresetRaw(obj) { await dbDo('readwrite', s => s.put(obj)); await refreshPresets($('presetSel').value || obj.name); }
   };
   // Angelernte Tasten vor dem virtuellen HUB abfangen (capture), damit sie nicht zusätzlich einen SW drücken
   const SW_KEY = /^(Digit|Numpad)[1-5]$/;   // Tasten 1–5 = SW 1–5 (HUB): die Betriebsart des SW entscheidet, nicht eine angelernte Looper-Taste
