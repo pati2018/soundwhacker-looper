@@ -1599,7 +1599,12 @@ button.btn{font-size:13px;white-space:nowrap}
     '/volumes': () => ok({ vol: S.vol }),
     '/revs': () => ok({ rev: S.rev }),
     '/rev_set': q => { const id = idArg(q); S.rev[id] = Math.max(0, Math.min(127, +q.get('val') || 0)); if (A.synth) A.synth.controllerChange(chOf(id), 91, S.rev[id]); save(); return ok('ok'); },
-    '/volume_set': q => { const id = idArg(q); S.vol[id] = Math.max(0, Math.min(127, +q.get('val') || 0)); if (A.synth) A.synth.controllerChange(chOf(id), 7, S.vol[id]); save(); return ok('ok'); },
+    '/volume_set': q => {
+      const id = idArg(q); S.vol[id] = Math.max(0, Math.min(127, +q.get('val') || 0));
+      if (A.synth) A.synth.controllerChange(chOf(id), 7, S.vol[id]);
+      if (S.loopOn[id] && window.swLooper && window.swLooper.setVol) window.swLooper.setVol((S.loopCh[id] || id) - 1, S.vol[id] / 127);   // Looper-SW: Regler = Lautstärke des Loop-Kanals
+      save(); return ok('ok');
+    },
     '/dpresets': () => ok({ presets: [1, 2, 3, 4].map(n => ({ n, name: (S.dpresets[n] && S.dpresets[n].name) || '', filled: !!S.dpresets[n] })) }),
     '/dpreset_save': q => {
       const n = Math.max(1, Math.min(4, +q.get('num') || 1)), P = snapshot(q.get('name') || ('Preset ' + n));
@@ -5763,6 +5768,14 @@ const GEN = (() => {
       return true;
     },
     loadPresetNamed: name => loadPreset(name),
+    // Lautstärke eines Kanals von außen (Regler auf der Hauptseite, wenn der SW den Looper schaltet); v = 0..1
+    setVol(i, v) {
+      const c = chans[i]; if (!c) return;
+      c.vol = Math.max(0, Math.min(1, v));
+      if (c.el && c.el.vol) c.el.vol.value = Math.round(c.vol * 100);
+      if (c.open && c.gain) c.gain.gain.setTargetAtTime(c.vol, ctx.currentTime, 0.01);
+      save();
+    },
     // Export/Import der Geräte-Presets: Looper-Preset roh lesen bzw. wieder ablegen (WAV-Daten als ArrayBuffer)
     getPresetNamed: name => dbDo('readonly', s => s.get(name)),
     async putPresetRaw(obj) { await dbDo('readwrite', s => s.put(obj)); await refreshPresets($('presetSel').value || obj.name); }
