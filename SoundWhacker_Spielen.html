@@ -1270,9 +1270,9 @@ button.btn{font-size:13px;white-space:nowrap}
   }, 15);
 
   // ---------- Melodie einmal abspielen (Vorhören im Bereich Melodie) ----------
-  const playT = [[], [], [], [], [], []];
+  const playT = [[], [], [], [], [], []], PLAYIDX = [-1, -1, -1, -1, -1, -1];   // PLAYIDX: gerade vorgehörter Schritt (für das Aufblinken)
   function melPlayStop(id) {
-    playT[id].forEach(clearTimeout); playT[id] = [];
+    playT[id].forEach(clearTimeout); playT[id] = []; PLAYIDX[id] = -1;
     if (R.playNotes && R.playNotes[id]) { R.playNotes[id].forEach(n => off(id, n)); R.playNotes[id] = null; }
   }
   function melPlayOnce(id) {
@@ -1280,13 +1280,13 @@ button.btn{font-size:13px;white-space:nowrap}
     const steps = S.mel[id]; if (!steps.length) return 0;
     if (!R.playNotes) R.playNotes = [];
     let ms = 0;
-    steps.forEach(st => {
+    steps.forEach((st, i) => {
       const len = DUR_Q[st.d || 0] * 60000 / S.arpBpm;
-      playT[id].push(setTimeout(() => { if (R.playNotes[id]) R.playNotes[id].forEach(n => off(id, n)); R.playNotes[id] = st.n.slice(); st.n.forEach(n => on(id, n, 100)); }, ms));
+      playT[id].push(setTimeout(() => { PLAYIDX[id] = i; if (R.playNotes[id]) R.playNotes[id].forEach(n => off(id, n)); R.playNotes[id] = st.n.slice(); st.n.forEach(n => on(id, n, 100)); }, ms));
       ms += len;
       playT[id].push(setTimeout(() => { st.n.forEach(n => off(id, n)); }, ms - len * 0.05));
     });
-    playT[id].push(setTimeout(() => { R.playNotes[id] = null; playT[id] = []; }, ms));
+    playT[id].push(setTimeout(() => { R.playNotes[id] = null; playT[id] = []; PLAYIDX[id] = -1; }, ms));
     return Math.round(ms);
   }
 
@@ -1475,8 +1475,8 @@ button.btn{font-size:13px;white-space:nowrap}
     },
     '/slot_transpose': q => { const s = Math.max(1, Math.min(5, +q.get('slot') || 1)), t = parseInt(q.get('step')); S.slots[s].ts = [-2, -1, 0, 1, 2].includes(t) ? t : 0; save(); return ok('ok'); },
     '/mel': q => {
-      const id = idArg(q), st = S.mel[id], arpOn = R.arpEn[id] && !R.arpMuted[id];
-      return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], looper: !!S.loopOn[id], len: st.length, playing: arpOn || R.melPlaying[id] });
+      const id = idArg(q), st = S.mel[id], arpOn = R.arpEn[id] && !R.arpMuted[id], pv = PLAYIDX[id] >= 0;
+      return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: pv ? PLAYIDX[id] : arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], looper: !!S.loopOn[id], len: st.length, playing: pv || arpOn || R.melPlaying[id] });
     },
     '/mel_play': q => {
       const id = idArg(q);
