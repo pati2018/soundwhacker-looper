@@ -1197,7 +1197,7 @@ button.btn{font-size:13px;white-space:nowrap}
   // ---------- Was ein SW beim Berühren/Loslassen macht (wie loop() im HUB) ----------
   function pickImpro(id) {
     const sc = IMPRO_SCALES[S.improScale[id]] || IMPRO_SCALES[0];
-    const base = Math.max(12, Math.min(116, S.improOct[id] * 12 + S.improRoot[id]));
+    const base = Math.max(12, Math.min(116, S.improOct[id] * 12 + S.improRoot[id] + stepToSemi(S.ts[id])));   // Transponieren gilt auch beim Improvisieren
     const pool = sc.map(x => base + x).filter(n => n <= 127 && n !== R.improNote[id]);
     return pool.length ? pool[Math.floor(Math.random() * pool.length)] : base;
   }
