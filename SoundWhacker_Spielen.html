@@ -4528,7 +4528,7 @@ const GEN = (() => {
       const s = JSON.parse(localStorage.getItem(STORE) || 'null');
       if (!s) return;
       if (typeof s.master === 'number') $('master').value = s.master;
-      (s.ch || []).forEach((d, i) => { if (!chans[i] || !d) return; if (typeof d.vol === 'number') chans[i].vol = d.vol; if (d.mode === 'hold' || d.mode === 'toggle') chans[i].mode = d.mode; if (d.key && typeof d.key.code === 'string') chans[i].key = { code: d.key.code, label: String(d.key.label || d.key.code) }; });
+      (s.ch || []).forEach((d, i) => { if (!chans[i] || !d) return; if (typeof d.vol === 'number') chans[i].vol = d.vol; if (d.mode === 'hold' || d.mode === 'toggle') chans[i].mode = d.mode; chans[i].key = null; /* Taste anlernen gibt es in Spielen nicht mehr */ });
     } catch (e) {}
   }
   // Standard: Taste/SW 1–5 schaltet Kanal 1–5 (wenn der SW auf „Looper EIN“ steht); eine angelernte Taste schaltet den Kanal zusätzlich direkt
@@ -4754,7 +4754,7 @@ const GEN = (() => {
         } else clearSample(c);
         c.vol = typeof d.vol === 'number' ? d.vol : 0.9;
         c.mode = d.mode === 'toggle' ? 'toggle' : 'hold';
-        c.key = d.key && typeof d.key.code === 'string' ? d.key : null;
+        c.key = null;
         c.gesture = validGes(d.gesture) ? d.gesture : null;
         c.fingerOn = d.fingerOn !== false;
         c.el.vol.value = Math.round(c.vol * 100);
@@ -4926,11 +4926,11 @@ const GEN = (() => {
     const card = document.createElement('div');
     card.className = 'ch';
     card.innerHTML =
-      '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '<span class="keyTag small mut" style="font-weight:400;margin-left:auto" title="Tasten auf der PC-Tastatur"></span></h2>' +
+      '<h2><span class="lamp"></span>Kanal ' + (c.idx + 1) + '<span class="keyTag small mut" style="font-weight:400;margin-left:auto;display:none" title="Tasten auf der PC-Tastatur"></span></h2>' +
       '<div class="row" style="gap:6px"><button class="fileBtn">WAV laden</button><button class="delBtn" title="Datei aus diesem Kanal entfernen">&#128465; Entfernen</button><button class="dlBtn" title="Datei dieses Kanals speichern">&#11015;</button><input type="file" hidden></div>' +
       '<div class="fname">keine Datei – hierher ziehen</div>' +
       '<div class="row small"><span class="bpmTag mut">Tempo –</span></div>' +
-      '<div class="row small" style="gap:6px"><button class="keyBtn" title="Eine Taste der PC-Tastatur für diesen Kanal festlegen (gilt zusätzlich zur Ziffer)">Taste anlernen</button><button class="keyClr" title="Angelernte Taste entfernen" hidden>&#10005;</button><span class="keyShow mut"></span></div>' +
+      '<div class="row small" style="gap:6px;display:none"><button class="keyBtn" title="Eine Taste der PC-Tastatur für diesen Kanal festlegen (gilt zusätzlich zur Ziffer)">Taste anlernen</button><button class="keyClr" title="Angelernte Taste entfernen" hidden>&#10005;</button><span class="keyShow mut"></span></div>' +
       '<select class="modeSel"><option value="hold">Hörbar solange berührt</option><option value="toggle">Umschalten bei Berührung</option></select>' +
       '<div><div class="small mut">Lautstärke</div><input type="range" class="vol" min="0" max="100"></div>' +
       '<button class="hold">&#128266; Vorhören</button>';
