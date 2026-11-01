@@ -1042,7 +1042,8 @@ button.btn{font-size:13px;white-space:nowrap}
       note: arr6(60), chordRoot: arr6(-1), chordQual: arr6(0), ts: arr6(0),
       instr: [0, 1, 2, 3, 4, 5].map(() => ({ p: 0, m: 0, l: 0 })), instrList: [],
       improRoot: arr6(0), improScale: arr6(0), improOct: arr6(4), improEn: arr6(false), improMode: false,
-      akkordOff: arr6(false), lastChord: arr6(null), loopOn: arr6(false), loopCh: [0, 1, 2, 3, 4, 5], mel: [0, 1, 2, 3, 4, 5].map(() => []), melMode: arr6(false),
+      akkordOff: arr6(true), lastChord: arr6(null),   // Standard: keinem SW ist etwas zugeordnet (Betriebsart gezielt wählen)
+      loopOn: arr6(false), loopCh: [0, 1, 2, 3, 4, 5], mel: [0, 1, 2, 3, 4, 5].map(() => []), melMode: arr6(false),
       vol: arr6(100), rev: arr6(30), midiCh: [0, 1, 2, 3, 4, 5],
       arpBpm: 120, arpDiv: arr6(0), arpTgm: arr6(false), liveMode: arr6(false),
       slots: [0, 1, 2, 3, 4, 5].map(() => ({ root: -1, qual: 0, ts: 0 })), activeSlot: 0,
@@ -1517,7 +1518,7 @@ button.btn{font-size:13px;white-space:nowrap}
     '/slot_transpose': q => { const s = Math.max(1, Math.min(5, +q.get('slot') || 1)), t = parseInt(q.get('step')); S.slots[s].ts = [-2, -1, 0, 1, 2].includes(t) ? t : 0; save(); return ok('ok'); },
     '/mel': q => {
       const id = idArg(q), st = S.mel[id], arpOn = R.arpEn[id] && !R.arpMuted[id], pv = PLAYIDX[id] >= 0;
-      return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: pv ? PLAYIDX[id] : arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], looper: !!S.loopOn[id], loopCh: S.loopCh[id] || id, root: S.chordRoot[id], qual: S.chordQual[id], note: S.note[id], ts: S.ts[id], last: S.lastChord[id], len: st.length, playing: pv || arpOn || R.melPlaying[id] });
+      return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: pv ? PLAYIDX[id] : arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], looper: !!S.loopOn[id], akkOff: !!S.akkordOff[id], loopCh: S.loopCh[id] || id, root: S.chordRoot[id], qual: S.chordQual[id], note: S.note[id], ts: S.ts[id], last: S.lastChord[id], len: st.length, playing: pv || arpOn || R.melPlaying[id] });
     },
     '/mel_play': q => {
       const id = idArg(q);
@@ -2649,6 +2650,7 @@ async function loadMel(){
   try{
     const j=await(await fetch('/mel?id='+melID)).json();
     melData=j;
+    if(j.akkOff!=null) akkordOffState[melID]=!!j.akkOff;
     // Nur bei Strukturänderung komplett neu zeichnen; sonst nur das blaue Highlight verschieben
     if(melStructSig(j)!==melRenderedSig) renderMelSeq();
     else updateMelSeqHighlight();
