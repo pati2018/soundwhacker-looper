@@ -570,6 +570,7 @@ button.btn{font-size:13px;white-space:nowrap}
       <button id="modeimproBtn" class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9836; Impro AUS</button>
       <button id="modelooperBtn" class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#128257; Looper AUS</button>
       <select id="loopChSel" hidden title="Welchen Loop-Kanal dieser SW schaltet" style="font-size:20px;padding:14px 10px;border-radius:12px"><option value="1">Kanal 1</option><option value="2">Kanal 2</option><option value="3">Kanal 3</option><option value="4">Kanal 4</option><option value="5">Kanal 5</option></select>
+      <select id="loopHoldSel" hidden title="Wie der SW den Loop schaltet" style="font-size:20px;padding:14px 10px;border-radius:12px"><option value="0">&#128076; halten</option><option value="1">&#128257; an / aus</option></select>
     </div>
     <!-- Instrument (gilt für alle Modi) -->
     <div style="margin-top:40px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
@@ -1228,7 +1229,10 @@ button.btn{font-size:13px;white-space:nowrap}
   function touch(id, pressed) {
     if (R.touched[id] === pressed) return;
     R.touched[id] = pressed;
-    if (S.loopOn[id]) { if (window.swLooper) window.swLooper.press((S.loopCh[id] || id) - 1, pressed); return; }   // Looper: SW n schaltet seinen gewählten Kanal (Standard n)
+    if (S.loopOn[id]) {   // Looper: SW schaltet seinen Kanal – halten oder an/aus wie bei der Melodie (👌 / 🔁; Live = halten)
+      if (window.swLooper) window.swLooper.press((S.loopCh[id] || id) - 1, pressed, S.arpTgm[id] && !S.liveMode[id] ? 'toggle' : 'hold', 'sw' + id);
+      return;
+    }   // Looper: SW n schaltet seinen gewählten Kanal (Standard n)
     if (pressed) kick();
     const steps = S.mel[id];
     if (S.improMode && S.improEn[id]) {
@@ -1518,7 +1522,7 @@ button.btn{font-size:13px;white-space:nowrap}
     '/slot_transpose': q => { const s = Math.max(1, Math.min(5, +q.get('slot') || 1)), t = parseInt(q.get('step')); S.slots[s].ts = [-2, -1, 0, 1, 2].includes(t) ? t : 0; save(); return ok('ok'); },
     '/mel': q => {
       const id = idArg(q), st = S.mel[id], arpOn = R.arpEn[id] && !R.arpMuted[id], pv = PLAYIDX[id] >= 0;
-      return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: pv ? PLAYIDX[id] : arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], looper: !!S.loopOn[id], akkOff: !!S.akkordOff[id], loopCh: S.loopCh[id] || id, root: S.chordRoot[id], qual: S.chordQual[id], note: S.note[id], ts: S.ts[id], last: S.lastChord[id], len: st.length, playing: pv || arpOn || R.melPlaying[id] });
+      return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: pv ? PLAYIDX[id] : arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], looper: !!S.loopOn[id], akkOff: !!S.akkordOff[id], tgm: S.arpTgm[id] && !S.liveMode[id] ? 1 : 0, loopCh: S.loopCh[id] || id, root: S.chordRoot[id], qual: S.chordQual[id], note: S.note[id], ts: S.ts[id], last: S.lastChord[id], len: st.length, playing: pv || arpOn || R.melPlaying[id] });
     },
     '/mel_play': q => {
       const id = idArg(q);
@@ -1543,7 +1547,7 @@ button.btn{font-size:13px;white-space:nowrap}
     '/mel_ins_step': q => { const id = idArg(q); if (S.mel[id].length >= MAX_MELODY) return ok('full'); let i = parseInt(q.get('idx')); i = Math.max(0, Math.min(S.mel[id].length, isNaN(i) ? 0 : i)); S.mel[id].splice(i, 0, { n: notesArg(q), d: Math.max(0, Math.min(7, +q.get('dur') || 0)) }); save(); return ok('ok'); },
     '/looper_mode': q => {
       const id = idArg(q), on = q.get('on') === '1';
-      if (S.loopOn[id] && window.swLooper && (!on || q.has('ch'))) window.swLooper.press((S.loopCh[id] || id) - 1, false);
+      if (S.loopOn[id] && window.swLooper && (!on || q.has('ch'))) window.swLooper.press((S.loopCh[id] || id) - 1, false, 'hold', 'sw' + id);
       if (q.has('ch')) { const c = +q.get('ch'); if (c >= 1 && c <= 5) S.loopCh[id] = c; }
       R.touched[id] = false; if (q.has('on')) S.loopOn[id] = on; save(); return ok('ok');
     },
@@ -3039,6 +3043,8 @@ function updateModeBtns(id){
   if(lBtn){ lBtn.textContent='\uD83D\uDD01 Looper '+(isLoop?'EIN \u25cf':'AUS'); lBtn.style.cssText='border-color:'+(isLoop?'var(--acc)':'')+';color:'+(isLoop?'var(--acc)':''); }
   const lcs=document.getElementById('loopChSel');
   if(lcs){ lcs.hidden=!isLoop; lcs.value=String((melData&&melData.loopCh)||melID); }
+  const lhs=document.getElementById('loopHoldSel');
+  if(lhs){ lhs.hidden=!isLoop; if(document.activeElement!==lhs) lhs.value=String((melData&&melData.tgm)?1:0); }
   const mBtn=document.getElementById('modemelBtn');
   const aBtn=document.getElementById('modeakkBtn');
   const iBtn=document.getElementById('modeimproBtn');
@@ -3139,6 +3145,10 @@ document.getElementById('modetonBtn').onclick=()=>setMode('ton');
   document.getElementById('tonPlayBtn').addEventListener('pointerdown',()=>{ fetch('/ton_preview?id='+melID,{method:'POST'}).catch(()=>{}); });
 })();
 window.swSyncTon=()=>{ if(!melData) return; const ns=document.getElementById('mel-note'), tr=document.getElementById('mel-trans2'); if(ns&&melData.note!=null&&document.activeElement!==ns) ns.value=melData.note; if(tr&&melData.ts!=null&&document.activeElement!==tr) tr.value=melData.ts; };
+document.getElementById('loopHoldSel').onchange=async()=>{
+  await fetch('/arp_touch_mode?id='+melID+'&m='+document.getElementById('loopHoldSel').value,{method:'POST'});
+  await loadMelArp(); await loadMel();   // 👌/🔁 auf der Hauptseite zeigt dasselbe
+};
 document.getElementById('loopChSel').onchange=async()=>{ await fetch('/looper_mode?id='+melID+'&ch='+document.getElementById('loopChSel').value,{method:'POST'}); await loadMel(); };
 document.getElementById('modemelBtn').onclick=()=>setMode('mel');
 document.getElementById('modeakkBtn').onclick=()=>setMode('akkord');
@@ -4953,11 +4963,11 @@ const GEN = (() => {
   };
 
   // ---------- SW drückt Kanal ----------
-  function press(c, on, src) {
+  function press(c, on, src, md) {
     if (previewAll) return;
     const h = c.holders || (c.holders = new Set());
     src = src || 'x';
-    if (c.mode === 'hold') {
+    if ((md || c.mode) === 'hold') {
       if (on) { h.add(src); if (!c.open) setOpen(c, true); }
       else { h.delete(src); if (!h.size && c.open) setOpen(c, false); }
     } else if (on) setOpen(c, !c.open);
@@ -5009,7 +5019,7 @@ const GEN = (() => {
       '<div class="fname">keine Datei – hierher ziehen</div>' +
       '<div class="row small"><span class="bpmTag mut">Tempo –</span></div>' +
       '<div class="row small" style="gap:6px;display:none"><button class="keyBtn" title="Eine Taste der PC-Tastatur für diesen Kanal festlegen (gilt zusätzlich zur Ziffer)">Taste anlernen</button><button class="keyClr" title="Angelernte Taste entfernen" hidden>&#10005;</button><span class="keyShow mut"></span></div>' +
-      '<select class="modeSel"><option value="hold">Hörbar solange berührt</option><option value="toggle">Umschalten bei Berührung</option></select>' +
+      '<select class="modeSel" style="display:none"><option value="hold">Hörbar solange berührt</option><option value="toggle">Umschalten bei Berührung</option></select>' +
       '<div><div class="small mut">Lautstärke</div><input type="range" class="vol" min="0" max="100"></div>' +
       '<button class="hold">&#128266; Vorhören</button>';
     const q = s => card.querySelector(s);
@@ -5730,12 +5740,12 @@ const GEN = (() => {
 
   // ---------- Verbindung zu den SoundWhackers (SW n = Kanal n, wenn der SW auf „Looper“ steht) ----------
   window.swLooper = {
-    press(i, on) {
+    press(i, on, md, src) {   // md: 'hold' | 'toggle' – Schaltart des SW; src: welcher SW (mehrere können denselben Kanal halten)
       const c = chans[i];
       if (!c) return;
       ensureAudio(); ctx.resume();
       if (on && !playing && chans.some(x => x.buffer)) start();   // erster Druck startet die Wiedergabe von selbst
-      press(c, on, 'sw');
+      press(c, on, src || 'sw', md);
     },
     // Geräte-Preset: aktuelle Loops unter festem Namen im Looper sichern (false = keine Loops geladen)
     async savePresetNamed(name) {
