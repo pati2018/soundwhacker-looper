@@ -566,6 +566,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <div style="margin-top:100px;display:flex;gap:14px;align-items:stretch;flex-wrap:wrap;justify-content:center">
       <button id="modemelBtn"   class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9834; Melodie AUS</button>
       <button id="modeakkBtn"   class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9835; Akkord AUS</button>
+      <button id="modetonBtn"   class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9833; Ton AUS</button>
       <button id="modeimproBtn" class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9836; Impro AUS</button>
       <button id="modelooperBtn" class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#128257; Looper AUS</button>
       <select id="loopChSel" hidden title="Welchen Loop-Kanal dieser SW schaltet" style="font-size:20px;padding:14px 10px;border-radius:12px"><option value="1">Kanal 1</option><option value="2">Kanal 2</option><option value="3">Kanal 3</option><option value="4">Kanal 4</option><option value="5">Kanal 5</option></select>
@@ -628,6 +629,42 @@ button.btn{font-size:13px;white-space:nowrap}
         </div>
       </div>
     </div>
+    <!-- Akkord / Transpose / Instrument -->
+    <div style="width:100%;background:#111826;border:1px solid #1d2940;border-radius:14px">
+      <button id="akkordToggle" style="width:100%;text-align:left;background:transparent;border:none;color:#FFD700;border-radius:14px;padding:16px 20px;font-size:20px;cursor:pointer;font-weight:600">
+        &#9835; Akkord &#9660;
+      </button>
+      <div id="akkordPanel" style="display:none;padding:0 16px 16px">
+        <div id="mel-controls" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px 0">
+          <span class="mut" style="font-size:18px">Akkord:</span>
+          <select id="mel-chord" style="font-size:18px;padding:10px 8px;min-height:48px"></select>
+          <span class="mut" style="font-size:18px">Transp.:</span>
+          <select id="mel-trans" style="font-size:18px;padding:10px 8px;min-height:48px"></select>
+          <span id="mel-ctrl-stat" class="mut" style="font-size:16px"></span>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <button id="chordPlayBtn" class="btn" style="font-size:20px;padding:14px 36px">&#9654; Akkord vorh&ouml;ren</button>
+          <span id="chordStat" class="mut" style="font-size:16px">&#9654; tippen &rarr; ausgew&auml;hlten Akkord h&ouml;ren</span>
+        </div>
+      </div>
+    </div>
+    <!-- Ton -->
+    <div style="width:100%;background:#111826;border:1px solid #1d2940;border-radius:14px">
+      <button id="tonToggle" style="width:100%;text-align:left;background:transparent;border:none;color:#FFD700;border-radius:14px;padding:16px 20px;font-size:20px;cursor:pointer;font-weight:600">
+        &#9833; Ton &#9660;
+      </button>
+      <div id="tonPanel" style="display:none;padding:0 16px 16px">
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px 0">
+          <span class="mut" style="font-size:18px">Ton:</span>
+          <select id="mel-note" style="font-size:18px;padding:10px 8px;min-height:48px"></select>
+          <span class="mut" style="font-size:18px">Transp.:</span>
+          <select id="mel-trans2" style="font-size:18px;padding:10px 8px;min-height:48px"></select>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <button id="tonPlayBtn" class="btn" style="font-size:20px;padding:14px 36px">&#9654; Ton vorh&ouml;ren</button>
+        </div>
+      </div>
+    </div>
     <!-- Improvisation -->
     <div style="width:100%;background:#111826;border:1px solid #1d2940;border-radius:14px">
       <button id="improToggle" style="width:100%;text-align:left;background:transparent;border:none;color:#FFD700;border-radius:14px;padding:16px 20px;font-size:20px;cursor:pointer;font-weight:600">
@@ -659,25 +696,6 @@ button.btn{font-size:13px;white-space:nowrap}
         <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
           <button id="improPlayBtn" class="btn" style="font-size:20px;padding:14px 36px">&#9654; Impro spielen</button>
           <span id="improStat" class="mut" style="font-size:16px">Sensor oder &#9654; tippen &rarr; zuf&auml;lliger Ton der Skala</span>
-        </div>
-      </div>
-    </div>
-    <!-- Akkord / Transpose / Instrument -->
-    <div style="width:100%;background:#111826;border:1px solid #1d2940;border-radius:14px">
-      <button id="akkordToggle" style="width:100%;text-align:left;background:transparent;border:none;color:#FFD700;border-radius:14px;padding:16px 20px;font-size:20px;cursor:pointer;font-weight:600">
-        &#9835; Akkord &#9660;
-      </button>
-      <div id="akkordPanel" style="display:none;padding:0 16px 16px">
-        <div id="mel-controls" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px 0">
-          <span class="mut" style="font-size:18px">Akkord:</span>
-          <select id="mel-chord" style="font-size:18px;padding:10px 8px;min-height:48px"></select>
-          <span class="mut" style="font-size:18px">Transp.:</span>
-          <select id="mel-trans" style="font-size:18px;padding:10px 8px;min-height:48px"></select>
-          <span id="mel-ctrl-stat" class="mut" style="font-size:16px"></span>
-        </div>
-        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-          <button id="chordPlayBtn" class="btn" style="font-size:20px;padding:14px 36px">&#9654; Akkord vorh&ouml;ren</button>
-          <span id="chordStat" class="mut" style="font-size:16px">&#9654; tippen &rarr; ausgew&auml;hlten Akkord h&ouml;ren</span>
         </div>
       </div>
     </div>
@@ -1024,7 +1042,7 @@ button.btn{font-size:13px;white-space:nowrap}
       note: arr6(60), chordRoot: arr6(-1), chordQual: arr6(0), ts: arr6(0),
       instr: [0, 1, 2, 3, 4, 5].map(() => ({ p: 0, m: 0, l: 0 })), instrList: [],
       improRoot: arr6(0), improScale: arr6(0), improOct: arr6(4), improEn: arr6(false), improMode: false,
-      akkordOff: arr6(false), loopOn: arr6(false), loopCh: [0, 1, 2, 3, 4, 5], mel: [0, 1, 2, 3, 4, 5].map(() => []), melMode: arr6(false),
+      akkordOff: arr6(false), lastChord: arr6(null), loopOn: arr6(false), loopCh: [0, 1, 2, 3, 4, 5], mel: [0, 1, 2, 3, 4, 5].map(() => []), melMode: arr6(false),
       vol: arr6(100), rev: arr6(30), midiCh: [0, 1, 2, 3, 4, 5],
       arpBpm: 120, arpDiv: arr6(0), arpTgm: arr6(false), liveMode: arr6(false),
       slots: [0, 1, 2, 3, 4, 5].map(() => ({ root: -1, qual: 0, ts: 0 })), activeSlot: 0,
@@ -1453,14 +1471,15 @@ button.btn{font-size:13px;white-space:nowrap}
       if (q.has('on')) { S.improMode = q.get('on') === '1'; if (!S.improMode) for (let i = 1; i <= 5; i++) if (R.improNote[i] >= 0) { off(i, R.improNote[i]); R.improNote[i] = -1; } }
       save(); return ok('ok');
     },
+    '/ton_preview': q => { const id = idArg(q); preview(id, [clampMidi(S.note[id] + semiFor(id))], 600); return ok('ok'); },
     '/impro_play': q => { const id = idArg(q); preview(id, [pickImpro(id)], 400); return ok('ok'); },
     '/chord_preview': q => { const id = idArg(q), r = S.chordRoot[id]; if (r < 0) return ok('nochord'); preview(id, triad(clampMidi(r + stepToSemi(S.ts[id])), S.chordQual[id]), 600); return ok('ok'); },
     '/transpose': (q, m) => {
       if (m === 'GET') { const j = {}; for (let i = 1; i <= 5; i++) j[i] = S.ts[i]; return ok(j); }
       const id = idArg(q), s = parseInt(q.get('step')); S.ts[id] = [-2, -1, 0, 1, 2].includes(s) ? s : 0; save(); return ok('ok');
     },
-    '/set': q => { const id = idArg(q), n = parseInt(q.get('note')); if (n < 60 || n > 71) return bad('range'); S.note[id] = n; S.chordRoot[id] = -1; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
-    '/chord': q => { const id = idArg(q), r = parseInt(q.get('root')); if (r < 60 || r > 71) return bad('range'); S.chordRoot[id] = r; S.chordQual[id] = q.get('qual') === 'min' ? 1 : 0; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
+    '/set': q => { const id = idArg(q), n = parseInt(q.get('note')); if (n < 60 || n > 71) return bad('range'); S.note[id] = n; if (q.get('keep') === '1') { save(); return ok('ok'); } S.chordRoot[id] = -1; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
+    '/chord': q => { const id = idArg(q), r = parseInt(q.get('root')); if (r < 60 || r > 71) return bad('range'); S.chordRoot[id] = r; S.chordQual[id] = q.get('qual') === 'min' ? 1 : 0; S.lastChord[id] = { r, q: S.chordQual[id] }; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
     '/chord_off': q => { const id = idArg(q); S.chordRoot[id] = -1; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
     '/slots': () => ok({ active: S.activeSlot, slots: [1, 2, 3, 4, 5].map(i => ({ root: S.slots[i].root, qual: S.slots[i].qual === 1 ? 'min' : 'maj', ts: S.slots[i].ts })) }),
     '/slot_set': q => {
@@ -1477,7 +1496,7 @@ button.btn{font-size:13px;white-space:nowrap}
     '/slot_transpose': q => { const s = Math.max(1, Math.min(5, +q.get('slot') || 1)), t = parseInt(q.get('step')); S.slots[s].ts = [-2, -1, 0, 1, 2].includes(t) ? t : 0; save(); return ok('ok'); },
     '/mel': q => {
       const id = idArg(q), st = S.mel[id], arpOn = R.arpEn[id] && !R.arpMuted[id], pv = PLAYIDX[id] >= 0;
-      return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: pv ? PLAYIDX[id] : arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], looper: !!S.loopOn[id], loopCh: S.loopCh[id] || id, len: st.length, playing: pv || arpOn || R.melPlaying[id] });
+      return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: pv ? PLAYIDX[id] : arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], looper: !!S.loopOn[id], loopCh: S.loopCh[id] || id, root: S.chordRoot[id], qual: S.chordQual[id], note: S.note[id], ts: S.ts[id], last: S.lastChord[id], len: st.length, playing: pv || arpOn || R.melPlaying[id] });
     },
     '/mel_play': q => {
       const id = idArg(q);
@@ -2587,6 +2606,7 @@ async function loadMel(){
     if(melStructSig(j)!==melRenderedSig) renderMelSeq();
     else updateMelSeqHighlight();
     updateModeBtns(melID);
+    if(window.swSyncTon) window.swSyncTon();
     const si=document.getElementById('melstepinfo');
     si.textContent=j.len>0?'Schritt '+(j.step%Math.max(j.len,1)+1)+' / '+j.len:'(leer)';
   }catch(e){}
@@ -2984,7 +3004,11 @@ function updateModeBtns(id){
   const isMel=!!(melData&&melData.mode);
   const isImpro=!!(improEnaState[id]);
   const isLoop=!!(melData&&melData.looper);
-  const isAkk=!isMel&&!isImpro&&!isLoop&&!akkordOffState[id];
+  const _root=(melData&&melData.root!=null)?melData.root:-1;
+  const isAkk=!isMel&&!isImpro&&!isLoop&&!akkordOffState[id]&&_root>=0;
+  const isTon=!isMel&&!isImpro&&!isLoop&&!akkordOffState[id]&&_root<0;
+  const tBtn=document.getElementById('modetonBtn');
+  if(tBtn){ tBtn.textContent='\u2669 Ton '+(isTon?'EIN \u25cf':'AUS'); tBtn.style.cssText='border-color:'+(isTon?'var(--acc)':'')+';color:'+(isTon?'var(--acc)':''); }
   const lBtn=document.getElementById('modelooperBtn');
   if(lBtn){ lBtn.textContent='\uD83D\uDD01 Looper '+(isLoop?'EIN \u25cf':'AUS'); lBtn.style.cssText='border-color:'+(isLoop?'var(--acc)':'')+';color:'+(isLoop?'var(--acc)':''); }
   const lcs=document.getElementById('loopChSel');
@@ -3007,11 +3031,13 @@ async function setMode(mode){
   const id=melID;
   const isMel=!!(melData&&melData.mode);
   const isImpro=!!(improEnaState[id]);
-  const isAkk=!akkordOffState[id];
+  const akkOn=!akkordOffState[id], root=(melData&&melData.root!=null)?melData.root:-1;
+  const isAkk=akkOn&&root>=0, isTon=akkOn&&root<0;   // Akkord und Ton teilen sich den HUB-Schalter „akkord“; Ton = kein Akkord gewählt
 
   // Hilfsfunktionen zum Ausschalten der jeweils anderen Modi
   async function melAus(){ if(isMel) await fetch('/mel_mode?active=0&id='+id,{method:'POST'}); }
-  async function akkAus(){ if(isAkk){ akkordOffState[id]=true; await fetch('/mel_mode?akkord=0&id='+id,{method:'POST'}); } }
+  async function akkAus(){ if(akkOn){ akkordOffState[id]=true; await fetch('/mel_mode?akkord=0&id='+id,{method:'POST'}); } }
+  const syncChordSel=v=>{ const cs=document.getElementById('chord_'+id); if(cs) cs.value=v; const ms=document.getElementById('mel-chord'); if(ms) ms.value=v; };
   const isLoop=!!(melData&&melData.looper);
   async function loopAus(){ if(isLoop) await fetch('/looper_mode?on=0&id='+id,{method:'POST'}); }
   async function improAus(){ if(isImpro){ improEnaState[id]=false; const any=improEnaState.some((v,i)=>i>=1&&v); await fetch('/impro_set?e'+id+'=0&on='+(any?1:0),{method:'POST'}); } }
@@ -3031,8 +3057,9 @@ async function setMode(mode){
       akkordOffState[id]=true;
       await fetch('/mel_mode?akkord=0&id='+id,{method:'POST'});
     } else {
-      // Akkord EIN — Melodie, Impro und Looper ausschalten
+      // Akkord EIN — Melodie, Impro und Looper ausschalten (aus „Ton“ kommend: zuletzt gewählten Akkord wieder setzen, sonst C-Dur)
       await melAus(); await improAus(); await loopAus();
+      if(root<0){ const l=(melData&&melData.last)||{r:60,q:0}; await fetch('/chord?id='+id+'&root='+l.r+'&qual='+(l.q?'min':'maj'),{method:'POST'}); syncChordSel((l.q?'min-':'maj-')+l.r); }
       akkordOffState[id]=false;
       await fetch('/mel_mode?akkord=1&id='+id,{method:'POST'});
     }
@@ -3049,6 +3076,19 @@ async function setMode(mode){
       await fetch('/impro_set?e'+id+'=1&on=1',{method:'POST'});
     }
   }
+  else if(mode==='ton'){
+    if(isTon){
+      // Ton AUS — kein anderer springt an
+      akkordOffState[id]=true;
+      await fetch('/mel_mode?akkord=0&id='+id,{method:'POST'});
+    } else {
+      // Ton EIN — Melodie, Impro und Looper aus; Akkord abwählen, damit der einzelne Ton spielt
+      await melAus(); await improAus(); await loopAus();
+      if(root>=0){ await fetch('/chord_off?id='+id,{method:'POST'}); syncChordSel('off'); }
+      akkordOffState[id]=false;
+      await fetch('/mel_mode?akkord=1&id='+id,{method:'POST'});
+    }
+  }
   else if(mode==='looper'){
     if(isLoop){
       // Looper AUS — kein anderer springt an
@@ -3062,6 +3102,17 @@ async function setMode(mode){
   await loadMel();
 }
 document.getElementById('modelooperBtn').onclick=()=>setMode('looper');
+document.getElementById('modetonBtn').onclick=()=>setMode('ton');
+// Bereich Ton: Ton, Transponieren, Vorhören
+(function(){
+  const ns=document.getElementById('mel-note'), tr=document.getElementById('mel-trans2');
+  for(let n=60;n<=71;n++){ const o=document.createElement('option'); o.value=n; o.text=NAMES[n-60]; ns.appendChild(o); }
+  [-2,-1,0,1,2].forEach(v=>{ const o=document.createElement('option'); o.value=v; o.text=(v>0?'+':'')+v; tr.appendChild(o); });
+  ns.onchange=async()=>{ await fetch('/set?id='+melID+'&note='+ns.value+'&keep=1',{method:'POST'}); const s=document.getElementById('note_'+melID); if(s) s.value=ns.value; };
+  tr.onchange=async()=>{ await fetch('/transpose?id='+melID+'&step='+tr.value,{method:'POST'}); const a=document.getElementById('mel-trans'); if(a) a.value=tr.value; const s=document.getElementById('trans_'+melID); if(s) s.value=tr.value; };
+  document.getElementById('tonPlayBtn').addEventListener('pointerdown',()=>{ fetch('/ton_preview?id='+melID,{method:'POST'}).catch(()=>{}); });
+})();
+window.swSyncTon=()=>{ if(!melData) return; const ns=document.getElementById('mel-note'), tr=document.getElementById('mel-trans2'); if(ns&&melData.note!=null&&document.activeElement!==ns) ns.value=melData.note; if(tr&&melData.ts!=null&&document.activeElement!==tr) tr.value=melData.ts; };
 document.getElementById('loopChSel').onchange=async()=>{ await fetch('/looper_mode?id='+melID+'&ch='+document.getElementById('loopChSel').value,{method:'POST'}); await loadMel(); };
 document.getElementById('modemelBtn').onclick=()=>setMode('mel');
 document.getElementById('modeakkBtn').onclick=()=>setMode('akkord');
@@ -3565,6 +3616,7 @@ function mkPanelToggle(toggleId,panelId,label){
 mkPanelToggle('melToggle','melPanel','&#9834; Melodie');
 mkPanelToggle('improToggle','improPanel','&#9835; Improvisation');
 mkPanelToggle('akkordToggle','akkordPanel','&#9835; Akkord');
+mkPanelToggle('tonToggle','tonPanel','&#9833; Ton');
 document.getElementById('improPlayBtn').addEventListener('pointerdown',async()=>{
   try{
     await fetch('/impro_play?id='+melID,{method:'POST'});
