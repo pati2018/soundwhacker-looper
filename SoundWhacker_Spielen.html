@@ -1064,7 +1064,7 @@ button.btn{font-size:13px;white-space:nowrap}
   const R = {
     touched: arr6(false), sounding: [0, 1, 2, 3, 4, 5].map(() => null), melStep: arr6(0), melPlaying: arr6(false), melPlayStep: arr6(0),
     arpEn: arr6(false), arpMuted: arr6(true), arpStep: arr6(0), arpPrev: arr6(0), arpNext: arr6(0), arpWas: arr6(false), arpEv: [0, 1, 2, 3, 4, 5].map(() => []),
-    improNote: arr6(-1), padNotes: null, midiCount: new Map()
+    improNote: arr6(-1), allRun: arr6(false), allOn: false, padNotes: null, midiCount: new Map()
   };
 
   // ---------- Klangerzeugung (SoundFont, wie im Looper; teilt sich die gespeicherte SoundFont) ----------
@@ -1275,7 +1275,7 @@ button.btn{font-size:13px;white-space:nowrap}
     R.arpNext[id] = t0 != null ? t0 : (A.ctx ? A.ctx.currentTime + 0.02 : 0);
   }
   function arpStop(id) { R.arpEn[id] = false; R.arpMuted[id] = true; arpSilence(id); }
-  const arpWant = id => !!(S.melMode[id] && !S.loopOn[id] && !S.liveMode[id] && S.mel[id].length);
+  const arpWant = id => !!(S.melMode[id] && !S.loopOn[id] && (!S.liveMode[id] || R.allRun[id]) && S.mel[id].length);   // allRun: „Alle“ startet auch 🎹-Melodien im Takt
   setInterval(() => {
     if (!A.ctx || !A.synth) return;
     const now = A.ctx.currentTime;
@@ -1578,6 +1578,18 @@ button.btn{font-size:13px;white-space:nowrap}
       const all = q.get('on') === '1', t0 = A.ctx ? A.ctx.currentTime + 0.03 : 0;
       for (let id = 1; id <= 5; id++) { if (all && S.mel[id].length) arpStart(id, t0); else arpStop(id); }
       return ok('ok');
+    },
+    '/all_play': q => {   // Hauptseite „Alle“: nur Melodien (im Takt) und Loops starten bzw. stoppen
+      const on = q.get('on') === '1'; R.allOn = on;
+      if (on) kick();
+      const t0 = A.ctx ? A.ctx.currentTime + 0.05 : null;
+      for (let id = 1; id <= 5; id++) {
+        if (S.loopOn[id]) { if (window.swLooper && window.swLooper.setOn) window.swLooper.setOn((S.loopCh[id] || id) - 1, on); continue; }
+        if (!S.melMode[id] || !S.mel[id].length) continue;
+        if (on) { R.allRun[id] = true; if (!R.arpEn[id]) arpStart(id, t0); R.arpMuted[id] = false; }
+        else { R.allRun[id] = false; R.arpMuted[id] = true; arpSilence(id); }
+      }
+      return ok({ on });
     },
     '/arp_sync': () => { const t0 = A.ctx ? A.ctx.currentTime + 0.03 : 0; for (let id = 1; id <= 5; id++) if (R.arpEn[id] && S.mel[id].length) { arpSilence(id); R.arpStep[id] = 0; R.arpPrev[id] = 0; R.arpNext[id] = t0; } return ok('ok'); },
     '/arp_mute': q => { const id = idArg(q); R.arpMuted[id] = q.get('muted') === '1'; if (R.arpMuted[id]) { arpSilence(id); soundOff(id); } else kick(); return ok('ok'); },
@@ -3000,7 +3012,12 @@ function swPressBtn(btn, ids, label){
   btn.onpointerdown=down; btn.onpointerup=up; btn.onpointercancel=up; btn.onlostpointercapture=up;
 }
 for(let i=1;i<=5;i++){ const b=document.getElementById('swTouchBtn'+i); b.title='gedr\u00fcckt halten = SW'+i+' ber\u00fchren'; swPressBtn(b,[i],'\u25B6 SW'+i); }
-swPressBtn(document.getElementById('swTouchAllBtn'),[1,2,3,4,5],'\u25B6 Alle');
+(function(){   // „Alle“: Melodien (im Takt) und Loops an/aus – Akkord, Ton und Impro bleiben unberührt
+  const b=document.getElementById('swTouchAllBtn'); let on=false;
+  const show=()=>{ b.innerHTML=on?'\u23F9 Alle':'\u25B6 Alle'; b.title='Melodien und Loops '+(on?'stoppen':'starten'); b.style.borderColor=on?'var(--acc)':''; b.style.color=on?'var(--acc)':''; };
+  b.onclick=async()=>{ on=!on; show(); await fetch('/all_play?on='+(on?1:0),{method:'POST'}).catch(()=>{}); };
+  show();
+})();
 
 async function enterMelMode(){
   buildPiano(12,84);
@@ -5775,6 +5792,14 @@ const GEN = (() => {
       return true;
     },
     loadPresetNamed: name => loadPreset(name),
+    // Kanal direkt ein-/ausschalten (Knopf „Alle“ auf der Hauptseite)
+    setOn(i, on) {
+      const c = chans[i]; if (!c || !c.buffer) return;
+      ensureAudio(); ctx.resume();
+      if (on && !playing) start();
+      if (c.holders) c.holders.clear();
+      setOpen(c, on);
+    },
     // Lautstärke eines Kanals von außen (Regler auf der Hauptseite, wenn der SW den Looper schaltet); v = 0..1
     setVol(i, v) {
       const c = chans[i]; if (!c) return;
