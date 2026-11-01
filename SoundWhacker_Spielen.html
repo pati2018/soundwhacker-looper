@@ -1277,7 +1277,10 @@ button.btn{font-size:13px;white-space:nowrap}
   }
 
   // ---------- Steuerung: Tasten 1–5 (SW-HUB als Bluetooth-Tastatur) und BLE-MIDI ----------
-  const typing = t => t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button'].includes(t.type)) || t.tagName === 'SELECT');
+  // Auswahllisten zählen nicht als „Tippen“: sonst ignoriert die App die SW-Tasten, solange z. B. die Akkord-Liste noch ausgewählt ist
+  const typing = t => t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button'].includes(t.type)));
+  // nach einer Auswahl die Liste loslassen, damit die Tasten 1–5 sie nicht verstellen
+  document.addEventListener('change', e => { if (e.target && e.target.tagName === 'SELECT') e.target.blur(); }, true);
   const keyId = e => { const m = /^(Digit|Numpad)([1-5])$/.exec(e.code || ''); return m ? +m[2] : 0; };
   document.addEventListener('keydown', e => {
     const id = keyId(e);
@@ -5604,7 +5607,7 @@ const GEN = (() => {
   };
   // Angelernte Tasten vor dem virtuellen HUB abfangen (capture), damit sie nicht zusätzlich einen SW drücken
   const SW_KEY = /^(Digit|Numpad)[1-5]$/;   // Tasten 1–5 = SW 1–5 (HUB): die Betriebsart des SW entscheidet, nicht eine angelernte Looper-Taste
-  const typingIn = t => t && (t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || (t.tagName === 'INPUT' && !['range', 'checkbox', 'button', 'radio'].includes(t.type)));
+  const typingIn = t => t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && !['range', 'checkbox', 'button', 'radio'].includes(t.type)));
   document.addEventListener('keydown', e => {
     if (!$('askModal').hidden) return;
     if (learnKeyIdx >= 0) { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) learnKeyFrom(e); return; }
