@@ -2456,7 +2456,6 @@ document.querySelectorAll('.mel-dur-btn').forEach(b=>{
   });
 })();
 document.getElementById('melPauseBtn').onclick=async()=>{
-  lastMelNotes=[];   // nach „Pause“ fügt „＋“ wieder eine Pause ein
   // Pause = leerer Schritt mit aktueller Dauer
   try{ await fetch('/mel_add_step?dur='+currentDur+'&id='+melID,{method:'POST'}); loadMel(); }catch(e){}
 };
@@ -2467,10 +2466,8 @@ function scrollPianoToOct(oct){
   document.getElementById('pianoOctLabel').textContent='C'+pianoOct;
 }
 let autoCommit   = true;
-let lastMelNotes = [];   // zuletzt gewählte Note(n) – „＋“ fügt sie ein
 
 async function tapNote(n){
-  lastMelNotes=[n];
   const k=document.querySelector('[data-note="'+n+'"]');
   if(k){k.classList.add('pressed');setTimeout(()=>k.classList.remove('pressed'),200);}
   try{ await fetch('/mel_preview?note='+n+'&id='+melID,{method:'POST'}); }catch(e){}
@@ -2598,13 +2595,12 @@ function updateMelSeqHighlight(){
 function makeMelInsBtn(idx){
   const ins=document.createElement('div');
   ins.textContent='\uff0b';
-  ins.title='Hier die zuletzt gew\u00e4hlte Note einf\u00fcgen';
+  ins.title='Hier einf\u00fcgen (aktuelle Auswahl bzw. Pause)';
   ins.style.cssText='cursor:pointer;font-size:14px;padding:4px 6px;border-radius:6px;'
     +'background:#152a22;color:#6ad0a0;border:1px dashed #2c5a45;line-height:1;'
     +'display:inline-flex;align-items:center;align-self:stretch';
   ins.onclick=(async()=>{
-    const use=pendingNotes.length?pendingNotes:lastMelNotes;   // gewählte bzw. zuletzt gespielte Note, sonst Pause
-    const notesParam=use.length?'&notes='+use.join(','):'';
+    const notesParam=pendingNotes.length?'&notes='+pendingNotes.join(','):'';
     try{ await fetch('/mel_ins_step?id='+melID+'&idx='+idx+notesParam+'&dur='+currentDur,{method:'POST'}); await loadMel(); }catch(e){}
     if(editingStepIdx>=0) exitStepEdit();
     pendingNotes=[]; renderPending();
