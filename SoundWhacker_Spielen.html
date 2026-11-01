@@ -1473,6 +1473,7 @@ button.btn{font-size:13px;white-space:nowrap}
     save();
   }
   window.swDpresetImport = dpresetImport;
+  window.swLoopInfo = id => (S.loopOn[id] ? (S.loopCh[id] || id) : 0);   // Looper-Kanal des SW (0 = kein Looper)
 
   // ---------- Antworten auf die Anfragen der Oberfläche (statt HTTP zum ESP32) ----------
   const ok = (body, type) => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status: 200, headers: { 'Content-Type': type || (typeof body === 'string' ? 'text/plain' : 'application/json') } });
@@ -1850,6 +1851,8 @@ function updateMixInstr(id){
   const span=document.getElementById('mixinstr'+id);
   if(!span) return;
   const idx=sel?parseInt(sel.value,10):-1;
+  const lc=window.swLoopInfo?window.swLoopInfo(id):0;
+  if(lc){ span.textContent='Loop-Kanal '+lc; return; }
   span.textContent=(idx>=0&&instrListData[idx])?instrListData[idx].name:(sel&&sel.dataset.p!=null&&sel.dataset.p!==''&&window.swInstrName?window.swInstrName(sel.dataset.p,sel.dataset.m,sel.dataset.l):'');
 }
 function updateAllMixInstrs(){ for(let i=1;i<=5;i++) updateMixInstr(i); }
@@ -2660,6 +2663,7 @@ async function loadMel(){
     else updateMelSeqHighlight();
     updateModeBtns(melID);
     if(window.swSyncTon) window.swSyncTon();
+    updateMixInstr(melID);
     const si=document.getElementById('melstepinfo');
     si.textContent=j.len>0?'Schritt '+(j.step%Math.max(j.len,1)+1)+' / '+j.len:'(leer)';
   }catch(e){}
