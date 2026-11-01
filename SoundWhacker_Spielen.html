@@ -924,6 +924,7 @@ button.btn{font-size:13px;white-space:nowrap}
   <button id="looperback">&#127968; Home</button>
   <div class="lp-wrap">
     <div style="font-weight:700;font-size:20px;margin:0 0 14px;color:#FFD700">&#128257; Looper</div>
+    <div style="margin:0 0 14px"><button id="toMelBtn" class="btn" style="font-size:18px;padding:12px 22px;border-color:#FFD700">&#9834; Zu Soundwhackers einstellen</button></div>
   <details class="bar" id="genBox" open>
     <summary style="cursor:pointer"><b>Loop-Generator</b> <span class="small mut">&ndash; erzeugt fünf passende Loops und lädt sie in die Kanäle</span></summary>
     <div class="row" style="margin-top:12px">
@@ -3727,6 +3728,7 @@ mkPanelToggle('improToggle','improPanel','&#9835; Improvisation');
 mkPanelToggle('akkordToggle','akkordPanel','&#9835; Akkord');
 mkPanelToggle('tonToggle','tonPanel','&#9833; Ton');
 mkPanelToggle('loopToggle','loopPanel','&#128257; Looper');
+document.getElementById('toMelBtn').onclick=()=>{ document.getElementById('looperarea').classList.remove('open'); enterMelMode(); };
 document.getElementById('toLooperBtn').onclick=()=>document.getElementById('looperarea').classList.add('open');   // „Home“ im Looper führt hierher zurück
 document.getElementById('improPlayBtn').addEventListener('pointerdown',async()=>{
   try{
