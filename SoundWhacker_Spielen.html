@@ -480,8 +480,8 @@ button.btn{font-size:13px;white-space:nowrap}
   </div>
   <div style="padding:8px 4px 0"><button id="swExtraToggle" class="btn" style="width:100%;font-size:14px;padding:8px">&#9660; Melodie- und SW-Kn&ouml;pfe einblenden</button></div>
   <div id="swExtra" hidden>
-  <!-- Per-SW Arpeggio Toggle -->
-  <div style="display:flex;gap:0;padding:6px 4px 0;justify-content:space-around">
+  <!-- Per-SW Arpeggio Toggle (entfällt: läuft automatisch je nach 👌/🔁/🎹) -->
+  <div style="display:none;gap:0;padding:6px 4px 0;justify-content:space-around">
     <div style="flex:1;padding:0 5px"><button id="swArpBtn1" class="btn" style="width:100%;font-size:12px;padding:8px 2px;font-weight:600">&#9655; Melodie 1</button></div>
     <div style="flex:1;padding:0 5px"><button id="swArpBtn2" class="btn" style="width:100%;font-size:12px;padding:8px 2px;font-weight:600">&#9655; Melodie 2</button></div>
     <div style="flex:1;padding:0 5px"><button id="swArpBtn3" class="btn" style="width:100%;font-size:12px;padding:8px 2px;font-weight:600">&#9655; Melodie 3</button></div>
@@ -507,7 +507,7 @@ button.btn{font-size:13px;white-space:nowrap}
   <!-- Alle SW + Start/Stop + Sync -->
   <div style="padding:6px 4px 4px;display:flex;gap:8px">
     <button id="swTouchAllBtn" class="btn" style="padding:14px 12px;font-size:15px;font-weight:600;white-space:nowrap">&#128263; Alle</button>
-    <button id="allArpBtn" class="btn" style="flex:1;padding:14px;font-size:18px;font-weight:600">&#9654; Alle Melodien starten</button>
+    <button id="allArpBtn" class="btn" style="display:none;flex:1;padding:14px;font-size:18px;font-weight:600">&#9654; Alle Melodien starten</button>
     <button id="arpSyncBtn" class="btn" style="padding:14px 18px;font-size:18px;font-weight:600" title="Alle laufenden Arpeggios auf Schritt 1 synchronisieren">&#8635;</button>
   </div>
   </div>
@@ -1046,7 +1046,7 @@ button.btn{font-size:13px;white-space:nowrap}
       akkordOff: arr6(true), lastChord: arr6(null),   // Standard: keinem SW ist etwas zugeordnet (Betriebsart gezielt wählen)
       loopOn: arr6(false), loopCh: [0, 1, 2, 3, 4, 5], mel: [0, 1, 2, 3, 4, 5].map(() => []), melMode: arr6(false),
       vol: arr6(100), rev: arr6(30), midiCh: [0, 1, 2, 3, 4, 5],
-      arpBpm: 120, arpDiv: arr6(0), arpTgm: arr6(false), liveMode: arr6(false),
+      arpBpm: 120, arpDiv: arr6(0), arpTgm: arr6(false), liveMode: arr6(true), tmv: 1,   // liveMode = 🎹 (Melodie Schritt für Schritt)
       slots: [0, 1, 2, 3, 4, 5].map(() => ({ root: -1, qual: 0, ts: 0 })), activeSlot: 0,
       lpresets: [null, null, null, null, null, null, null, null, null], dpresets: [null, null, null, null, null]
     };
@@ -1056,6 +1056,7 @@ button.btn{font-size:13px;white-space:nowrap}
     const raw = JSON.parse(localStorage.getItem(STORE) || 'null');
     if (raw && raw.v === 1) S = Object.assign(defaults(), raw);
   } catch (e) {}
+  if (!S.tmv) { for (let i = 1; i <= 5; i++) S.liveMode[i] = true; S.tmv = 1; }   // bisherige Geräte: Melodie bleibt Schritt für Schritt
   let saveT = 0;
   const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 150); };
 
@@ -1274,9 +1275,15 @@ button.btn{font-size:13px;white-space:nowrap}
     R.arpNext[id] = t0 != null ? t0 : (A.ctx ? A.ctx.currentTime + 0.02 : 0);
   }
   function arpStop(id) { R.arpEn[id] = false; R.arpMuted[id] = true; arpSilence(id); }
+  const arpWant = id => !!(S.melMode[id] && !S.loopOn[id] && !S.liveMode[id] && S.mel[id].length);
   setInterval(() => {
     if (!A.ctx || !A.synth) return;
     const now = A.ctx.currentTime;
+    for (let id = 1; id <= 5; id++) {   // Melodie im Takt automatisch starten/stoppen (je nach Betriebsart und 👌/🔁/🎹)
+      const w = arpWant(id);
+      if (w && !R.arpEn[id]) { const run = [1, 2, 3, 4, 5].find(k => k !== id && R.arpEn[k]); arpStart(id, run ? R.arpNext[run] : null); }
+      else if (!w && R.arpEn[id]) arpStop(id);
+    }
     for (let id = 1; id <= 5; id++) {
       const steps = S.mel[id];
       if (!R.arpEn[id] || !steps.length) continue;
@@ -1411,7 +1418,7 @@ button.btn{font-size:13px;white-space:nowrap}
       S.slots[i] = { root: (P.slsr || [])[i] == null || P.slsr[i] === 255 ? -1 : P.slsr[i], qual: (P.slsq || [])[i] ? 1 : 0, ts: (P.slst || [])[i] || 0 };
       S.arpTgm[i] = !!(((P.tgm || 0) >> (i - 1)) & 1);
       const c = (P.ch || [])[i]; if (c >= 1 && c <= 16) S.midiCh[i] = c;
-      if ((P.ae || [])[i] && S.mel[i].length) arpStart(i); else arpStop(i);
+      S.liveMode[i] = !(P.ae || [])[i]; arpStop(i);   // Melodie im Takt startet danach von selbst (siehe arpWant)
     }
     S.improMode = S.improEn.some((v, i) => i && v);
     S.arpBpm = P.ab || 120; S.activeSlot = P.slsa || 0;
@@ -2861,7 +2868,7 @@ async function loadMelArp(){
     melArpState=j;
     if(j.tgm&&Array.isArray(j.tgm)){
       for(let i=1;i<=5;i++){
-        if(!j.en[i] && j.lv && j.lv[i]) arpTouchMode[i]=2;  // Live-Modus
+        if(j.lv && j.lv[i]) arpTouchMode[i]=2;  // Live-Modus (Melodie Schritt für Schritt)
         else arpTouchMode[i]=j.tgm[i]?1:0;                   // Loop oder Halten
       }
       updateArpModeBtns();
