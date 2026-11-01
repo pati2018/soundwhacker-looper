@@ -568,7 +568,7 @@ button.btn{font-size:13px;white-space:nowrap}
       <button id="modeakkBtn"   class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9835; Akkord AUS</button>
       <button id="modetonBtn"   class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9833; Ton AUS</button>
       <button id="modeimproBtn" class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9836; Impro AUS</button>
-      <button id="modelooperBtn" class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#128257; Looper AUS</button>
+      <button id="modelooperBtn" class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#8635; Looper AUS</button>
     </div>
     <!-- Instrument (gilt für alle Modi) -->
     <div style="margin-top:40px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
@@ -702,7 +702,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <!-- Looper -->
     <div style="width:100%;background:#111826;border:1px solid #1d2940;border-radius:14px">
       <button id="loopToggle" style="width:100%;text-align:left;background:transparent;border:none;color:#FFD700;border-radius:14px;padding:16px 20px;font-size:20px;cursor:pointer;font-weight:600">
-        &#128257; Looper &#9660;
+        &#8635; Looper &#9660;
       </button>
       <div id="loopPanel" style="display:none;padding:0 16px 16px">
         <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px 0">
@@ -3106,7 +3106,7 @@ function updateModeBtns(id){
   const tBtn=document.getElementById('modetonBtn');
   if(tBtn){ tBtn.textContent='\u2669 Ton '+(isTon?'EIN \u25cf':'AUS'); tBtn.style.cssText='border-color:'+(isTon?'var(--acc)':'')+';color:'+(isTon?'var(--acc)':''); }
   const lBtn=document.getElementById('modelooperBtn');
-  if(lBtn){ lBtn.textContent='\uD83D\uDD01 Looper '+(isLoop?'EIN \u25cf':'AUS'); lBtn.style.cssText='border-color:'+(isLoop?'var(--acc)':'')+';color:'+(isLoop?'var(--acc)':''); }
+  if(lBtn){ lBtn.textContent='\u21BB Looper '+(isLoop?'EIN \u25cf':'AUS'); lBtn.style.cssText='border-color:'+(isLoop?'var(--acc)':'')+';color:'+(isLoop?'var(--acc)':''); }
   const lcs=document.getElementById('loopChSel');
   if(lcs){ lcs.value=String((melData&&melData.loopCh)||melID); }
   const lhs=document.getElementById('loopHoldSel');
@@ -3727,7 +3727,7 @@ mkPanelToggle('melToggle','melPanel','&#9834; Melodie');
 mkPanelToggle('improToggle','improPanel','&#9835; Improvisation');
 mkPanelToggle('akkordToggle','akkordPanel','&#9835; Akkord');
 mkPanelToggle('tonToggle','tonPanel','&#9833; Ton');
-mkPanelToggle('loopToggle','loopPanel','&#128257; Looper');
+mkPanelToggle('loopToggle','loopPanel','&#8635; Looper');
 document.getElementById('toMelBtn').onclick=()=>{ document.getElementById('looperarea').classList.remove('open'); enterMelMode(); };
 document.getElementById('toLooperBtn').onclick=()=>document.getElementById('looperarea').classList.add('open');   // „Home“ im Looper führt hierher zurück
 document.getElementById('improPlayBtn').addEventListener('pointerdown',async()=>{
