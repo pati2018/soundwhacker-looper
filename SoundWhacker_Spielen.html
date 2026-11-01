@@ -614,8 +614,8 @@ button.btn{font-size:13px;white-space:nowrap}
           <button id="melclear" class="btn" style="font-size:18px;padding:12px 22px">&#10005; Alles l&ouml;schen</button>
         </div>
         <div id="mel-arp-bar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px;padding:8px 0;border-top:1px solid #1d2940">
-          <button id="melArpBtn" class="btn" style="font-size:18px;padding:12px 22px;min-width:180px">&#127925; Arpeggio: AUS</button>
-          <span class="mut" style="font-size:17px">BPM:</span>
+          <button id="melArpBtn" class="btn" hidden style="font-size:18px;padding:12px 22px;min-width:180px">&#127925; Arpeggio: AUS</button>
+          <span class="mut" style="font-size:17px">Tempo:</span>
           <input id="melArpBpm" type="range" min="20" max="300" value="120" style="width:140px">
           <span id="melArpBpmVal" style="font-size:17px;min-width:40px">120</span>
           <span id="melArpStat" class="mut" style="font-size:13px"></span>
@@ -623,7 +623,7 @@ button.btn{font-size:13px;white-space:nowrap}
         <!-- Vorschau-Button für aktuellen SW -->
         <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #1d2940">
           <button id="arpPreviewBtn" class="btn" style="font-size:17px;padding:10px 22px;min-width:160px">&#9654; SW1 Vorhören</button>
-          <span class="mut" style="font-size:13px">Simuliert Sensor-Touch für aktuellen SW</span>
+
         </div>
       </div>
     </div>
@@ -1269,6 +1269,27 @@ button.btn{font-size:13px;white-space:nowrap}
     }
   }, 15);
 
+  // ---------- Melodie einmal abspielen (Vorhören im Bereich Melodie) ----------
+  const playT = [[], [], [], [], [], []];
+  function melPlayStop(id) {
+    playT[id].forEach(clearTimeout); playT[id] = [];
+    if (R.playNotes && R.playNotes[id]) { R.playNotes[id].forEach(n => off(id, n)); R.playNotes[id] = null; }
+  }
+  function melPlayOnce(id) {
+    melPlayStop(id);
+    const steps = S.mel[id]; if (!steps.length) return 0;
+    if (!R.playNotes) R.playNotes = [];
+    let ms = 0;
+    steps.forEach(st => {
+      const len = DUR_Q[st.d || 0] * 60000 / S.arpBpm;
+      playT[id].push(setTimeout(() => { if (R.playNotes[id]) R.playNotes[id].forEach(n => off(id, n)); R.playNotes[id] = st.n.slice(); st.n.forEach(n => on(id, n, 100)); }, ms));
+      ms += len;
+      playT[id].push(setTimeout(() => { st.n.forEach(n => off(id, n)); }, ms - len * 0.05));
+    });
+    playT[id].push(setTimeout(() => { R.playNotes[id] = null; playT[id] = []; }, ms));
+    return Math.round(ms);
+  }
+
   // ---------- Kurze Vorschau-Töne ----------
   function preview(id, notes, ms) {
     kick();
@@ -1456,6 +1477,15 @@ button.btn{font-size:13px;white-space:nowrap}
     '/mel': q => {
       const id = idArg(q), st = S.mel[id], arpOn = R.arpEn[id] && !R.arpMuted[id];
       return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], looper: !!S.loopOn[id], len: st.length, playing: arpOn || R.melPlaying[id] });
+    },
+    '/mel_play': q => {
+      const id = idArg(q);
+      if (q.get('stop') === '1') { melPlayStop(id); return ok({ ms: 0 }); }
+      if (!S.mel[id].length) return ok({ ms: 0 });
+      kick();
+      if (A.synth) return ok({ ms: melPlayOnce(id) });
+      ensureSynth().then(() => melPlayOnce(id)).catch(() => {});
+      return ok({ ms: S.mel[id].reduce((s, st) => s + DUR_Q[st.d || 0] * 60000 / S.arpBpm, 0) + 300 });
     },
     '/mel_preview': q => { const id = idArg(q); preview(id, [clampMidi(parseInt(q.get('note')))], 300); return ok('ok'); },
     '/mel_add_step': q => { const id = idArg(q); if (S.mel[id].length >= MAX_MELODY) return ok('full'); S.mel[id].push({ n: notesArg(q), d: Math.max(0, Math.min(7, +q.get('dur') || 0)) }); save(); return ok('ok'); },
@@ -2780,14 +2810,23 @@ function updateArpPreviewBtn(){
   const btn=document.getElementById('arpPreviewBtn');
   if(!btn) return;
   const on=arpPreviewState[melID];
-  btn.textContent=(on?'\u23f9':'\u25b6')+' SW'+melID+' Vorh\u00f6ren'+(on?' \u25cf':'');
+  btn.textContent=(on?'\u23f9 Stopp':'\u25b6 Melodie SW'+melID+' vorh\u00f6ren');
   btn.style.borderColor=on?'var(--acc)':'';
   btn.style.color=on?'var(--acc)':'';
 }
+// Vorhören: eingegebene Melodie einmal im eingestellten Tempo abspielen (nochmal tippen = Stopp)
+const arpPreviewTimer=[0,0,0,0,0,0];
 async function setArpPreview(id, on){
+  clearTimeout(arpPreviewTimer[id]);
   arpPreviewState[id]=on;
-  await fetch('/arp_mute?id='+id+'&muted='+(on?'0':'1'),{method:'POST'}).catch(()=>{});
   updateArpPreviewBtn();
+  try{
+    const j=await(await fetch('/mel_play?id='+id+(on?'':'&stop=1'),{method:'POST'})).json();
+    if(on){
+      if(!j.ms){ arpPreviewState[id]=false; updateArpPreviewBtn(); const st=document.getElementById('melArpStat'); if(st){ st.textContent='Noch keine Melodie eingegeben.'; setTimeout(()=>st.textContent='',2000); } return; }
+      arpPreviewTimer[id]=setTimeout(()=>{ arpPreviewState[id]=false; updateArpPreviewBtn(); }, j.ms+100);
+    }
+  }catch(e){ arpPreviewState[id]=false; updateArpPreviewBtn(); }
 }
 document.getElementById('arpPreviewBtn').onclick=async()=>{
   await setArpPreview(melID, !arpPreviewState[melID]);
