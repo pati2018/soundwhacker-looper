@@ -568,6 +568,7 @@ button.btn{font-size:13px;white-space:nowrap}
       <button id="modeakkBtn"   class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9835; Akkord AUS</button>
       <button id="modeimproBtn" class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#9836; Impro AUS</button>
       <button id="modelooperBtn" class="btn" style="font-size:24px;padding:22px 36px;border-radius:16px;min-width:200px">&#128257; Looper AUS</button>
+      <select id="loopChSel" hidden title="Welchen Loop-Kanal dieser SW schaltet" style="font-size:20px;padding:14px 10px;border-radius:12px"><option value="1">Kanal 1</option><option value="2">Kanal 2</option><option value="3">Kanal 3</option><option value="4">Kanal 4</option><option value="5">Kanal 5</option></select>
     </div>
     <!-- Instrument (gilt für alle Modi) -->
     <div style="margin-top:40px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
@@ -1023,7 +1024,7 @@ button.btn{font-size:13px;white-space:nowrap}
       note: arr6(60), chordRoot: arr6(-1), chordQual: arr6(0), ts: arr6(0),
       instr: [0, 1, 2, 3, 4, 5].map(() => ({ p: 0, m: 0, l: 0 })), instrList: [],
       improRoot: arr6(0), improScale: arr6(0), improOct: arr6(4), improEn: arr6(false), improMode: false,
-      akkordOff: arr6(false), loopOn: arr6(false), mel: [0, 1, 2, 3, 4, 5].map(() => []), melMode: arr6(false),
+      akkordOff: arr6(false), loopOn: arr6(false), loopCh: [0, 1, 2, 3, 4, 5], mel: [0, 1, 2, 3, 4, 5].map(() => []), melMode: arr6(false),
       vol: arr6(100), rev: arr6(30), midiCh: [0, 1, 2, 3, 4, 5],
       arpBpm: 120, arpDiv: arr6(0), arpTgm: arr6(false), liveMode: arr6(false),
       slots: [0, 1, 2, 3, 4, 5].map(() => ({ root: -1, qual: 0, ts: 0 })), activeSlot: 0,
@@ -1208,7 +1209,7 @@ button.btn{font-size:13px;white-space:nowrap}
   function touch(id, pressed) {
     if (R.touched[id] === pressed) return;
     R.touched[id] = pressed;
-    if (S.loopOn[id]) { if (window.swLooper) window.swLooper.press(id - 1, pressed); return; }   // Looper: SW n = Kanal n
+    if (S.loopOn[id]) { if (window.swLooper) window.swLooper.press((S.loopCh[id] || id) - 1, pressed); return; }   // Looper: SW n schaltet seinen gewählten Kanal (Standard n)
     if (pressed) kick();
     const steps = S.mel[id];
     if (S.improMode && S.improEn[id]) {
@@ -1368,7 +1369,7 @@ button.btn{font-size:13px;white-space:nowrap}
     const a = f => [0, 1, 2, 3, 4, 5].map(f);
     Object.assign(P, {
       ir: a(i => S.improRoot[i] || 0), is: a(i => S.improScale[i] || 0), io: a(i => S.improOct[i] || 4), ie: a(i => S.improEn[i] ? 1 : 0),
-      rv: a(i => S.rev[i] != null ? S.rev[i] : 30), lo: a(i => S.loopOn[i] ? 1 : 0), ad: a(i => S.arpDiv[i] || 0), ae: a(i => R.arpEn[i] ? 1 : 0), sv: a(i => S.vol[i] != null ? S.vol[i] : 100), ab: S.arpBpm,
+      rv: a(i => S.rev[i] != null ? S.rev[i] : 30), lo: a(i => S.loopOn[i] ? 1 : 0), lch: a(i => S.loopCh[i] || i), ad: a(i => S.arpDiv[i] || 0), ae: a(i => R.arpEn[i] ? 1 : 0), sv: a(i => S.vol[i] != null ? S.vol[i] : 100), ab: S.arpBpm,
       slsr: a(i => i && S.slots[i].root >= 0 ? S.slots[i].root : 255), slsq: a(i => i ? S.slots[i].qual : 0), slst: a(i => i ? S.slots[i].ts : 0),
       slsa: S.activeSlot, tgm: [1, 2, 3, 4, 5].reduce((m, i) => m | (S.arpTgm[i] ? 1 << (i - 1) : 0), 0), ch: a(i => S.midiCh[i] || i)
     });
@@ -1383,7 +1384,7 @@ button.btn{font-size:13px;white-space:nowrap}
       S.melMode[i] = !!d.mm; S.akkordOff[i] = !!d.ao; R.melStep[i] = 0; R.melPlaying[i] = false;
       S.mel[i] = (P.mel && P.mel[i]) ? P.mel[i].map(s => ({ n: s.n.slice(0, 3), d: s.d || 0 })) : [];
       S.improRoot[i] = (P.ir || [])[i] || 0; S.improScale[i] = (P.is || [])[i] || 0; S.improOct[i] = (P.io || [])[i] || 4; S.improEn[i] = !!(P.ie || [])[i];
-      S.arpDiv[i] = (P.ad || [])[i] || 0; S.loopOn[i] = !!(P.lo || [])[i]; if ((P.rv || [])[i] != null) S.rev[i] = P.rv[i]; S.vol[i] = (P.sv || [])[i] != null ? P.sv[i] : 100;
+      S.arpDiv[i] = (P.ad || [])[i] || 0; S.loopOn[i] = !!(P.lo || [])[i]; S.loopCh[i] = (P.lch || [])[i] >= 1 && P.lch[i] <= 5 ? P.lch[i] : i; if ((P.rv || [])[i] != null) S.rev[i] = P.rv[i]; S.vol[i] = (P.sv || [])[i] != null ? P.sv[i] : 100;
       S.slots[i] = { root: (P.slsr || [])[i] == null || P.slsr[i] === 255 ? -1 : P.slsr[i], qual: (P.slsq || [])[i] ? 1 : 0, ts: (P.slst || [])[i] || 0 };
       S.arpTgm[i] = !!(((P.tgm || 0) >> (i - 1)) & 1);
       const c = (P.ch || [])[i]; if (c >= 1 && c <= 16) S.midiCh[i] = c;
@@ -1401,7 +1402,7 @@ button.btn{font-size:13px;white-space:nowrap}
       if (!P) { presets.push({ n, name: '', filled: false, ids: [] }); continue; }
       const o = { n, name: P.name || '', filled: true, ids: [] };
       for (let i = 1; i <= 5; i++) { const d = P.sw[i]; o.ids.push({ i, nt: d.nt, rt: d.rt, qq: d.qq, ts: d.ts, pp: d.pp, ms: d.ms, ls: d.ls, mm: d.mm, ao: d.ao, ml: 0, md: '' }); }
-      ['ir', 'is', 'io', 'ie', 'ad', 'ae', 'ab', 'sv', 'rv', 'lo', 'slsr', 'slsq', 'slst', 'slsa', 'tgm', 'ch'].forEach(k => { o[k] = P[k]; });
+      ['ir', 'is', 'io', 'ie', 'ad', 'ae', 'ab', 'sv', 'rv', 'lo', 'lch', 'lp', 'slsr', 'slsq', 'slst', 'slsa', 'tgm', 'ch'].forEach(k => { o[k] = P[k]; });
       o.lc = [0, 0, 0, 0, 0]; o.gm = 0;
       for (let i = 1; i <= 5; i++) o['mel' + i] = melToStr((P.mel && P.mel[i]) || []);
       presets.push(o);
@@ -1420,7 +1421,7 @@ button.btn{font-size:13px;white-space:nowrap}
       if (g('n') != null) d.nt = +g('n'); if (g('r') != null) d.rt = +g('r'); if (g('q') != null) d.qq = +g('q'); if (g('t') != null) d.ts = +g('t');
       if (g('p') != null) d.pp = +g('p'); if (g('m') != null) d.ms = +g('m'); if (g('l') != null) d.ls = +g('l');
       if (g('mm') != null) d.mm = g('mm') === '1' ? 1 : 0; if (g('ao') != null) d.ao = g('ao') === '1' ? 1 : 0;
-      [['ir', 'ir'], ['is', 'is'], ['io', 'io'], ['ad', 'ad'], ['sv', 'sv'], ['rv', 'rv'], ['lo', 'lo'], ['slsr', 'slsr'], ['slsq', 'slsq'], ['slst', 'slst'], ['ch', 'ch']].forEach(([k, f]) => { if (q.has(k + i)) P[f][i] = +q.get(k + i); });
+      [['ir', 'ir'], ['is', 'is'], ['io', 'io'], ['ad', 'ad'], ['sv', 'sv'], ['rv', 'rv'], ['lo', 'lo'], ['lch', 'lch'], ['slsr', 'slsr'], ['slsq', 'slsq'], ['slst', 'slst'], ['ch', 'ch']].forEach(([k, f]) => { if (q.has(k + i)) P[f][i] = +q.get(k + i); });
       if (q.has('ie' + i)) P.ie[i] = q.get('ie' + i) === '1' ? 1 : 0;
       if (q.has('ae' + i)) P.ae[i] = q.get('ae' + i) === '1' ? 1 : 0;
       if (q.has('mel' + i)) P.mel[i] = strToMel(q.get('mel' + i));
@@ -1476,7 +1477,7 @@ button.btn{font-size:13px;white-space:nowrap}
     '/slot_transpose': q => { const s = Math.max(1, Math.min(5, +q.get('slot') || 1)), t = parseInt(q.get('step')); S.slots[s].ts = [-2, -1, 0, 1, 2].includes(t) ? t : 0; save(); return ok('ok'); },
     '/mel': q => {
       const id = idArg(q), st = S.mel[id], arpOn = R.arpEn[id] && !R.arpMuted[id], pv = PLAYIDX[id] >= 0;
-      return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: pv ? PLAYIDX[id] : arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], looper: !!S.loopOn[id], len: st.length, playing: pv || arpOn || R.melPlaying[id] });
+      return ok({ steps: st.map(s => s.n), durs: st.map(s => s.d || 0), step: pv ? PLAYIDX[id] : arpOn ? R.arpPrev[id] : R.melStep[id] % Math.max(1, st.length), mode: !!S.melMode[id], looper: !!S.loopOn[id], loopCh: S.loopCh[id] || id, len: st.length, playing: pv || arpOn || R.melPlaying[id] });
     },
     '/mel_play': q => {
       const id = idArg(q);
@@ -1501,8 +1502,9 @@ button.btn{font-size:13px;white-space:nowrap}
     '/mel_ins_step': q => { const id = idArg(q); if (S.mel[id].length >= MAX_MELODY) return ok('full'); let i = parseInt(q.get('idx')); i = Math.max(0, Math.min(S.mel[id].length, isNaN(i) ? 0 : i)); S.mel[id].splice(i, 0, { n: notesArg(q), d: Math.max(0, Math.min(7, +q.get('dur') || 0)) }); save(); return ok('ok'); },
     '/looper_mode': q => {
       const id = idArg(q), on = q.get('on') === '1';
-      if (!on && S.loopOn[id] && window.swLooper) window.swLooper.press(id - 1, false);
-      R.touched[id] = false; S.loopOn[id] = on; save(); return ok('ok');
+      if (S.loopOn[id] && window.swLooper && (!on || q.has('ch'))) window.swLooper.press((S.loopCh[id] || id) - 1, false);
+      if (q.has('ch')) { const c = +q.get('ch'); if (c >= 1 && c <= 5) S.loopCh[id] = c; }
+      R.touched[id] = false; if (q.has('on')) S.loopOn[id] = on; save(); return ok('ok');
     },
     '/mel_mode': q => {
       const id = idArg(q);
@@ -1553,11 +1555,22 @@ button.btn{font-size:13px;white-space:nowrap}
     '/rev_set': q => { const id = idArg(q); S.rev[id] = Math.max(0, Math.min(127, +q.get('val') || 0)); if (A.synth) A.synth.controllerChange(chOf(id), 91, S.rev[id]); save(); return ok('ok'); },
     '/volume_set': q => { const id = idArg(q); S.vol[id] = Math.max(0, Math.min(127, +q.get('val') || 0)); if (A.synth) A.synth.controllerChange(chOf(id), 7, S.vol[id]); save(); return ok('ok'); },
     '/dpresets': () => ok({ presets: [1, 2, 3, 4].map(n => ({ n, name: (S.dpresets[n] && S.dpresets[n].name) || '', filled: !!S.dpresets[n] })) }),
-    '/dpreset_save': q => { const n = Math.max(1, Math.min(4, +q.get('num') || 1)); S.dpresets[n] = snapshot(q.get('name') || ('Preset ' + n)); save(); return ok('ok'); },
+    '/dpreset_save': q => {
+      const n = Math.max(1, Math.min(4, +q.get('num') || 1)), P = snapshot(q.get('name') || ('Preset ' + n));
+      // Loops mitsichern: als Looper-Preset „Gerät n: Name“ (die WAV-Dateien liegen im Looper-Speicher, das Preset merkt sich den Namen)
+      P.lp = '';
+      if (window.swLooper && window.swLooper.savePresetNamed) {
+        const lpName = 'Gerät ' + n + ': ' + P.name;
+        return window.swLooper.savePresetNamed(lpName).then(had => { P.lp = had ? lpName : ''; S.dpresets[n] = P; save(); return ok('ok'); })
+          .catch(() => { S.dpresets[n] = P; save(); return ok('ok'); });
+      }
+      S.dpresets[n] = P; save(); return ok('ok');
+    },
     '/dpreset_load': q => {
       const n = Math.max(1, Math.min(4, +q.get('num') || 1)), P = S.dpresets[n];
       if (!P) return new Response('leer', { status: 404 });
       applyPreset(P);
+      if (P.lp && window.swLooper && window.swLooper.loadPresetNamed) window.swLooper.loadPresetNamed(P.lp);   // mitgesicherte Loops laden
       const ids = [];
       for (let i = 1; i <= 5; i++) ids.push({ id: i, note: S.note[i], root: S.chordRoot[i], qual: S.chordQual[i] ? 'min' : 'maj', ts: S.ts[i], ch: i, prog: S.instr[i].p, msb: S.instr[i].m, lsb: S.instr[i].l, ao: S.akkordOff[i] ? 1 : 0, mm: S.melMode[i] ? 1 : 0 });
       const im = { root: S.improRoot, scale: S.improScale, oct: S.improOct }; for (let i = 1; i <= 5; i++) im['e' + i] = S.improEn[i] ? 1 : 0;
@@ -2974,6 +2987,8 @@ function updateModeBtns(id){
   const isAkk=!isMel&&!isImpro&&!isLoop&&!akkordOffState[id];
   const lBtn=document.getElementById('modelooperBtn');
   if(lBtn){ lBtn.textContent='\uD83D\uDD01 Looper '+(isLoop?'EIN \u25cf':'AUS'); lBtn.style.cssText='border-color:'+(isLoop?'var(--acc)':'')+';color:'+(isLoop?'var(--acc)':''); }
+  const lcs=document.getElementById('loopChSel');
+  if(lcs){ lcs.hidden=!isLoop; lcs.value=String((melData&&melData.loopCh)||melID); }
   const mBtn=document.getElementById('modemelBtn');
   const aBtn=document.getElementById('modeakkBtn');
   const iBtn=document.getElementById('modeimproBtn');
@@ -3047,6 +3062,7 @@ async function setMode(mode){
   await loadMel();
 }
 document.getElementById('modelooperBtn').onclick=()=>setMode('looper');
+document.getElementById('loopChSel').onchange=async()=>{ await fetch('/looper_mode?id='+melID+'&ch='+document.getElementById('loopChSel').value,{method:'POST'}); await loadMel(); };
 document.getElementById('modemelBtn').onclick=()=>setMode('mel');
 document.getElementById('modeakkBtn').onclick=()=>setMode('akkord');
 document.getElementById('modeimproBtn').onclick=()=>setMode('impro');
@@ -4518,7 +4534,7 @@ const GEN = (() => {
   // Standard: Taste/SW 1–5 schaltet Kanal 1–5 (wenn der SW auf „Looper EIN“ steht); eine angelernte Taste schaltet den Kanal zusätzlich direkt
   function renderAssign(c) {
     c.el.keyTag.textContent = 'Taste ' + (c.key ? c.key.label + ' / ' : '') + (c.idx + 1);
-    c.el.keyShow.textContent = c.key ? 'Taste ' + c.key.label + ' schaltet diesen Kanal immer direkt' : 'Taste/SW ' + (c.idx + 1) + ' bei „Looper EIN“';
+    c.el.keyShow.textContent = c.key ? 'Taste ' + c.key.label + ' schaltet diesen Kanal immer direkt' : 'SW mit „Looper EIN“ (Kanal dort wählbar)';
     c.el.keyClr.hidden = !c.key;
   }
   // ---------- Audio ----------
@@ -5642,7 +5658,19 @@ const GEN = (() => {
       ensureAudio(); ctx.resume();
       if (on && !playing && chans.some(x => x.buffer)) start();   // erster Druck startet die Wiedergabe von selbst
       press(c, on, 'sw');
-    }
+    },
+    // Geräte-Preset: aktuelle Loops unter festem Namen im Looper sichern (false = keine Loops geladen)
+    async savePresetNamed(name) {
+      if (!chans.some(c => c.buffer)) return false;
+      await dbDo('readwrite', s => s.put({
+        name, master: +$('master').value, projBpm,
+        ch: chans.map(c => ({ fileName: c.fileName, bytes: c.bytes || null, vol: c.vol, mode: c.mode, key: c.key, gesture: c.gesture, fingerOn: c.fingerOn, bpm: c.bpm || null, bpmGuess: !!c.bpmGuess }))
+      }));
+      await refreshPresets(name);
+      try { localStorage.setItem(STORE + '.preset', name); } catch (e) {}
+      return true;
+    },
+    loadPresetNamed: name => loadPreset(name)
   };
   // Angelernte Tasten vor dem virtuellen HUB abfangen (capture), damit sie nicht zusätzlich einen SW drücken
   const SW_KEY = /^(Digit|Numpad)[1-5]$/;   // Tasten 1–5 = SW 1–5 (HUB): die Betriebsart des SW entscheidet, nicht eine angelernte Looper-Taste
