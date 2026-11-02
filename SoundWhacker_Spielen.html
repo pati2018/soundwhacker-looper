@@ -131,7 +131,7 @@ button.btn{font-size:13px;white-space:nowrap}
   background:#0f1724;border:1px solid #25324b;
   color:var(--fg);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:13px;
 }
-#slottoggle.active,#chordpadopen.active{border-color:var(--acc);color:var(--acc)}
+#slottoggle.active,#chordpadopen.active,#padglidebtn.active{border-color:var(--acc);color:var(--acc)}
 #livegrid{
   position:relative;
   flex:1;
@@ -530,6 +530,7 @@ button.btn{font-size:13px;white-space:nowrap}
   <div id="chordpadheader">
     <button id="chordpadback">&#127968; Home</button>
     <button id="padslotsbtn" class="btn">&#9835; Slots</button>
+    <button id="padglidebtn" class="btn">&#8596; Gleiten</button>
     <button id="padshapebtn" class="btn">&#11044;</button>
     <button id="padedittoggle" class="btn">&#9998; Positionieren</button>
   </div>
@@ -3722,6 +3723,30 @@ mouseControls(liveGrid, '.livebtn', ()=>liveEditMode, ()=>liveShape, liveSaveLay
 mouseControls(chordPadGrid, '.padBtn', ()=>padEditMode, ()=>padShape, padSaveLayout,
   b=>{ b.classList.add('active'); fetch('/chord_play?slot='+b.dataset.slot,{method:'POST'}).catch(()=>{}); },
   b=>{ b.classList.remove('active'); fetch('/chord_stop',{method:'POST'}).catch(()=>{}); });
+// Gleiten: beim Ziehen über die Knöpfe klingt immer der Knopf unter dem Finger, der verlassene verstummt
+let padGlide=false; try{ padGlide=localStorage.getItem('padGlide')==='1'; }catch(e){}
+const padGlideBtn=document.getElementById('padglidebtn');
+padGlideBtn.classList.toggle('active',padGlide);
+padGlideBtn.onclick=()=>{ padGlide=!padGlide; padGlideBtn.classList.toggle('active',padGlide); try{ localStorage.setItem('padGlide',padGlide?'1':'0'); }catch(e){} };
+let padGlideCur=null, padMouseDown=false;
+function padGlideTo(x,y){
+  const el=document.elementFromPoint(x,y), b=el&&el.closest('.padBtn');
+  if(b===padGlideCur) return;
+  chordPadGrid.querySelectorAll('.padBtn.active').forEach(x=>x.classList.remove('active'));
+  padGlideCur=b;
+  if(b){ b.classList.add('active'); fetch('/chord_play?slot='+b.dataset.slot,{method:'POST'}).catch(()=>{}); }
+  else fetch('/chord_stop',{method:'POST'}).catch(()=>{});
+}
+function padGlideEnd(){ padGlideCur=null; padMouseDown=false; chordPadGrid.querySelectorAll('.padBtn.active').forEach(x=>x.classList.remove('active')); }
+chordPadGrid.addEventListener('touchstart',e=>{ if(!padEditMode) padGlideCur=e.target.closest('.padBtn'); },{capture:true,passive:true});
+chordPadGrid.addEventListener('touchmove',e=>{
+  if(!padGlide||padEditMode) return;
+  e.preventDefault(); const t=e.touches[0]; padGlideTo(t.clientX,t.clientY);
+},{passive:false});
+chordPadGrid.addEventListener('touchend',e=>{ if(!padEditMode&&!e.touches.length) padGlideEnd(); });
+chordPadGrid.addEventListener('mousedown',e=>{ if(!padEditMode&&e.button===0){ padMouseDown=true; padGlideCur=e.target.closest('.padBtn'); } },true);
+chordPadGrid.addEventListener('mousemove',e=>{ if(padGlide&&padMouseDown&&!padEditMode) padGlideTo(e.clientX,e.clientY); });
+document.addEventListener('mouseup',()=>{ if(padMouseDown){ padGlideEnd(); fetch('/chord_stop',{method:'POST'}).catch(()=>{}); } });
 document.getElementById('padedittoggle').onclick=()=>{ padEditMode=!padEditMode; updatePadEditToggle(); };
 document.getElementById('padshapebtn').addEventListener('click',()=>{
   padShape=SHAPES[(SHAPES.indexOf(padShape)+1)%SHAPES.length];
