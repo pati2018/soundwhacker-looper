@@ -3826,9 +3826,20 @@ async function headStart(){
     headStat('Kamera an – Bild wird empfangen …');
     headVid.muted=true; headVid.setAttribute('playsinline',''); headVid.setAttribute('autoplay','');
     headVid.srcObject=stream;
-    const pl=headVid.play(); if(pl&&pl.catch) pl.catch(()=>{});
-    for(let k=0;k<50&&headVid.readyState<2;k++) await new Promise(r=>setTimeout(r,100));
-    if(headVid.readyState<2) throw new Error('Kein Kamerabild – Kopf aus und wieder an tippen');
+    let playErr='';
+    const tryPlay=()=>{ const pl=headVid.play(); if(pl&&pl.catch) pl.catch(e=>{ playErr=(e&&e.name)||'Fehler'; }); };
+    tryPlay();
+    for(let k=0;k<30&&headVid.readyState<2;k++) await new Promise(r=>setTimeout(r,100));
+    if(headVid.readyState<2){
+      // iPad lässt das Video nicht von selbst laufen (z. B. Stromsparmodus): ein Tipp startet es
+      headStat('Einmal auf den Bildschirm tippen, um die Kamera zu starten'+(playErr?' ('+playErr+')':''));
+      const tap=()=>tryPlay();
+      chordPadArea.addEventListener('pointerdown',tap,true); chordPadArea.addEventListener('touchend',tap,true);
+      for(let k=0;k<600&&HEAD.on&&headVid.readyState<2;k++) await new Promise(r=>setTimeout(r,100));
+      chordPadArea.removeEventListener('pointerdown',tap,true); chordPadArea.removeEventListener('touchend',tap,true);
+      if(!HEAD.on) return;
+      if(headVid.readyState<2) throw new Error('Kein Kamerabild'+(playErr?' ('+playErr+')':'')+' – Kopf aus und wieder an tippen');
+    }
     if(!HEAD.face){
       headStat('Gesichtserkennung wird geladen …');
       const base=new URL('./',location.href).href;
