@@ -1029,8 +1029,8 @@ button.btn{font-size:13px;white-space:nowrap}
       <label class="small mut">Lage <select id="sfReg"><option value="36">tief</option><option value="48" selected>mittel</option><option value="60">hoch</option></select></label>
     </div>
     <div class="row" style="margin-top:12px"><b class="small">Akkorde</b>
-      <span class="small mut">vorbelegen aus Tonart</span> <select id="sfKey"></select> <select id="sfKeyMode"><option value="major">Dur</option><option value="minor">Moll</option></select>
-      <button id="sfFill">Vorbelegen</button>
+      <span class="small mut">Tonart</span> <select id="sfKey"></select> <select id="sfKeyMode"><option value="major">Dur</option><option value="minor">Moll</option></select>
+      <button id="sfFill" hidden></button>
     </div>
     <div class="row" id="sfChords" style="margin-top:8px;gap:8px 16px"></div>
     <div class="row" style="margin-top:12px">
@@ -5503,6 +5503,7 @@ const GEN = (() => {
     renderSfChords(); sfSave();
   };
   ['sfBpm', 'sfBars', 'sfPattern', 'sfRate', 'sfOct', 'sfReg', 'sfKey', 'sfKeyMode', 'sfPreset', 'sfRev'].forEach(id => $(id).addEventListener('change', sfSave));
+  ['sfKey', 'sfKeyMode'].forEach(id => $(id).addEventListener('change', () => $('sfFill').onclick()));
   $('sfRev').addEventListener('input', () => { $('sfRevVal').textContent = $('sfRev').value + ' %'; });
 
   async function sfUse(bytes, name) {
