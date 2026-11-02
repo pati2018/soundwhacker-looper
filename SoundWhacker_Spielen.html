@@ -1162,7 +1162,7 @@ button.btn{font-size:13px;white-space:nowrap}
   }
   function audioCtx() {
     if (A.ctx) return A.ctx;
-    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}   // nur umstellen, wenn nötig – jedes Umstellen beendet auf dem iPad eine laufende Kamera
     A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     return A.ctx;
   }
@@ -3813,32 +3813,44 @@ const headStat=t=>{ document.getElementById('padheadstat').textContent=t||''; };
 const headSel=(id,key)=>{ const s=document.getElementById(id); try{ const v=localStorage.getItem(key); if(v&&[...s.options].some(o=>o.value===v)) s.value=v; }catch(e){} s.onchange=()=>{ try{ localStorage.setItem(key,s.value); }catch(e){} }; return s; };
 const headDwell=headSel('padheaddwell','padHeadDwell'), headGain=headSel('padheadgain','padHeadGain');
 function headStopChord(){ if(HEAD.playing){ HEAD.playing.classList.remove('active'); HEAD.playing=null; fetch('/chord_stop',{method:'POST'}).catch(()=>{}); } }
-async function headStart(){
+async function headStart(auto){
   if(HEAD.on) return;
+  if(!auto) HEAD.restarts=0;
   HEAD.on=true; headBtn.classList.add('active'); chordPadArea.classList.add('headon');
   try{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error('Dieser Browser gibt die Kamera nicht frei');
+    try{ if(navigator.audioSession&&navigator.audioSession.type!=='playback') navigator.audioSession.type='playback'; }catch(e){}   // vor der Kamera – späteres Umstellen würde sie beenden
     headStat('Kamera wird gestartet …');
     // iPad: getUserMedia muss direkt im Tipp starten; hängt es, nach 10 s eine klare Meldung
     const gum=navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:'user'},audio:false});
     const stream=await Promise.race([gum,new Promise((_,rej)=>setTimeout(()=>rej(new Error('Kamera antwortet nicht – in den iPad-Einstellungen (Safari → Kamera) erlauben und neu laden')),10000))]);
     HEAD.stream=stream;
     if(!HEAD.on){ stream.getTracks().forEach(t=>t.stop()); return; }
+    const alive=()=>HEAD.on&&HEAD.stream===stream;   // dieser Startvorgang gilt noch (kein Neustart dazwischen)
+    const vt=stream.getVideoTracks()[0];
+    if(vt) vt.addEventListener('ended',()=>{   // vom iPad beendet: bis zu 3× neu starten
+      if(!HEAD.on||HEAD.stream!==stream) return;
+      HEAD.restarts=(HEAD.restarts||0)+1;
+      headStop(); chordPadArea.classList.add('headon');
+      if(HEAD.restarts<=3){ headStat('Kamera wurde beendet – starte neu …'); setTimeout(()=>headStart(true),600); }
+      else headStat('Die Kamera wird vom iPad immer wieder beendet – andere Apps mit Kamera schließen');
+    });
     headStat('Kamera an – Bild wird empfangen …');
     headVid.muted=true; headVid.setAttribute('playsinline',''); headVid.setAttribute('autoplay','');
     headVid.srcObject=stream;
     let playErr='';
     const tryPlay=()=>{ const pl=headVid.play(); if(pl&&pl.catch) pl.catch(e=>{ playErr=(e&&e.name)||'Fehler'; }); return pl; };
     try{ await Promise.race([tryPlay(),new Promise(r=>setTimeout(r,3000))]); }catch(e){}
-    for(let k=0;k<30&&headVid.readyState<2;k++) await new Promise(r=>setTimeout(r,100));
+    for(let k=0;k<30&&alive()&&headVid.readyState<2;k++) await new Promise(r=>setTimeout(r,100));
+    if(!alive()) return;
     if(headVid.readyState<2){
       // iPad lässt das Video nicht von selbst laufen (z. B. Stromsparmodus): ein Tipp startet es
       headStat('Einmal auf den Bildschirm tippen, um die Kamera zu starten'+(playErr?' ('+playErr+')':''));
       const tap=()=>tryPlay();
       chordPadArea.addEventListener('pointerdown',tap,true); chordPadArea.addEventListener('touchend',tap,true);
-      for(let k=0;k<150&&HEAD.on&&headVid.readyState<2;k++) await new Promise(r=>setTimeout(r,100));
+      for(let k=0;k<150&&alive()&&headVid.readyState<2;k++) await new Promise(r=>setTimeout(r,100));
       chordPadArea.removeEventListener('pointerdown',tap,true); chordPadArea.removeEventListener('touchend',tap,true);
-      if(!HEAD.on) return;
+      if(!alive()) return;
       if(headVid.readyState<2){
         const tr=stream.getVideoTracks()[0]||{};
         throw new Error('Kein Kamerabild ['+[playErr||'play ok','rs'+headVid.readyState,headVid.paused?'pausiert':'läuft','w'+headVid.videoWidth,'Spur '+tr.readyState+(tr.muted?' stumm':'')+(tr.enabled===false?' aus':'')].join(', ')+'] – Kopf aus und wieder an tippen');
@@ -3852,7 +3864,7 @@ async function headStart(){
       const opts=d=>({baseOptions:{modelAssetPath:base+'models/face_landmarker.task',delegate:d},runningMode:'VIDEO',numFaces:1});
       try{ HEAD.face=await HEAD.vision.FaceLandmarker.createFromOptions(fs,opts('GPU')); }catch(e){ HEAD.face=await HEAD.vision.FaceLandmarker.createFromOptions(fs,opts('CPU')); }
     }
-    if(!HEAD.on) return;
+    if(!alive()) return;
     HEAD.cx=null; headStat('Gerade auf den Bildschirm schauen …');
     HEAD.loop=requestAnimationFrame(headLoop);
   }catch(e){
@@ -4978,7 +4990,7 @@ const GEN = (() => {
   function ensureAudio() {
     if (ctx) return ctx;
     // iOS: Ton auch bei aktivem Stumm-Schalter und im Hintergrund-Modus der Seite erlauben
-    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}   // nur umstellen, wenn nötig – jedes Umstellen beendet auf dem iPad eine laufende Kamera
     ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     master = ctx.createGain();
     master.gain.value = $('master').value / 100;
