@@ -1022,7 +1022,7 @@ button.btn{font-size:13px;white-space:nowrap}
     </div>
     <div class="row" style="margin-top:10px">
       <label class="small mut">Tempo <input id="sfBpm" type="number" min="40" max="220" step="1" style="width:72px" value="100"> BPM</label>
-      <label class="small mut">Länge <select id="sfBars"><option value="1">1 Takt</option><option value="2" selected>2 Takte</option></select></label>
+      <select id="sfBars" hidden><option value="2" selected>2</option></select>
       <label class="small mut">Muster <select id="sfPattern"><option value="up">aufwärts</option><option value="down">abwärts</option><option value="updown" selected>auf und ab</option></select></label>
       <label class="small mut">Notenwert <select id="sfRate"><option value="2">Achtel</option><option value="4" selected>Sechzehntel</option></select></label>
       <label class="small mut">Oktaven <select id="sfOct"><option>1</option><option selected>2</option><option>3</option></select></label>
@@ -5652,7 +5652,7 @@ const GEN = (() => {
       const bpm = Math.max(40, Math.min(220, +$('sfBpm').value || 100));
       $('sfBpm').value = bpm;
       const [msb, lsb, program] = $('sfPreset').value.split(':').map(Number);
-      const o = { bpm, bars: +$('sfBars').value, rate: +$('sfRate').value, oct: +$('sfOct').value, reg: +$('sfReg').value, pattern: $('sfPattern').value, rev: +$('sfRev').value / 100 };
+      const o = { bpm, bars: 2, rate: +$('sfRate').value, oct: +$('sfOct').value, reg: +$('sfReg').value, pattern: $('sfPattern').value, rev: +$('sfRev').value / 100 };
       const sr = ctx.sampleRate, out = [];
       for (let i = 0; i < 5; i++) {
         sfInfo('Erzeuge Loop ' + (i + 1) + ' von 5 (' + chordName(sfChords[i]) + ') …');
