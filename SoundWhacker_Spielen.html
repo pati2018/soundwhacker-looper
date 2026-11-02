@@ -1489,7 +1489,7 @@ button.btn{font-size:13px;white-space:nowrap}
     const mel = [null];
     for (let id = 1; id <= 5; id++) mel.push({ id, md: S.melMode[id] ? 1 : 0, s: S.mel[id].map(s => s.n), d: S.mel[id].map(s => s.d || 0) });
     // raw: die Presets vollständig (alle Felder, auch Looper EIN/Kanal, Hall, mitgesicherte Loops) – der Import stellt sie genau so wieder her
-    return { v: 1, il: S.instrList.map(e => ({ n: e.name, p: e.p, m: e.m, l: e.l })), presets, mel, raw: S.dpresets.map(P => (P ? JSON.parse(JSON.stringify(P)) : null)) };
+    return { v: 1, il: S.instrList.map(e => ({ n: e.name, p: e.p, m: e.m, l: e.l })), presets, mel, raw: S.dpresets.map(P => (P ? JSON.parse(JSON.stringify(P)) : null)), lpresets: JSON.parse(JSON.stringify(S.lpresets)) };
   }
   function presetFromRaw(q) {   // Formular aus dem Import (/dpreset_raw) → Preset
     const n = Math.max(1, Math.min(4, +q.get('num') || 1));
@@ -1529,6 +1529,15 @@ button.btn{font-size:13px;white-space:nowrap}
     save();
   }
   window.swDpresetImport = dpresetImport;
+  window.swLpresetImport = arr => {   // Slot-Presets aus der Exportdatei (Plätze 1–8)
+    for (let n = 1; n <= 8; n++) {
+      const p = arr[n];
+      S.lpresets[n] = p && Array.isArray(p.slots) && p.slots.length === 5
+        ? { name: p.name || ('Preset ' + n), slots: p.slots.map(s => ({ root: +s.root, qual: s.qual ? 1 : 0, ts: [-2, -1, 0, 1, 2].includes(+s.ts) ? +s.ts : 0 })), active: +p.active || 0 }
+        : null;
+    }
+    save();
+  };
   window.swLoopInfo = id => (S.loopOn[id] ? (S.loopCh[id] || id) : 0);   // Looper-Kanal des SW (0 = kein Looper)
 
   // ---------- Antworten auf die Anfragen der Oberfläche (statt HTTP zum ESP32) ----------
@@ -2459,6 +2468,7 @@ document.getElementById('dpimport').addEventListener('change',async(e)=>{
     if(Array.isArray(data.raw)){   // Datei aus SoundWhacker Spielen: Presets vollständig übernehmen
       istat.textContent='Importiere (mit Loops)\u2026';
       await window.swDpresetImport(data.raw);
+      if(Array.isArray(data.lpresets)&&window.swLpresetImport){ window.swLpresetImport(data.lpresets); loadLPresets(); }
     } else for(const pr of data.presets){
       if(!pr.filled) continue; // leere Slots nicht importieren (auch alte Dateien ohne filled-Flag)
       let n=pr.n;
