@@ -131,6 +131,7 @@ button.btn{font-size:13px;white-space:nowrap}
   background:#0f1724;border:1px solid #25324b;
   color:var(--fg);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:13px;
 }
+.hdrinstr{background:#0f1724;border:1px solid #25324b;color:var(--fg);border-radius:10px;padding:6px 8px;font-size:14px;max-width:190px}
 #slottoggle.active,#chordpadopen.active,#padglidebtn.active{border-color:var(--acc);color:var(--acc)}
 #livegrid{
   position:relative;
@@ -531,6 +532,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <button id="chordpadback">&#127968; Home</button>
     <button id="padslotsbtn" class="btn">&#9835; Slots</button>
     <button id="padglidebtn" class="btn">&#8596; Gleiten</button>
+    <select id="padinstr" class="hdrinstr" title="Instrument"></select>
     <button id="padshapebtn" class="btn">&#11044;</button>
     <button id="padedittoggle" class="btn">&#9998; Positionieren</button>
   </div>
@@ -542,6 +544,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <button id="liveback">&#127968; Home</button>
     <button id="slottoggle">&#9835; Slots</button>
     <button id="chordpadopen" class="btn">&#9835; Akkord-Pad</button>
+    <select id="liveinstr" class="hdrinstr" title="Instrument"></select>
     <button id="liveshapebtn" class="btn">&#11044;</button>
     <button id="liveedittoggle" class="btn">&#9998; Positionieren</button>
   </div>
@@ -3747,6 +3750,24 @@ chordPadGrid.addEventListener('touchend',e=>{ if(!padEditMode&&!e.touches.length
 chordPadGrid.addEventListener('mousedown',e=>{ if(!padEditMode&&e.button===0){ padMouseDown=true; padGlideCur=e.target.closest('.padBtn'); } },true);
 chordPadGrid.addEventListener('mousemove',e=>{ if(padGlide&&padMouseDown&&!padEditMode) padGlideTo(e.clientX,e.clientY); });
 document.addEventListener('mouseup',()=>{ if(padMouseDown){ padGlideEnd(); fetch('/chord_stop',{method:'POST'}).catch(()=>{}); } });
+// Kopfleisten-Instrument = Instrument von SW1 (Auswahl läuft über das normale SW1-Feld)
+function fillHdrInstr(sel){
+  const src=document.getElementById('instrsel_1'); if(!src) return;
+  sel.innerHTML='';
+  instrListData.forEach((d,idx)=>{ const o=document.createElement('option'); o.value=idx; o.text=d.name; sel.appendChild(o); });
+  if(src.value==='') sel.insertAdjacentHTML('afterbegin','<option value="">&#127929; Instrument</option>');
+  sel.value=src.value;
+}
+['liveinstr','padinstr'].forEach(id=>{
+  const sel=document.getElementById(id);
+  sel.addEventListener('change',()=>{
+    const src=document.getElementById('instrsel_1'); if(!src||sel.value==='') return;
+    src.value=sel.value; src.dispatchEvent(new Event('change'));
+  });
+});
+[[liveArea,'liveinstr'],[chordPadArea,'padinstr']].forEach(([area,id])=>{
+  new MutationObserver(()=>{ if(area.classList.contains('open')) fillHdrInstr(document.getElementById(id)); }).observe(area,{attributes:true,attributeFilter:['class']});
+});
 document.getElementById('padedittoggle').onclick=()=>{ padEditMode=!padEditMode; updatePadEditToggle(); };
 document.getElementById('padshapebtn').addEventListener('click',()=>{
   padShape=SHAPES[(SHAPES.indexOf(padShape)+1)%SHAPES.length];
