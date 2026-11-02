@@ -1023,7 +1023,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <div class="row" style="margin-top:10px">
       <label class="small mut">Tempo <input id="sfBpm" type="number" min="40" max="220" step="1" style="width:72px" value="100"> BPM</label>
       <select id="sfBars" hidden><option value="2" selected>2</option></select>
-      <label class="small mut">Muster <select id="sfPattern"><option value="up">aufwärts</option><option value="down">abwärts</option><option value="updown" selected>auf und ab</option></select></label>
+      <label class="small mut">Muster <select id="sfPattern"><option value="up">aufwärts</option><option value="down">abwärts</option><option value="updown" selected>auf und ab</option><option value="downup">ab und auf</option><option value="alberti">Alberti (1-5-3-5)</option><option value="pendel">Pendel (zum Grundton)</option><option value="outin">au&szlig;en nach innen</option><option value="random">zuf&auml;llig</option></select></label>
       <label class="small mut">Notenwert <select id="sfRate"><option value="2">Achtel</option><option value="4" selected>Sechzehntel</option></select></label>
       <label class="small mut">Oktaven <select id="sfOct"><option>1</option><option selected>2</option><option>3</option></select></label>
       <label class="small mut">Lage <select id="sfReg"><option value="36">tief</option><option value="48" selected>mittel</option><option value="60">hoch</option></select></label>
@@ -5599,6 +5599,17 @@ const GEN = (() => {
     up.push(root + 12 * octs);
     if (pattern === 'down') return up.slice().reverse();
     if (pattern === 'updown') return up.concat(up.slice(1, -1).reverse());
+    if (pattern === 'downup') { const d = up.slice().reverse(); return d.concat(d.slice(1, -1).reverse()); }
+    if (pattern === 'alberti') { const a = []; for (let o = 0; o < octs; o++) { const b = root + 12 * o; a.push(b, b + 7, b + tri[1], b + 7); } return a; }
+    if (pattern === 'pendel') { const a = []; up.slice(1).forEach(n => a.push(up[0], n)); return a; }
+    if (pattern === 'outin') { const a = []; let lo = 0, hi = up.length - 1; while (lo <= hi) { a.push(up[lo++]); if (lo <= hi) a.push(up[hi--]); } return a; }
+    if (pattern === 'random') {   // feste Zufallsfolge je Akkord – der Loop wiederholt sich sauber
+      let s = 12345 + ch.pc * 97 + (ch.m === 'minor' ? 7 : 0);
+      const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+      const a = []; let last = -1;
+      for (let k = 0; k < 16; k++) { let i; do { i = Math.floor(rnd() * up.length); } while (i === last && up.length > 1); a.push(up[i]); last = i; }
+      a[0] = up[0]; return a;
+    }
     return up;
   }
 
