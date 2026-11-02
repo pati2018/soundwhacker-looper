@@ -5591,26 +5591,46 @@ const GEN = (() => {
   $('sfBox').addEventListener('toggle', () => { if ($('sfBox').open) { sfRestore(); try { localStorage.setItem(SF_SET + '.open', '1'); } catch (e) {} } else { try { localStorage.removeItem(SF_SET + '.open'); } catch (e) {} } });
 
   // Arpeggio-Töne eines Akkords: Grundton, Terz, Quinte über n Oktaven + oberster Grundton
-  function arpNotes(ch, reg, octs, pattern) {
+  function arpNotes(ch, reg, octs, pattern, steps) {
     const root = reg + ((ch.pc + 6) % 12) - 6;           // Grundton nah an der gewählten Lage
     const tri = [0, ch.m === 'minor' ? 3 : 4, 7];
-    const up = [];
-    for (let o = 0; o < octs; o++) tri.forEach(t => up.push(root + 12 * o + t));
-    up.push(root + 12 * octs);
-    if (pattern === 'down') return up.slice().reverse();
-    if (pattern === 'updown') return up.concat(up.slice(1, -1).reverse());
-    if (pattern === 'downup') { const d = up.slice().reverse(); return d.concat(d.slice(1, -1).reverse()); }
-    if (pattern === 'alberti') { const a = []; for (let o = 0; o < octs; o++) { const b = root + 12 * o; a.push(b, b + 7, b + tri[1], b + 7); } return a; }
-    if (pattern === 'pendel') { const a = []; up.slice(1).forEach(n => a.push(up[0], n)); return a; }
-    if (pattern === 'outin') { const a = []; let lo = 0, hi = up.length - 1; while (lo <= hi) { a.push(up[lo++]); if (lo <= hi) a.push(up[hi--]); } return a; }
+    const tones = n => { const a = []; for (let k = 0; k < n; k++) a.push(root + 12 * Math.floor(k / 3) + tri[k % 3]); return a; };   // n Akkordtöne aufwärts
+    const n0 = 3 * octs + 1;
+    // mehr Töne: weiter nach oben ergänzen; weniger Töne: gleichmäßig über den ganzen Tonumfang verteilen
+    const pick = n => n >= n0 ? tones(n) : Array.from({ length: n }, (_, k) => tones(n0)[Math.round(k * (n0 - 1) / (n - 1))]);
+    const build = n => {
+      const up = pick(n);
+      if (pattern === 'down') return up.slice().reverse();
+      if (pattern === 'updown') return up.concat(up.slice(1, -1).reverse());
+      if (pattern === 'downup') { const d = up.slice().reverse(); return d.concat(d.slice(1, -1).reverse()); }
+      if (pattern === 'pendel') { const a = []; up.slice(1).forEach(x => a.push(up[0], x)); return a; }
+      if (pattern === 'outin') { const a = []; let lo = 0, hi = up.length - 1; while (lo <= hi) { a.push(up[lo++]); if (lo <= hi) a.push(up[hi--]); } return a; }
+      return up;
+    };
+    const fits = len => len >= 2 && (len & (len - 1)) === 0 && steps % len === 0;
+    if (pattern === 'alberti') {   // 1-5-3-5 je Oktave; Anzahl Oktaven so, dass es aufgeht (höchstens die gewählte)
+      let g = octs; while (g > 1 && !fits(4 * g)) g--;
+      const a = []; for (let o = 0; o < g; o++) { const b = root + 12 * o; a.push(b, b + 7, b + tri[1], b + 7); } return a;
+    }
     if (pattern === 'random') {   // feste Zufallsfolge je Akkord – der Loop wiederholt sich sauber
+      const up = tones(3 * octs + 1);
       let s = 12345 + ch.pc * 97 + (ch.m === 'minor' ? 7 : 0);
       const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
       const a = []; let last = -1;
       for (let k = 0; k < 16; k++) { let i; do { i = Math.floor(rnd() * up.length); } while (i === last && up.length > 1); a.push(up[i]); last = i; }
       a[0] = up[0]; return a;
     }
-    return up;
+    const len0 = build(n0).length;
+    if (fits(len0)) return build(n0);
+    // nächste passende Länge; bei Gleichstand lieber ergänzen als kürzen
+    let best = n0, bestD = Infinity;
+    for (let n = 2; n <= n0 + 8; n++) {
+      const len = build(n).length;
+      if (!fits(len)) continue;
+      const d = Math.abs(len - len0) - (n > n0 ? 0.5 : 0);
+      if (d < bestD) { bestD = d; best = n; }
+    }
+    return build(best);
   }
 
   async function sfRenderLoop(lib, patch, ch, o, sr) {
@@ -5624,7 +5644,7 @@ const GEN = (() => {
     synth.controllerChange(0, 93, 0);                         // kein Chorus
     const loopLen = Math.round(o.bars * 4 * 60 / o.bpm * sr);
     const steps = o.bars * 4 * o.rate, stepLen = loopLen / steps;
-    const notes = arpNotes(ch, o.reg, o.oct, o.pattern);
+    const notes = arpNotes(ch, o.reg, o.oct, o.pattern, steps);
     // Zwei Durchläufe rendern und den zweiten nehmen: dann ist das Ausklingen des Vorgängers schon drin (nahtloser Loop)
     const ev = [];
     for (let k = 0; k < 2 * steps; k++) {
