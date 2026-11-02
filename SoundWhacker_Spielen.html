@@ -3816,10 +3816,19 @@ async function headStart(){
   if(HEAD.on) return;
   HEAD.on=true; headBtn.classList.add('active'); chordPadArea.classList.add('headon');
   try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error('Dieser Browser gibt die Kamera nicht frei');
     headStat('Kamera wird gestartet …');
-    HEAD.stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480},facingMode:'user'},audio:false});
-    if(!HEAD.on){ HEAD.stream.getTracks().forEach(t=>t.stop()); return; }
-    headVid.srcObject=HEAD.stream; await headVid.play();
+    // iPad: getUserMedia muss direkt im Tipp starten; hängt es, nach 10 s eine klare Meldung
+    const gum=navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    const stream=await Promise.race([gum,new Promise((_,rej)=>setTimeout(()=>rej(new Error('Kamera antwortet nicht – in den iPad-Einstellungen (Safari → Kamera) erlauben und neu laden')),10000))]);
+    HEAD.stream=stream;
+    if(!HEAD.on){ stream.getTracks().forEach(t=>t.stop()); return; }
+    headStat('Kamera an – Bild wird empfangen …');
+    headVid.muted=true; headVid.setAttribute('playsinline',''); headVid.setAttribute('autoplay','');
+    headVid.srcObject=stream;
+    const pl=headVid.play(); if(pl&&pl.catch) pl.catch(()=>{});
+    for(let k=0;k<50&&headVid.readyState<2;k++) await new Promise(r=>setTimeout(r,100));
+    if(headVid.readyState<2) throw new Error('Kein Kamerabild – Kopf aus und wieder an tippen');
     if(!HEAD.face){
       headStat('Gesichtserkennung wird geladen …');
       const base=new URL('./',location.href).href;
@@ -3898,7 +3907,7 @@ document.getElementById('padheadcenter').onclick=()=>{ HEAD.cx=null; };
 new MutationObserver(()=>{
   if(!chordPadArea.classList.contains('open')){ if(HEAD.on) headStop(); }
 }).observe(chordPadArea,{attributes:true,attributeFilter:['class']});
-document.getElementById('chordpadopen').addEventListener('click',()=>{ let on=false; try{ on=localStorage.getItem('padHead')==='1'; }catch(e){} if(on) setTimeout(headStart,300); });
+document.getElementById('chordpadopen').addEventListener('click',()=>{ let on=false; try{ on=localStorage.getItem('padHead')==='1'; }catch(e){} if(on) headStart(); });   // direkt im Tipp (iPad)
 document.getElementById('padedittoggle').onclick=()=>{ padEditMode=!padEditMode; updatePadEditToggle(); };
 document.getElementById('padshapebtn').addEventListener('click',()=>{
   padShape=SHAPES[(SHAPES.indexOf(padShape)+1)%SHAPES.length];
