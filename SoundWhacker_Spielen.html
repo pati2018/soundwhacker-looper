@@ -173,6 +173,8 @@ button.btn{font-size:13px;white-space:nowrap}
   font-size:14px;line-height:24px;text-align:center;
 }
 #livearea.editmode .liveColorDot{ display:block; }
+.mouseResize{display:none;position:absolute;right:-8px;bottom:-8px;width:26px;height:26px;border-radius:50%;background:#152035;border:2px solid var(--acc);color:var(--acc);font-size:14px;line-height:22px;text-align:center;cursor:nwse-resize;z-index:10}
+@media (hover:hover) and (pointer:fine){ #livearea.editmode .mouseResize,#chordpadarea.editmode .mouseResize{display:block} }
 #liveColorPicker{
   position:absolute;z-index:200;
   background:#0f1724;border:1px solid #25324b;border-radius:12px;
@@ -3315,6 +3317,7 @@ async function enterLiveMode(){
     dot.style.background=saved&&saved.col?saved.col:'#152035';
     dot.addEventListener('touchstart',(e)=>{ e.preventDefault(); e.stopPropagation(); liveShowColorPicker(b); },{passive:false});
     b.appendChild(dot);
+    b.insertAdjacentHTML('beforeend','<div class="mouseResize">&#8600;</div>');
     b.addEventListener('touchstart',(e)=>{
       e.preventDefault();
       if(liveEditMode){ liveStartDrag(e,b); }
@@ -3643,6 +3646,7 @@ async function enterChordPad(){
     dot.style.background=saved&&saved.col?saved.col:'#152035';
     dot.addEventListener('touchstart',(e)=>{ e.preventDefault(); e.stopPropagation(); padShowColorPicker(b); },{passive:false});
     b.appendChild(dot);
+    b.insertAdjacentHTML('beforeend','<div class="mouseResize">&#8600;</div>');
     b.addEventListener('touchstart',(e)=>{
       e.preventDefault();
       if(padEditMode){ padStartDrag(e,b); }
@@ -3686,6 +3690,38 @@ document.getElementById('padslotsbtn').onclick=async()=>{
   document.getElementById('liveslotpanel').classList.add('open');
   document.getElementById('slottoggle').classList.add('active');
 };
+// Maus-Bedienung (PC): Farbtupfer/Farbfelder lösen ihre Touch-Handler aus, Ziehen verschiebt, ↘ ändert die Größe
+function mouseControls(grid, btnSel, isEdit, getShape, save, onPlay, onStop){
+  grid.addEventListener('mousedown',e=>{
+    if(e.button!==0) return;
+    const tap=e.target.closest('.padColorSwatch,.liveColorDot,.padColorDot');
+    if(tap){ e.preventDefault(); tap.dispatchEvent(new Event('touchstart',{bubbles:true,cancelable:true})); return; }
+    grid.querySelectorAll('#liveColorPicker,#padColorPicker').forEach(p=>p.remove());
+    const b=e.target.closest(btnSel); if(!b) return;
+    e.preventDefault();
+    if(!isEdit()){
+      if(onPlay){ onPlay(b); const up=()=>{ onStop(b); document.removeEventListener('mouseup',up); }; document.addEventListener('mouseup',up); }
+      return;
+    }
+    const W=grid.clientWidth, H=grid.clientHeight, sz=parseFloat(b.style.width)||130, sh=parseFloat(b.style.height)||sz;
+    const rs=!!e.target.closest('.mouseResize'), x0=e.clientX, y0=e.clientY, l0=parseFloat(b.style.left), t0=parseFloat(b.style.top);
+    function mv(ev){
+      if(rs){
+        const n=Math.min(Math.max(60, sz+Math.max(ev.clientX-x0, ev.clientY-y0)), Math.min(W,H)*0.9);
+        b.style.width=n+'px'; b.style.fontSize=Math.round(n*15/130)+'px'; applyShape(b,getShape(),n);
+      } else {
+        b.style.left=Math.min(Math.max(0,l0+ev.clientX-x0),W-sz)+'px';
+        b.style.top =Math.min(Math.max(0,t0+ev.clientY-y0),H-sh)+'px';
+      }
+    }
+    function up(){ save(b); document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
+    document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+  });
+}
+mouseControls(liveGrid, '.livebtn', ()=>liveEditMode, ()=>liveShape, liveSaveLayout, null, null);   // Spielen per Klick macht der eigene mousedown-Handler
+mouseControls(chordPadGrid, '.padBtn', ()=>padEditMode, ()=>padShape, padSaveLayout,
+  b=>{ b.classList.add('active'); fetch('/chord_play?slot='+b.dataset.slot,{method:'POST'}).catch(()=>{}); },
+  b=>{ b.classList.remove('active'); fetch('/chord_stop',{method:'POST'}).catch(()=>{}); });
 document.getElementById('padedittoggle').onclick=()=>{ padEditMode=!padEditMode; updatePadEditToggle(); };
 document.getElementById('padshapebtn').addEventListener('click',()=>{
   padShape=SHAPES[(SHAPES.indexOf(padShape)+1)%SHAPES.length];
