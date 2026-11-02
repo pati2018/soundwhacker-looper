@@ -543,7 +543,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <button id="liveedittoggle" class="btn">&#9998; Positionieren</button>
   </div>
   <div id="liveslotpanel">
-    <div style="font-weight:600;margin-bottom:8px">Akkord-Slots <span class="mut small">(Slot speichern, dann &#9654; Aktivieren &mdash; Touch spielt den Slot)</span></div>
+    <div style="font-weight:600;margin-bottom:8px">Akkord-Slots</div>
     <div id="slotlist" style="display:flex;flex-direction:column;gap:8px"></div>
     <div style="font-weight:600;margin:12px 0 8px">Slot-Presets</div>
     <div id="lpresetgrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px"></div>
@@ -1583,6 +1583,7 @@ button.btn{font-size:13px;white-space:nowrap}
       }
       save(); return ok('ok');
     },
+    '/slot_preview': q => { const s = Math.max(1, Math.min(5, +q.get('slot') || 1)), sl = S.slots[s]; if (sl.root < 0) return ok('nochord'); preview(1, triad(clampMidi(sl.root + stepToSemi(sl.ts)), sl.qual), 600); return ok('ok'); },
     '/slot_transpose': q => { const s = Math.max(1, Math.min(5, +q.get('slot') || 1)), t = parseInt(q.get('step')); S.slots[s].ts = [-2, -1, 0, 1, 2].includes(t) ? t : 0; save(); return ok('ok'); },
     '/mel': q => {
       const id = idArg(q), st = S.mel[id], arpOn = R.arpEn[id] && !R.arpMuted[id], pv = PLAYIDX[id] >= 0;
@@ -2206,14 +2207,16 @@ function buildSlotUI(){
         ]);
         if(r1.ok&&r2.ok&&r3.ok){
           activeSlotNum=i; setSlotHighlight(i);
-          stat.textContent='Aktiv'; stat.className='ok';
+          stat.textContent=''; stat.className='mut';
           if(document.getElementById('livearea').classList.contains('open')) enterLiveMode();
         } else{ stat.textContent='Fehler'; stat.className='err'; }
       }catch(e){stat.textContent='Fehler';stat.className='err';}
     }
     sel.addEventListener('change', saveSlot);
     transSel.addEventListener('change', saveSlot);
-    row.append(badge,sel,transSel,stat);
+    const pv=document.createElement('button'); pv.className='btn'; pv.innerHTML='&#128266;'; pv.title='Akkord vorhören';
+    pv.onclick=()=>fetch('/slot_preview?slot='+i,{method:'POST'});   // Auswahl ist schon gespeichert (change)
+    row.append(badge,sel,transSel,pv,stat);
     list.appendChild(row);
   }
 }
