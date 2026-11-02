@@ -2247,6 +2247,7 @@ function buildLPresetUI(){
       for(let k=1;k<=8;k++){const x=document.getElementById('lpbtn'+k);if(x)x.style.outline='';}
       b.style.outline='2px solid var(--acc)';
       document.getElementById('lpname').value=b.dataset.name||'';
+      if(b.dataset.filled==='1') document.getElementById('lpload').click();   // belegt: gleich laden; leer: nur auswählen (zum Speichern)
     };
     pg.appendChild(b);
   }
@@ -2274,6 +2275,7 @@ async function loadLPresets(){
     const j=await(await fetch('/lpresets')).json();
     j.presets.forEach(p=>{
       const b=document.getElementById('lpbtn'+p.n); if(!b) return;
+      b.dataset.filled=p.filled?'1':'0';
       const lbl=(p.name&&p.name.length)?p.name:('Preset '+p.n);
       b.textContent=p.n+': '+lbl; b.dataset.name=p.name||'';
       b.style.opacity=p.filled?'1':'0.5';
