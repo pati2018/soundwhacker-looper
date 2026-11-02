@@ -422,7 +422,7 @@ button.btn{font-size:13px;white-space:nowrap}
 #askKeys[hidden]{display:none}
 #askKeys button{padding:11px 0;font-size:17px;font-weight:600}
 #askKeys .wide{grid-column:span 3}
-#sfPrevRow button.active{border-color:#FFD700;color:#FFD700}#looperarea .ch{border-color:#FFD700}
+#sfChords .sfPv.active{border-color:#FFD700;color:#FFD700}#sfChords .sfPv:disabled{opacity:.35}#looperarea .ch{border-color:#FFD700}
 #looperarea .ch.open{border-color:#4dff87}
 #looperarea button.start{background:#1d4d2e;border-color:#2f8a4c;color:#fff}
 #looperarea button.stop{background:#4d1d1d;border-color:#8a2f2f;color:#fff}
@@ -1032,12 +1032,11 @@ button.btn{font-size:13px;white-space:nowrap}
       <span class="small mut">Tonart</span> <select id="sfKey"></select> <select id="sfKeyMode"><option value="major">Dur</option><option value="minor">Moll</option></select>
       <button id="sfFill" hidden></button>
     </div>
-    <div class="row" id="sfChords" style="margin-top:8px;gap:8px 16px"></div>
+    <div id="sfChords" style="margin-top:8px;display:flex;flex-direction:column;gap:8px"></div>
     <div class="row" style="margin-top:12px">
       <button class="big start" id="sfGenBtn" disabled>&#127929; 5 Arpeggio-Loops erzeugen</button>
       <span class="small mut" id="sfInfo"></span>
     </div>
-    <div id="sfPrevRow" style="margin-top:10px;gap:8px;display:none;flex-direction:column;align-items:flex-start"></div>
     <div class="hint" style="margin-top:8px">Eingebaut ist eine Auswahl von 45 Instrumenten und 3 Schlagzeug-Kits aus <b>GeneralUser GS</b> (S. Christian Collins, frei nutzbar; Lizenz im Ordner <code>soundfonts</code>). Sie wird beim ersten Gebrauch einmal geladen (ca. 21 MB) und bleibt dann im Browser gespeichert – auch auf dem iPad. Eine eigene SoundFont ersetzt sie und bleibt ebenfalls gespeichert; mit <b>Eingebaute verwenden</b> geht es zurück. Alle fünf Loops nutzen dasselbe Instrument und Muster, Kanal 1–5 bekommt jeweils den eingestellten Akkord. Mit den Kanal-Tasten (1–5 oder angelernte Tasten), SWs oder MIDI schaltest du dann zwischen den Akkorden um.</div>
   </details>
     <div class="bar hint">Das Arpeggio wird mit den Instrumenten der SoundFont erzeugt (dieselbe wie f&uuml;r die SWs) und als <b>5 Loops in den Looper</b> geladen &ndash; Kanal&nbsp;1 bis 5 bekommen je einen Akkord. Danach im <b>&#128257; Looper</b> auf Start dr&uuml;cken oder die SWs auf &bdquo;Looper EIN&ldquo; stellen.</div>
@@ -5482,15 +5481,18 @@ const GEN = (() => {
     const box = $('sfChords');
     box.innerHTML = '';
     sfChords.forEach((c, i) => {
-      const wrap = document.createElement('label');
-      wrap.className = 'small mut';
-      wrap.innerHTML = 'Kanal ' + (i + 1) + ' <select class="sfPc"></select> <select class="sfM"><option value="major">Dur</option><option value="minor">Moll</option></select>';
+      const wrap = document.createElement('div');
+      wrap.className = 'small mut'; wrap.style.cssText = 'display:flex;align-items:center;gap:8px';
+      wrap.innerHTML = '<span style="min-width:4.2em">Kanal ' + (i + 1) + '</span><select class="sfPc"></select> <select class="sfM"><option value="major">Dur</option><option value="minor">Moll</option></select>' +
+        '<button class="sfPv" data-i="' + i + '" title="Erzeugten Loop vorhören" disabled>&#128266;</button>';
+      const pv = wrap.querySelector('.sfPv'); pv.onclick = () => arpPrevPlay(i, pv);
       const pc = wrap.querySelector('.sfPc'), m = wrap.querySelector('.sfM');
       NOTE_DE.forEach((n, k) => { const o = document.createElement('option'); o.value = k; o.textContent = n; pc.appendChild(o); });
       pc.value = c.pc; m.value = c.m;
       pc.onchange = m.onchange = () => { sfChords[i] = { pc: +pc.value, m: m.value }; sfSave(); };
       box.appendChild(wrap);
     });
+    if (typeof arpPrevRender === 'function') arpPrevRender();
   }
   NOTE_DE.forEach((n, k) => { const o = document.createElement('option'); o.value = k; o.textContent = n; $('sfKey').appendChild(o); });
   // Fünf leitereigene Akkorde: Dur I IV V vi ii (C F G Am Dm), Moll i iv v VI VII (Am Dm Em F G)
@@ -5684,7 +5686,7 @@ const GEN = (() => {
   function arpPrevStop() {
     if (arpPrevSrc) { try { arpPrevSrc.stop(); } catch (e) {} arpPrevSrc = null; }
     arpPrevIdx = -1;
-    document.querySelectorAll('#sfPrevRow button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#sfChords .sfPv').forEach(b => b.classList.remove('active'));
   }
   function arpPrevPlay(i, btn) {
     const was = arpPrevIdx;
@@ -5696,22 +5698,12 @@ const GEN = (() => {
     src.connect(g).connect(ctx.destination); src.start();
     arpPrevSrc = src; arpPrevIdx = i; btn.classList.add('active');
   }
-  function arpPrevRender() {
+  function arpPrevRender() {   // 🔊 neben jedem Kanal: aktiv, sobald der Kanal einen erzeugten Arpeggio-Loop hat
     arpPrevStop();
-    const row = $('sfPrevRow');
-    row.innerHTML = '';
-    let any = false;
-    for (let i = 0; i < 5; i++) {
-      const c = chans[i];
-      if (!c || !c.buffer || !/_Arp_/.test(c.fileName || '')) continue;
-      any = true;
-      const m = (c.fileName || '').match(/_Arp_([^_]+)_/);
-      const b = document.createElement('button');
-      b.innerHTML = '&#128266; ' + (i + 1) + ': ' + (m ? m[1] : 'Loop');
-      b.onclick = () => arpPrevPlay(i, b);
-      row.appendChild(b);
-    }
-    row.style.display = any ? 'flex' : 'none';
+    document.querySelectorAll('#sfChords .sfPv').forEach(b => {
+      const c = chans[+b.dataset.i];
+      b.disabled = !(c && c.buffer && /_Arp_/.test(c.fileName || ''));
+    });
   }
   { const o = document.getElementById('arpmakeropen'), bk = document.getElementById('arpmakerback');
     if (o) o.addEventListener('click', arpPrevRender);
