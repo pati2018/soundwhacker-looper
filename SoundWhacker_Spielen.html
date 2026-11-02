@@ -5826,9 +5826,7 @@ const GEN = (() => {
   }, 250);
 
   // ---------- Verbindung zu den SoundWhackers (SW n = Kanal n, wenn der SW auf „Looper“ steht) ----------
-  // Menü „Loop-Generator“: auf-/zugeklappt merken
-  try { if (localStorage.getItem(STORE + '.genOpen') === '0') $('genBox').open = false; } catch (e) {}
-  $('genBox').addEventListener('toggle', () => { try { localStorage.setItem(STORE + '.genOpen', $('genBox').open ? '1' : '0'); } catch (e) {} });
+  $('genBox').open = false;   // Menü „Loop-Generator“ startet immer eingeklappt
   window.swLooper = {
     press(i, on, md, src) {   // md: 'hold' | 'toggle' – Schaltart des SW; src: welcher SW (mehrere können denselben Kanal halten)
       const c = chans[i];
