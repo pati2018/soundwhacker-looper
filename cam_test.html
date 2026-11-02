@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kamera-Test</title>
+<style>
+  :root{--bg:#0b1220;--fg:#e8eefc;--acc:#4ea1ff;--mut:#8a97b3}
+  body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:18px system-ui,sans-serif}
+  h1{font-size:22px;margin:0 0 12px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+  button{font-size:18px;min-height:54px;padding:8px 16px;border-radius:12px;border:1px solid #25324b;background:#0f1724;color:var(--fg)}
+  button.on{border-color:var(--acc);color:var(--acc)}
+  #log{white-space:pre-wrap;font:15px ui-monospace,monospace;background:#0f1724;border:1px solid #25324b;border-radius:12px;padding:12px;min-height:200px}
+  video{width:160px;border-radius:10px;background:#000}
+  p{color:var(--mut);margin:0 0 12px;font-size:16px}
+</style>
+</head>
+<body>
+<h1>Kamera-Test (Kopfsteuerung)</h1>
+<p>Bitte die Tests nacheinander antippen, jeweils ca. 5 Sekunden warten. Dann einen Screenshot vom Protokoll schicken.</p>
+<div class="row">
+  <button id="t1">1: nur Kamera</button>
+  <button id="t2">2: erst Ton, dann Kamera</button>
+  <button id="t3">3: erst Kamera, dann Ton</button>
+  <button id="t4">4: Ton + Sitzung „auto“</button>
+  <button id="stop">■ Stopp</button>
+</div>
+<div class="row"><video id="v" playsinline muted></video></div>
+<div id="log"></div>
+<script>
+const v=document.getElementById('v'), L=document.getElementById('log');
+let stream=null, ctx=null, t0=0, timer=0;
+const ms=()=>Math.round(performance.now()-t0);
+const sess=()=>navigator.audioSession?navigator.audioSession.type:'–';
+const log=m=>{ L.textContent+=m+'\n'; };
+function stop(){
+  clearInterval(timer);
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  v.srcObject=null;
+}
+function tone(){
+  if(!ctx) ctx=new (window.AudioContext||window.webkitAudioContext)();
+  ctx.resume();
+  const o=ctx.createOscillator(), g=ctx.createGain(); g.gain.value=.05;
+  o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime+.3);
+  log(ms()+' ms: Ton gespielt, AudioContext '+ctx.state+', Sitzung '+sess());
+}
+async function cam(){
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:'user'},audio:false});
+  }catch(e){ log(ms()+' ms: Kamera-Fehler '+e.name+': '+e.message); return; }
+  const tr=stream.getVideoTracks()[0];
+  log(ms()+' ms: Kamera an ('+(tr.label||'?')+'), Sitzung '+sess());
+  tr.addEventListener('ended',()=>log(ms()+' ms: !!! Kamera vom iPad BEENDET, Sitzung '+sess()));
+  tr.addEventListener('mute',()=>log(ms()+' ms: Kamera stumm'));
+  tr.addEventListener('unmute',()=>log(ms()+' ms: Kamera wieder an'));
+  v.srcObject=stream;
+  try{ await v.play(); log(ms()+' ms: Video läuft'); }catch(e){ log(ms()+' ms: Video play-Fehler '+e.name); }
+  let seen=false;
+  timer=setInterval(()=>{
+    if(!seen&&v.videoWidth){ seen=true; log(ms()+' ms: erstes Bild '+v.videoWidth+'×'+v.videoHeight); }
+  },100);
+  setTimeout(()=>{ clearInterval(timer); log(ms()+' ms: nach 5 s – Spur '+tr.readyState+(tr.muted?' (stumm)':'')+', Bild '+(v.videoWidth?'ja':'NEIN')+', Sitzung '+sess()); },5000);
+}
+async function run(n){
+  stop(); t0=performance.now();
+  log('— Test '+n+' — Sitzung vorher: '+sess());
+  if(n===1){ await cam(); }
+  if(n===2){ try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){} tone(); await cam(); }
+  if(n===3){ await cam(); setTimeout(()=>{ try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){} tone(); },1500); }
+  if(n===4){ try{ if(navigator.audioSession) navigator.audioSession.type='auto'; }catch(e){} tone(); await cam(); }
+}
+[1,2,3,4].forEach(n=>document.getElementById('t'+n).onclick=()=>run(n));
+document.getElementById('stop').onclick=()=>{ stop(); log('— gestoppt —'); };
+log('Gerät: '+navigator.userAgent.replace(/\) .*/,')')+'\nSitzung beim Laden: '+sess());
+</script>
+</body>
+</html>
