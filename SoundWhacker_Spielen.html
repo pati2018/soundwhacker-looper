@@ -419,6 +419,11 @@ button.btn{font-size:13px;white-space:nowrap}
 #askKeys[hidden]{display:none}
 #askKeys button{padding:11px 0;font-size:17px;font-weight:600}
 #askKeys .wide{grid-column:span 3}
+#looperarea .ch{border-color:#FFD700}
+#looperarea .ch.open{border-color:#4dff87}
+#looperarea button.start{background:#1d4d2e;border-color:#2f8a4c;color:#fff}
+#looperarea button.stop{background:#4d1d1d;border-color:#8a2f2f;color:#fff}
+#looperarea #presetInfo:empty{display:none}
 </style>
 
 <div class="wrap">
@@ -923,11 +928,12 @@ button.btn{font-size:13px;white-space:nowrap}
 <div id="looperarea" class="lparea">
   <button id="looperback">&#127968; Home</button>
   <div class="lp-wrap">
-    <div style="font-weight:700;font-size:20px;margin:0 0 14px;color:#FFD700">&#128257; Looper</div>
+    <div style="font-weight:700;font-size:20px;margin:0 0 4px;color:#FFD700">&#8635; Looper</div>
+    <div class="small mut" style="margin:0 0 14px">Die 5 Loop-Kan&auml;le. Sie starten von selbst, sobald ein SW einen Kanal ausl&ouml;st.</div>
     <button id="toMelBtn" class="btn" style="position:fixed;top:16px;right:16px;z-index:101;font-size:15px;padding:10px 18px;border-radius:10px;border-color:#FFD700;background:#0f1724">&#9834; Soundwhackers einstellen</button>
   <details class="bar" id="genBox" open>
     <summary style="cursor:pointer"><b>Loop-Generator</b> <span class="small mut">&ndash; erzeugt fünf passende Loops und lädt sie in die Kanäle</span></summary>
-    <div class="row" style="margin-top:12px">
+    <div class="row" style="margin-top:12px;display:none">
       <input id="genText" type="text" placeholder="Beschreibung, z. B. dunkler Techno, 135 bpm, E-Moll" style="flex:1 1 320px;min-width:220px">
     </div>
     <div class="row" style="margin-top:10px">
@@ -944,11 +950,10 @@ button.btn{font-size:13px;white-space:nowrap}
       <button class="big" id="exportBtn" title="Alle Kanäle als ZIP speichern">&#128190; WAV-Dateien als ZIP speichern</button>
       <span class="small mut" id="genInfo"></span>
     </div>
-    <div class="hint" style="margin-top:8px">Jeder Klick auf <b>Neu erzeugen</b> ergibt eine neue Variation im gewählten Stil. Das Textfeld erkennt Stichworte (Stil, Zahl mit &bdquo;bpm&ldquo;, Tonart wie &bdquo;E-Moll&ldquo;, dunkel/hell, sanft/druckvoll); &bdquo;B&ldquo; bedeutet B-Dur/Moll wie im Deutschen (=&nbsp;H&#9837;).</div>
   </details>
 
   <div class="bar row">
-    <button class="big start" id="startBtn">&#9654; Start</button>
+    <button class="big start" id="startBtn" style="display:none">&#9654; Start</button>
     <button class="big stop" id="stopBtn">&#9632; Stopp</button>
     <button class="big" id="allBtn" title="Alle Kanäle gleichzeitig hörbar schalten (Taste 0)">&#128266; Alle vorhören</button>
     <span class="small mut">Projekt-Tempo</span>
@@ -956,35 +961,33 @@ button.btn{font-size:13px;white-space:nowrap}
     <button id="retempoBtn" title="Alle Kanäle auf das Projekt-Tempo bringen (Tonhöhe bleibt)">Alle anpassen</button>
     <span class="clock mut" id="clock">gestoppt</span>
     <span style="flex:1"></span>
-    <span class="small mut">Gesamt</span>
-    <input type="range" id="master" min="0" max="100" value="90" style="width:160px">
+    <label class="small mut" style="display:flex;align-items:center;gap:8px;white-space:nowrap">Gesamtlautst&auml;rke <input type="range" id="master" min="0" max="100" value="90" style="width:160px"></label>
   </div>
 
-  <div class="bar row">
-    <b>Preset</b>
-    <select id="presetSel" style="min-width:180px"><option value="">– kein Preset –</option></select>
-    <button id="presetLoad">Laden</button>
-    <button id="presetSave">Speichern …</button>
-    <button id="presetDel">Löschen</button>
-    <button id="clearAllBtn" title="Alle WAV-Dateien aus den Kanälen entfernen (Presets bleiben erhalten)">Alle Kanäle leeren</button>
-    <button id="presetExport" title="Alle Presets als eine Datei sichern (Backup, Umzug zwischen PC und iPad)">Presets sichern</button>
-    <button id="presetImport" title="Eine gesicherte Preset-Datei wieder einspielen">Presets einspielen</button>
-    <button id="presetShare" class="start" hidden>Datei jetzt teilen</button>
+  <div class="bar" style="display:flex;flex-direction:column;gap:14px">
+    <div class="row">
+      <select id="presetSel" style="min-width:180px"><option value="">– kein Preset –</option></select>
+      <button id="presetLoad">Laden</button>
+      <button id="presetSave">Speichern …</button>
+      <button id="presetDel">Löschen</button>
+    </div>
+    <div class="row">
+      <button id="clearAllBtn" title="Alle WAV-Dateien aus den Kanälen entfernen (Presets bleiben erhalten)">Alle Kanäle leeren</button>
+    </div>
+    <div class="row">
+      <button id="presetExport" title="Alle Presets als eine Datei sichern (Backup, Umzug zwischen PC und iPad)">Alle Presets sichern</button>
+      <button id="presetImport" title="Eine gesicherte Preset-Datei wieder einspielen">Presets einspielen</button>
+      <button id="presetShare" class="start" hidden>Datei jetzt teilen</button>
+    </div>
     <span class="small mut" id="presetInfo"></span>
   </div>
 
   <div id="lpStatus" class="small mut" style="margin:-4px 0 12px"></div>
   <details class="bar" id="loopBox" open>
-    <summary style="cursor:pointer"><b>Looper</b> <span class="small mut">&ndash; die 5 Loop-Kanäle: WAV laden, Taste/SW anlernen, Start</span></summary>
+    <summary style="cursor:pointer"><b>Loop-Kan&auml;le</b></summary>
     <div class="grid" id="channels" style="margin-top:12px"></div>
   </details>
 
-    <div class="bar hint">
-      <b>So geht's:</b> Loops erzeugen (Loop-Generator) oder WAV-Dateien auf die Kanäle laden &rarr; <b>Start</b>. Alle Loops laufen gemeinsam im Takt;
-      ein Kanal ist nur h&ouml;rbar, solange sein SW ber&uuml;hrt wird (oder er wird umgeschaltet &ndash; je nach Kanal-Einstellung).
-      <b>SW 1 steuert Kanal 1, SW 2 Kanal 2 &hellip;</b> &ndash; aber nur, wenn der SW unter &bdquo;Soundwhackers einstellen&ldquo; auf <b>Looper EIN</b> steht.
-      Der erste Druck startet die Wiedergabe von selbst. Die Looper-Presets (mit WAV-Dateien) sind getrennt von der Looper-App; mit &bdquo;Presets sichern / einspielen&ldquo; lassen sie sich trotzdem austauschen.
-    </div>
   </div>
 </div>
 <div id="arpmakerarea" class="lparea">
@@ -4931,7 +4934,7 @@ const GEN = (() => {
       $('presetSel').value = name;
       try { localStorage.setItem(STORE + '.preset', name); } catch (e) {}
       save();
-      presetInfo('Geladen: ' + name + (playing ? '' : ' – jetzt Start drücken'));
+      presetInfo('Geladen: ' + name);
     } catch (e) { presetInfo('Laden fehlgeschlagen.', true); }
   }
 
@@ -5282,7 +5285,7 @@ const GEN = (() => {
         await setSample(chans[r], results[r].wav, (r + 1) + '_' + GEN.ROLES[r] + '_' + label + '_' + keyName + '_' + bpm + 'bpm.wav', bpm);
       }
       setProjBpm(bpm);
-      genInfo(note + 'Fertig: ' + GEN.STYLES[opts.style].label + ', ' + bpm + ' BPM, ' + keyName + '. Jetzt Start drücken.');
+      genInfo(note + 'Fertig: ' + GEN.STYLES[opts.style].label + ', ' + bpm + ' BPM, ' + keyName + '. Die Loops sind in den Kanälen.');
     } catch (e) {
       genInfo('Erzeugen fehlgeschlagen: ' + e.message, true);
     }
@@ -5544,7 +5547,7 @@ const GEN = (() => {
       }
       setProjBpm(bpm);
       sfSave();
-      sfInfo('Fertig: ' + sfChords.map(chordName).join(' · ') + ', ' + bpm + ' BPM. Die 5 Loops sind jetzt im Looper (Kanal 1–5) – dort Start drücken oder die SWs auf „Looper EIN“ stellen.');
+      sfInfo('Fertig: ' + sfChords.map(chordName).join(' · ') + ', ' + bpm + ' BPM. Die 5 Loops sind jetzt im Looper (Kanal 1–5) – die SWs mit „Looper EIN“ schalten sie.');
     } catch (e) {
       sfInfo('Erzeugen fehlgeschlagen: ' + ((e && e.message) || e), true);
     }
