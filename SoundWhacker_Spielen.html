@@ -132,7 +132,15 @@ button.btn{font-size:13px;white-space:nowrap}
   color:var(--fg);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:13px;
 }
 .hdrinstr{background:#0f1724;border:1px solid #25324b;color:var(--fg);border-radius:10px;padding:6px 8px;font-size:14px;max-width:190px}
-#slottoggle.active,#chordpadopen.active,#padglidebtn.active{border-color:var(--acc);color:var(--acc)}
+#padheadbar{display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px;border-bottom:1px solid #1d2940;flex-shrink:0}
+#chordpadarea.headon #padheadbar{display:flex}
+#padheadbar select,#padheadbar button{font-size:14px}
+#padheadstat{font-size:13px}
+#padheadvid{position:absolute;right:10px;bottom:10px;width:150px;border-radius:10px;transform:scaleX(-1);opacity:.8;z-index:20;pointer-events:none;display:none}
+#chordpadarea.headon #padheadvid{display:block}
+#padheadptr{position:absolute;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;z-index:30;pointer-events:none;display:none;
+  border:3px solid var(--acc);box-shadow:0 0 12px rgba(0,0,0,.6)}
+#slottoggle.active,#chordpadopen.active,#padglidebtn.active,#padheadbtn.active{border-color:var(--acc);color:var(--acc)}
 #livegrid{
   position:relative;
   flex:1;
@@ -546,11 +554,18 @@ button.btn{font-size:13px;white-space:nowrap}
     <button id="chordpadback">&#127968; Home</button>
     <button id="padslotsbtn" class="btn">&#9835; Slots</button>
     <button id="padglidebtn" class="btn">&#8596; Gleiten</button>
+    <button id="padheadbtn" class="btn">&#128067; Kopf</button>
     <select id="padinstr" class="hdrinstr" title="Instrument"></select>
     <button id="padshapebtn" class="btn">&#11044;</button>
     <button id="padedittoggle" class="btn">&#9998; Positionieren</button>
   </div>
-  <div id="chordpadgrid"></div>
+  <div id="padheadbar">
+    <button id="padheadcenter" class="btn">&#8853; Mitte</button>
+    <label class="small mut">Verweilen <select id="padheaddwell"><option value="500">0,5 s</option><option value="1000" selected>1 s</option><option value="1500">1,5 s</option><option value="2000">2 s</option></select></label>
+    <label class="small mut">Bewegung <select id="padheadgain"><option value="3">groß</option><option value="4.5" selected>mittel</option><option value="6.5">klein</option></select></label>
+    <span id="padheadstat" class="mut"></span>
+  </div>
+  <div id="chordpadgrid"></div><video id="padheadvid" playsinline muted></video><div id="padheadptr"></div>
 </div>
 
 <div id="livearea">
@@ -3790,6 +3805,100 @@ function fillHdrInstr(sel){
 [[liveArea,'liveinstr'],[chordPadArea,'padinstr']].forEach(([area,id])=>{
   new MutationObserver(()=>{ if(area.classList.contains('open')) fillHdrInstr(document.getElementById(id)); }).observe(area,{attributes:true,attributeFilter:['class']});
 });
+// Kopfsteuerung: die Nase führt einen Zeiger übers Pad; bleibt er auf einem Akkord-Knopf, erklingt der Akkord nach der Verweilzeit
+const HEAD={on:false,stream:null,vision:null,face:null,loop:0,cx:null,cy:null,px:.5,py:.5,lastT:-1,target:null,since:0,playing:null,leaveT:0,lost:0};
+const headBtn=document.getElementById('padheadbtn'), headVid=document.getElementById('padheadvid'), headPtr=document.getElementById('padheadptr');
+const headStat=t=>{ document.getElementById('padheadstat').textContent=t||''; };
+const headSel=(id,key)=>{ const s=document.getElementById(id); try{ const v=localStorage.getItem(key); if(v&&[...s.options].some(o=>o.value===v)) s.value=v; }catch(e){} s.onchange=()=>{ try{ localStorage.setItem(key,s.value); }catch(e){} }; return s; };
+const headDwell=headSel('padheaddwell','padHeadDwell'), headGain=headSel('padheadgain','padHeadGain');
+function headStopChord(){ if(HEAD.playing){ HEAD.playing.classList.remove('active'); HEAD.playing=null; fetch('/chord_stop',{method:'POST'}).catch(()=>{}); } }
+async function headStart(){
+  if(HEAD.on) return;
+  HEAD.on=true; headBtn.classList.add('active'); chordPadArea.classList.add('headon');
+  try{
+    headStat('Kamera wird gestartet …');
+    HEAD.stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480},facingMode:'user'},audio:false});
+    if(!HEAD.on){ HEAD.stream.getTracks().forEach(t=>t.stop()); return; }
+    headVid.srcObject=HEAD.stream; await headVid.play();
+    if(!HEAD.face){
+      headStat('Gesichtserkennung wird geladen …');
+      const base=new URL('./',location.href).href;
+      HEAD.vision=HEAD.vision||await import(base+'vendor/mediapipe/vision_bundle.mjs');
+      const fs=await HEAD.vision.FilesetResolver.forVisionTasks(base+'vendor/mediapipe/wasm');
+      const opts=d=>({baseOptions:{modelAssetPath:base+'models/face_landmarker.task',delegate:d},runningMode:'VIDEO',numFaces:1});
+      try{ HEAD.face=await HEAD.vision.FaceLandmarker.createFromOptions(fs,opts('GPU')); }catch(e){ HEAD.face=await HEAD.vision.FaceLandmarker.createFromOptions(fs,opts('CPU')); }
+    }
+    if(!HEAD.on) return;
+    HEAD.cx=null; headStat('Gerade auf den Bildschirm schauen …');
+    HEAD.loop=requestAnimationFrame(headLoop);
+  }catch(e){
+    const m={NotAllowedError:'Kamera nicht erlaubt',NotFoundError:'Keine Kamera gefunden',NotReadableError:'Kamera wird von einer anderen App benutzt'};
+    headStop(); headStat(m[e&&e.name]||('Kopfsteuerung startet nicht: '+((e&&e.message)||e)));
+    chordPadArea.classList.add('headon');
+  }
+}
+function headStop(){
+  HEAD.on=false; cancelAnimationFrame(HEAD.loop);
+  if(HEAD.stream){ HEAD.stream.getTracks().forEach(t=>t.stop()); HEAD.stream=null; }
+  headVid.srcObject=null; headPtr.style.display='none';
+  headStopChord(); HEAD.target=null;
+  headBtn.classList.remove('active'); chordPadArea.classList.remove('headon'); headStat('');
+}
+function headLoop(){
+  if(!HEAD.on) return;
+  HEAD.loop=requestAnimationFrame(headLoop);
+  if(headVid.readyState<2||headVid.currentTime===HEAD.lastT) return;
+  HEAD.lastT=headVid.currentTime;
+  let r; try{ r=HEAD.face.detectForVideo(headVid,performance.now()); }catch(e){ return; }
+  const lm=r&&r.faceLandmarks&&r.faceLandmarks[0];
+  const now=performance.now();
+  if(!lm){ if(!HEAD.lost) HEAD.lost=now; if(now-HEAD.lost>600){ headPtr.style.display='none'; headStat('Kein Gesicht erkannt'); headHover(null,now); } return; }
+  HEAD.lost=0;
+  const nx=lm[1].x, ny=lm[1].y;   // Nasenspitze
+  if(HEAD.cx==null){ HEAD.cx=nx; HEAD.cy=ny; HEAD.px=.5; HEAD.py=.5; }
+  headStat('');
+  const g=+headGain.value;
+  // Kamerabild ist ungespiegelt: Kopf nach rechts (vom Kind aus) = Nase im Bild nach links = Zeiger nach rechts
+  const tx=Math.min(1,Math.max(0,.5+(HEAD.cx-nx)*g)), ty=Math.min(1,Math.max(0,.5+(ny-HEAD.cy)*g*1.4));
+  HEAD.px+=(tx-HEAD.px)*.35; HEAD.py+=(ty-HEAD.py)*.35;   // glätten
+  const W=chordPadGrid.clientWidth, H=chordPadGrid.clientHeight, x=HEAD.px*W, y=HEAD.py*H;
+  headPtr.style.display='block'; headPtr.style.left=(chordPadGrid.offsetLeft+x)+'px'; headPtr.style.top=(chordPadGrid.offsetTop+y)+'px';   // Zeiger liegt im Pad-Bereich, nicht im Raster (das wird neu aufgebaut)
+  // Treffer: Knopf unter dem Zeiger (mit etwas Rand, damit es leichter einrastet)
+  let hit=null, hd=Infinity;   // bei überlappenden Knöpfen gewinnt der mit der nächsten Mitte
+  if(!padEditMode) chordPadGrid.querySelectorAll('.padBtn').forEach(b=>{
+    const m=24, l=parseFloat(b.style.left), t=parseFloat(b.style.top), w=b.offsetWidth, h=b.offsetHeight;
+    if(x<l-m||x>l+w+m||y<t-m||y>t+h+m) return;
+    const d=Math.hypot(x-(l+w/2), y-(t+h/2));
+    if(d<hd){ hd=d; hit=b; }
+  });
+  headHover(hit,now);
+}
+function headHover(b,now){
+  const dwell=+headDwell.value;
+  if(b!==HEAD.target){ HEAD.target=b; HEAD.since=now; }
+  let prog=0;
+  if(b){
+    HEAD.leaveT=0;
+    if(b!==HEAD.playing){
+      prog=Math.min(1,(now-HEAD.since)/dwell);
+      if(prog>=1){
+        chordPadGrid.querySelectorAll('.padBtn.active').forEach(x=>x.classList.remove('active'));
+        HEAD.playing=b; b.classList.add('active');
+        fetch('/chord_play?slot='+b.dataset.slot,{method:'POST'}).catch(()=>{});
+      }
+    } else prog=1;
+  } else if(HEAD.playing){   // kurz danebengerutscht? erst nach 0,4 s verstummen
+    if(!HEAD.leaveT) HEAD.leaveT=now;
+    if(now-HEAD.leaveT>400) headStopChord();
+  }
+  headPtr.style.background=prog>0?'conic-gradient(var(--acc) '+Math.round(prog*360)+'deg, rgba(255,255,255,.12) 0)':'rgba(255,255,255,.12)';
+}
+headBtn.onclick=()=>{ if(HEAD.on) headStop(); else headStart(); try{ localStorage.setItem('padHead',HEAD.on?'1':'0'); }catch(e){} };
+document.getElementById('padheadcenter').onclick=()=>{ HEAD.cx=null; };
+new MutationObserver(()=>{
+  if(!chordPadArea.classList.contains('open')){ if(HEAD.on) headStop(); }
+}).observe(chordPadArea,{attributes:true,attributeFilter:['class']});
+document.getElementById('chordpadopen').addEventListener('click',()=>{ let on=false; try{ on=localStorage.getItem('padHead')==='1'; }catch(e){} if(on) setTimeout(headStart,300); });
 document.getElementById('padedittoggle').onclick=()=>{ padEditMode=!padEditMode; updatePadEditToggle(); };
 document.getElementById('padshapebtn').addEventListener('click',()=>{
   padShape=SHAPES[(SHAPES.indexOf(padShape)+1)%SHAPES.length];
