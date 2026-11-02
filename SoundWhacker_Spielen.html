@@ -1162,7 +1162,7 @@ button.btn{font-size:13px;white-space:nowrap}
   }
   function audioCtx() {
     if (A.ctx) return A.ctx;
-    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}   // nur umstellen, wenn nötig – jedes Umstellen beendet auf dem iPad eine laufende Kamera
+    try { if (navigator.audioSession && !window.swCamActive && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}   // nur umstellen, wenn nötig – und nie während die Kopfsteuerung die Kamera nutzt
     A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     return A.ctx;
   }
@@ -3819,7 +3819,9 @@ async function headStart(auto){
   HEAD.on=true; headBtn.classList.add('active'); chordPadArea.classList.add('headon');
   try{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error('Dieser Browser gibt die Kamera nicht frei');
-    try{ if(navigator.audioSession&&navigator.audioSession.type!=='playback') navigator.audioSession.type='playback'; }catch(e){}   // vor der Kamera – späteres Umstellen würde sie beenden
+    // iPad: im Modus „playback“ ist keine Aufnahme erlaubt – die Kamera würde sofort beendet. Solange die Kopfsteuerung läuft: „auto“
+    window.swCamActive=true;
+    try{ if(navigator.audioSession&&navigator.audioSession.type!=='auto') navigator.audioSession.type='auto'; }catch(e){}
     headStat('Kamera wird gestartet …');
     // iPad: getUserMedia muss direkt im Tipp starten; hängt es, nach 10 s eine klare Meldung
     const gum=navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:'user'},audio:false});
@@ -3833,7 +3835,7 @@ async function headStart(auto){
       HEAD.restarts=(HEAD.restarts||0)+1;
       headStop(); chordPadArea.classList.add('headon');
       if(HEAD.restarts<=3){ headStat('Kamera wurde beendet – starte neu …'); setTimeout(()=>headStart(true),600); }
-      else headStat('Die Kamera wird vom iPad immer wieder beendet – andere Apps mit Kamera schließen');
+      else headStat('Die Kamera wird vom iPad immer wieder beendet ['+(navigator.audioSession?navigator.audioSession.type:'keine Sitzung')+'] – andere Apps mit Kamera schließen');
     });
     headStat('Kamera an – Bild wird empfangen …');
     headVid.muted=true; headVid.setAttribute('playsinline',''); headVid.setAttribute('autoplay','');
@@ -3876,6 +3878,8 @@ async function headStart(auto){
 function headStop(){
   HEAD.on=false; cancelAnimationFrame(HEAD.loop);
   if(HEAD.stream){ HEAD.stream.getTracks().forEach(t=>t.stop()); HEAD.stream=null; }
+  window.swCamActive=false;
+  try{ if(navigator.audioSession&&navigator.audioSession.type!=='playback') navigator.audioSession.type='playback'; }catch(e){}   // wieder volle Wiedergabe
   headVid.srcObject=null; headPtr.style.display='none';
   headStopChord(); HEAD.target=null;
   headBtn.classList.remove('active'); chordPadArea.classList.remove('headon'); headStat('');
@@ -4990,7 +4994,7 @@ const GEN = (() => {
   function ensureAudio() {
     if (ctx) return ctx;
     // iOS: Ton auch bei aktivem Stumm-Schalter und im Hintergrund-Modus der Seite erlauben
-    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}   // nur umstellen, wenn nötig – jedes Umstellen beendet auf dem iPad eine laufende Kamera
+    try { if (navigator.audioSession && !window.swCamActive && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}   // nur umstellen, wenn nötig – und nie während die Kopfsteuerung die Kamera nutzt
     ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     master = ctx.createGain();
     master.gain.value = $('master').value / 100;
