@@ -424,6 +424,9 @@ button.btn{font-size:13px;white-space:nowrap}
 #looperarea button.start{background:#1d4d2e;border-color:#2f8a4c;color:#fff}
 #looperarea button.stop{background:#4d1d1d;border-color:#8a2f2f;color:#fff}
 #looperarea #presetInfo:empty{display:none}
+#looperarea .lpSub{border-top:1px solid #1d2940;margin-top:14px;padding-top:14px}
+#looperarea #genBox>summary b::before{content:"\25B8  "}
+#looperarea #genBox[open]>summary b::before{content:"\25BE  "}
 </style>
 
 <div class="wrap">
@@ -932,7 +935,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <div class="small mut" style="margin:0 0 14px">Die 5 Loop-Kan&auml;le. Sie starten von selbst, sobald ein SW einen Kanal ausl&ouml;st.</div>
     <button id="toMelBtn" class="btn" style="position:fixed;top:16px;right:16px;z-index:101;font-size:15px;padding:10px 18px;border-radius:10px;border-color:#FFD700;background:#0f1724">&#9834; Soundwhackers einstellen</button>
   <details class="bar" id="genBox" open>
-    <summary style="cursor:pointer"><b>Loop-Generator</b> <span class="small mut">&ndash; erzeugt fünf passende Loops und lädt sie in die Kanäle</span></summary>
+    <summary style="cursor:pointer"><b>Loop-Generator</b></summary>
     <div class="row" style="margin-top:12px;display:none">
       <input id="genText" type="text" placeholder="Beschreibung, z. B. dunkler Techno, 135 bpm, E-Moll" style="flex:1 1 320px;min-width:220px">
     </div>
@@ -950,21 +953,7 @@ button.btn{font-size:13px;white-space:nowrap}
       <button class="big" id="exportBtn" title="Alle Kanäle als ZIP speichern">&#128190; WAV-Dateien als ZIP speichern</button>
       <span class="small mut" id="genInfo"></span>
     </div>
-  </details>
-
-  <div class="bar row">
-    <button class="big start" id="startBtn" style="display:none">&#9654; Start</button>
-    <button class="big stop" id="stopBtn">&#9632; Stopp</button>
-    <button class="big" id="allBtn" title="Alle Kanäle gleichzeitig hörbar schalten (Taste 0)">&#128266; Alle vorhören</button>
-    <span class="small mut">Projekt-Tempo</span>
-    <button id="projBpmMinus" title="Tempo -1">&minus;</button><input id="projBpm" type="number" inputmode="decimal" min="50" max="200" step="0.01" style="width:86px" placeholder="–"><button id="projBpmPlus" title="Tempo +1">+</button>
-    <button id="retempoBtn" title="Alle Kanäle auf das Projekt-Tempo bringen (Tonhöhe bleibt)">Alle anpassen</button>
-    <span class="clock mut" id="clock">gestoppt</span>
-    <span style="flex:1"></span>
-    <label class="small mut" style="display:flex;align-items:center;gap:8px;white-space:nowrap">Gesamtlautst&auml;rke <input type="range" id="master" min="0" max="100" value="90" style="width:160px"></label>
-  </div>
-
-  <div class="bar" style="display:flex;flex-direction:column;gap:14px">
+  <div class="lpSub" style="display:flex;flex-direction:column;gap:14px">
     <div class="row">
       <select id="presetSel" style="min-width:180px"><option value="">– kein Preset –</option></select>
       <button id="presetLoad">Laden</button>
@@ -976,11 +965,27 @@ button.btn{font-size:13px;white-space:nowrap}
       <button id="presetImport" title="Eine gesicherte Preset-Datei wieder einspielen">Presets einspielen</button>
       <button id="presetShare" class="start" hidden>Datei jetzt teilen</button>
     </div>
+    <span class="small mut" id="presetInfo"></span>
+  </div>
+  <div class="lpSub row">
+    <button class="big start" id="startBtn" style="display:none">&#9654; Start</button>
+    <button class="big stop" id="stopBtn">&#9632; Stopp</button>
+    <button class="big" id="allBtn" title="Alle Kanäle gleichzeitig hörbar schalten (Taste 0)">&#128266; Alle vorhören</button>
+    <span class="small mut">Projekt-Tempo</span>
+    <button id="projBpmMinus" title="Tempo -1">&minus;</button><input id="projBpm" type="number" inputmode="decimal" min="50" max="200" step="0.01" style="width:86px" placeholder="–"><button id="projBpmPlus" title="Tempo +1">+</button>
+    <button id="retempoBtn" title="Alle Kanäle auf das Projekt-Tempo bringen (Tonhöhe bleibt)">Alle anpassen</button>
+    <span class="clock mut" id="clock">gestoppt</span>
+    <span style="flex:1"></span>
+    <label class="small mut" style="display:flex;align-items:center;gap:8px;white-space:nowrap">Gesamtlautst&auml;rke <input type="range" id="master" min="0" max="100" value="90" style="width:160px"></label>
+  </div>
+  <div class="lpSub">
     <div class="row">
       <button id="clearAllBtn" title="Alle WAV-Dateien aus den Kanälen entfernen (Presets bleiben erhalten)">Alle Kanäle leeren</button>
     </div>
-    <span class="small mut" id="presetInfo"></span>
   </div>
+  </details>
+
+
 
   <div id="lpStatus" class="small mut" style="margin:-4px 0 12px"></div>
   <details class="bar" id="loopBox" open>
@@ -5819,6 +5824,9 @@ const GEN = (() => {
   }, 250);
 
   // ---------- Verbindung zu den SoundWhackers (SW n = Kanal n, wenn der SW auf „Looper“ steht) ----------
+  // Menü „Loop-Generator“: auf-/zugeklappt merken
+  try { if (localStorage.getItem(STORE + '.genOpen') === '0') $('genBox').open = false; } catch (e) {}
+  $('genBox').addEventListener('toggle', () => { try { localStorage.setItem(STORE + '.genOpen', $('genBox').open ? '1' : '0'); } catch (e) {} });
   window.swLooper = {
     press(i, on, md, src) {   // md: 'hold' | 'toggle' – Schaltart des SW; src: welcher SW (mehrere können denselben Kanal halten)
       const c = chans[i];
