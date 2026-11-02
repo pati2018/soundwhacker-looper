@@ -136,8 +136,9 @@ button.btn{font-size:13px;white-space:nowrap}
 #chordpadarea.headon #padheadbar{display:flex}
 #padheadbar select,#padheadbar button{font-size:14px}
 #padheadstat{font-size:13px}
-#padheadvid{position:absolute;right:10px;bottom:10px;width:150px;border-radius:10px;transform:scaleX(-1);opacity:.8;z-index:20;pointer-events:none;display:none}
-#chordpadarea.headon #padheadvid{display:block}
+#padheadvid{display:none}
+#padheadcv{position:absolute;right:10px;bottom:10px;width:150px;border-radius:10px;transform:scaleX(-1);opacity:.8;z-index:20;pointer-events:none;display:none}
+#chordpadarea.headon #padheadcv{display:block}
 #padheadptr{position:absolute;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;z-index:30;pointer-events:none;display:none;
   border:3px solid var(--acc);box-shadow:0 0 12px rgba(0,0,0,.6)}
 #slottoggle.active,#chordpadopen.active,#padglidebtn.active,#padheadbtn.active{border-color:var(--acc);color:var(--acc)}
@@ -565,7 +566,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <label class="small mut">Bewegung <select id="padheadgain"><option value="3">groß</option><option value="4.5" selected>mittel</option><option value="6.5">klein</option></select></label>
     <span id="padheadstat" class="mut"></span>
   </div>
-  <div id="chordpadgrid"></div><video id="padheadvid" playsinline muted></video><div id="padheadptr"></div>
+  <div id="chordpadgrid"></div><video id="padheadvid" playsinline muted style="display:none"></video><canvas id="padheadcv" width="160" height="120"></canvas><div id="padheadptr"></div>
 </div>
 
 <div id="livearea">
@@ -3819,7 +3820,7 @@ async function headStart(){
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) throw new Error('Dieser Browser gibt die Kamera nicht frei');
     headStat('Kamera wird gestartet …');
     // iPad: getUserMedia muss direkt im Tipp starten; hängt es, nach 10 s eine klare Meldung
-    const gum=navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    const gum=navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:'user'},audio:false});
     const stream=await Promise.race([gum,new Promise((_,rej)=>setTimeout(()=>rej(new Error('Kamera antwortet nicht – in den iPad-Einstellungen (Safari → Kamera) erlauben und neu laden')),10000))]);
     HEAD.stream=stream;
     if(!HEAD.on){ stream.getTracks().forEach(t=>t.stop()); return; }
@@ -3827,18 +3828,21 @@ async function headStart(){
     headVid.muted=true; headVid.setAttribute('playsinline',''); headVid.setAttribute('autoplay','');
     headVid.srcObject=stream;
     let playErr='';
-    const tryPlay=()=>{ const pl=headVid.play(); if(pl&&pl.catch) pl.catch(e=>{ playErr=(e&&e.name)||'Fehler'; }); };
-    tryPlay();
+    const tryPlay=()=>{ const pl=headVid.play(); if(pl&&pl.catch) pl.catch(e=>{ playErr=(e&&e.name)||'Fehler'; }); return pl; };
+    try{ await Promise.race([tryPlay(),new Promise(r=>setTimeout(r,3000))]); }catch(e){}
     for(let k=0;k<30&&headVid.readyState<2;k++) await new Promise(r=>setTimeout(r,100));
     if(headVid.readyState<2){
       // iPad lässt das Video nicht von selbst laufen (z. B. Stromsparmodus): ein Tipp startet es
       headStat('Einmal auf den Bildschirm tippen, um die Kamera zu starten'+(playErr?' ('+playErr+')':''));
       const tap=()=>tryPlay();
       chordPadArea.addEventListener('pointerdown',tap,true); chordPadArea.addEventListener('touchend',tap,true);
-      for(let k=0;k<600&&HEAD.on&&headVid.readyState<2;k++) await new Promise(r=>setTimeout(r,100));
+      for(let k=0;k<150&&HEAD.on&&headVid.readyState<2;k++) await new Promise(r=>setTimeout(r,100));
       chordPadArea.removeEventListener('pointerdown',tap,true); chordPadArea.removeEventListener('touchend',tap,true);
       if(!HEAD.on) return;
-      if(headVid.readyState<2) throw new Error('Kein Kamerabild'+(playErr?' ('+playErr+')':'')+' – Kopf aus und wieder an tippen');
+      if(headVid.readyState<2){
+        const tr=stream.getVideoTracks()[0]||{};
+        throw new Error('Kein Kamerabild ['+[playErr||'play ok','rs'+headVid.readyState,headVid.paused?'pausiert':'läuft','w'+headVid.videoWidth,'Spur '+tr.readyState+(tr.muted?' stumm':'')+(tr.enabled===false?' aus':'')].join(', ')+'] – Kopf aus und wieder an tippen');
+      }
     }
     if(!HEAD.face){
       headStat('Gesichtserkennung wird geladen …');
@@ -3869,6 +3873,7 @@ function headLoop(){
   HEAD.loop=requestAnimationFrame(headLoop);
   if(headVid.readyState<2||headVid.currentTime===HEAD.lastT) return;
   HEAD.lastT=headVid.currentTime;
+  try{ const c=document.getElementById('padheadcv'); c.getContext('2d').drawImage(headVid,0,0,c.width,c.height); }catch(e){}
   let r; try{ r=HEAD.face.detectForVideo(headVid,performance.now()); }catch(e){ return; }
   const lm=r&&r.faceLandmarks&&r.faceLandmarks[0];
   const now=performance.now();
