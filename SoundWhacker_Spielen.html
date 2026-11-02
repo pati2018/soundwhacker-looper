@@ -2263,7 +2263,7 @@ function buildLPresetUI(){
     if(!selLPreset){lpStat('Erst Preset wählen','err');return;}
     try{
       const res=await fetch('/lpreset_load?num='+selLPreset,{method:'POST'});
-      if(res.ok){ lpStat('Geladen','ok'); await loadSlots(); }
+      if(res.ok){ lpStat('Geladen','ok'); await loadSlots(); if(document.getElementById('livearea').classList.contains('open')) enterLiveMode(); }
       else lpStat('Fehler','err');
     }catch(e){lpStat('Fehler','err');}
   };
