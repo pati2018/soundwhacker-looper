@@ -1568,6 +1568,11 @@ button.btn{font-size:13px;white-space:nowrap}
     '/slot_activate': q => {
       const s = Math.max(1, Math.min(5, +q.get('slot') || 1));
       if (S.slots[s].root >= 0) { S.chordRoot[1] = S.slots[s].root; S.chordQual[1] = S.slots[s].qual; } else S.chordRoot[1] = -1;
+      // Unterstützt Spielen: SW1 spielt den gewählten Akkord – SW1 dafür auf „Akkord“ stellen (Melodie, Impro, Looper aus)
+      if (S.melMode[1]) { melStop(1); S.melMode[1] = false; }
+      if (S.loopOn[1]) { if (window.swLooper) window.swLooper.press((S.loopCh[1] || 1) - 1, false, 'hold', 'sw1'); S.loopOn[1] = false; }
+      if (S.improEn[1]) { if (R.improNote[1] >= 0) { off(1, R.improNote[1]); R.improNote[1] = -1; } S.improEn[1] = false; S.improMode = S.improEn.some((v, i) => i && v); }
+      S.akkordOff[1] = false; R.touched[1] = false;
       S.activeSlot = s; save(); return ok('ok');
     },
     '/slot_transpose': q => { const s = Math.max(1, Math.min(5, +q.get('slot') || 1)), t = parseInt(q.get('step')); S.slots[s].ts = [-2, -1, 0, 1, 2].includes(t) ? t : 0; save(); return ok('ok'); },
