@@ -138,8 +138,8 @@ button.btn{font-size:13px;white-space:nowrap}
 #padheadstat{font-size:13px}
 #padheadlog{display:none;width:100%;white-space:pre-wrap;font:12px ui-monospace,monospace;color:var(--mut);max-height:30vh;overflow:auto}
 #padheadvid{display:none}
-#padheadcv{position:absolute;right:10px;bottom:10px;width:150px;border-radius:10px;transform:scaleX(-1);opacity:.8;z-index:20;pointer-events:none;display:none}
-#chordpadarea.headon #padheadcv{display:block}
+#padheadcv{display:none}
+.padheadprev{position:fixed;right:10px;bottom:10px;width:150px;border-radius:10px;transform:scaleX(-1);opacity:.85;z-index:160;pointer-events:none;background:#000}
 #padheadptr{position:absolute;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;z-index:30;pointer-events:none;display:none;
   border:3px solid var(--acc);box-shadow:0 0 12px rgba(0,0,0,.6)}
 #slottoggle.active,#chordpadopen.active,#padglidebtn.active,#padheadbtn.active{border-color:var(--acc);color:var(--acc)}
@@ -1166,6 +1166,7 @@ button.btn{font-size:13px;white-space:nowrap}
     if (A.ctx) return A.ctx;
     try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
     A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+    (window.swCtxs = window.swCtxs || []).push(A.ctx);   // Kopfsteuerung: Ton beim Kamerastart kurz anhalten können
     return A.ctx;
   }
   function ensureSynth() {
@@ -3810,7 +3811,10 @@ function fillHdrInstr(sel){
 });
 // Kopfsteuerung: die Nase führt einen Zeiger übers Pad; bleibt er auf einem Akkord-Knopf, erklingt der Akkord nach der Verweilzeit
 const HEAD={on:false,stream:null,vision:null,face:null,loop:0,cx:null,cy:null,px:.5,py:.5,lastT:-1,target:null,since:0,playing:null,leaveT:0,lost:0};
-const headBtn=document.getElementById('padheadbtn'), headVid=document.getElementById('padheadvid'), headPtr=document.getElementById('padheadptr');
+const headBtn=document.getElementById('padheadbtn'), headPtr=document.getElementById('padheadptr');
+let headVid=document.getElementById('padheadvid');   // wird bei jedem Start durch ein frisches, sichtbares Video ersetzt
+const headCtxs=()=>window.swCtxs||[];
+function headResumeAudio(){ if(HEAD.suspended){ HEAD.suspended=false; headCtxs().forEach(c=>{ try{ c.resume(); }catch(e){} }); headLog('Ton wieder an'); } }
 const headStat=t=>{ const el=document.getElementById('padheadstat'); if(el.textContent===(t||'')) return; el.textContent=t||''; if(t) headLog('» '+t); };
 // Protokoll (Fehlersuche iPad): wird bei Problemen unter der Leiste angezeigt
 let headT0=performance.now(); const headLogLines=[];
@@ -3823,7 +3827,8 @@ function headStopChord(){ if(HEAD.playing){ HEAD.playing.classList.remove('activ
 async function headStart(auto){
   if(HEAD.on) return;
   if(!auto){ headT0=performance.now(); headLogLines.length=0; document.getElementById('padheadlog').style.display='none'; }
-  headLog('Start'+(auto?' (Neustart)':'')+', Sitzung '+(navigator.audioSession?navigator.audioSession.type:'–'));
+  headLog('Start'+(auto?' (Neustart '+HEAD.restarts+')':'')+', Sitzung '+(navigator.audioSession?navigator.audioSession.type:'–')+', Ton '+(headCtxs().map(c=>c.state).join('/')||'–'));
+  if(HEAD.restarts>=1&&headCtxs().length){ HEAD.suspended=true; headCtxs().forEach(c=>{ try{ c.suspend(); }catch(e){} }); headLog('Versuch: Ton beim Kamerastart angehalten'); }
   if(!auto) HEAD.restarts=0;
   HEAD.on=true; headBtn.classList.add('active'); chordPadArea.classList.add('headon');
   try{
@@ -3847,7 +3852,9 @@ async function headStart(auto){
       else headStat('Die Kamera wird vom iPad immer wieder beendet ['+(navigator.audioSession?navigator.audioSession.type:'keine Sitzung')+'] – andere Apps mit Kamera schließen');
     });
     headStat('Kamera an – Bild wird empfangen …');
-    headVid.muted=true; headVid.setAttribute('playsinline',''); headVid.setAttribute('autoplay','');
+    if(HEAD.vid){ HEAD.vid.srcObject=null; HEAD.vid.remove(); }
+    headVid=document.createElement('video'); headVid.setAttribute('playsinline',''); headVid.muted=true; headVid.className='padheadprev';
+    document.body.appendChild(headVid); HEAD.vid=headVid;
     headVid.srcObject=stream;
     let playErr='';
     const tryPlay=()=>{ const pl=headVid.play(); if(pl&&pl.catch) pl.catch(e=>{ playErr=(e&&e.name)||'Fehler'; }); return pl; };
@@ -3870,6 +3877,7 @@ async function headStart(auto){
       }
     }
     headLog('Bild da: '+headVid.videoWidth+'×'+headVid.videoHeight);
+    headResumeAudio();
     if(!HEAD.face){
       headStat('Gesichtserkennung wird geladen …');
       const base=new URL('./',location.href).href;
@@ -3892,7 +3900,8 @@ function headStop(why){
   HEAD.on=false; cancelAnimationFrame(HEAD.loop);
   if(HEAD.stream){ HEAD.stream.getTracks().forEach(t=>t.stop()); HEAD.stream=null; }
 
-  headVid.srcObject=null; headPtr.style.display='none';
+  headVid.srcObject=null; if(HEAD.vid){ HEAD.vid.remove(); HEAD.vid=null; } headPtr.style.display='none';
+  headResumeAudio();
   headStopChord(); HEAD.target=null;
   headBtn.classList.remove('active'); chordPadArea.classList.remove('headon'); headStat('');
 }
@@ -5008,6 +5017,7 @@ const GEN = (() => {
     // iOS: Ton auch bei aktivem Stumm-Schalter und im Hintergrund-Modus der Seite erlauben
     try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
     ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+    (window.swCtxs = window.swCtxs || []).push(ctx);
     master = ctx.createGain();
     master.gain.value = $('master').value / 100;
     // Summen-Limiter: mehrere Loops gleichzeitig dürfen nicht übersteuern (Chrome-Kompressor hebt um ~1,7 dB an, daher 6 dB Vorabsenkung)
