@@ -527,6 +527,7 @@ button.btn{font-size:13px;white-space:nowrap}
 <div id="chordpadarea">
   <div id="chordpadheader">
     <button id="chordpadback">&#127968; Home</button>
+    <button id="padslotsbtn" class="btn">&#9835; Slots</button>
     <button id="padshapebtn" class="btn">&#11044;</button>
     <button id="padedittoggle" class="btn">&#9998; Positionieren</button>
   </div>
@@ -3672,10 +3673,16 @@ async function exitChordPad(){
   document.getElementById('chordpadopen').classList.remove('active');
 }
 document.getElementById('chordpadopen').onclick=()=>{
+  if(document.getElementById('livearea').classList.contains('open')) exitLiveMode();
   enterChordPad();
   document.getElementById('chordpadopen').classList.add('active');
 };
 document.getElementById('chordpadback').onclick=exitChordPad;
+document.getElementById('padslotsbtn').onclick=async()=>{
+  await exitChordPad(); await enterLiveMode();
+  document.getElementById('liveslotpanel').classList.add('open');
+  document.getElementById('slottoggle').classList.add('active');
+};
 document.getElementById('padedittoggle').onclick=()=>{ padEditMode=!padEditMode; updatePadEditToggle(); };
 document.getElementById('padshapebtn').addEventListener('click',()=>{
   padShape=SHAPES[(SHAPES.indexOf(padShape)+1)%SHAPES.length];
