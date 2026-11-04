@@ -120,7 +120,33 @@
     <button class="menuBtn" data-go="pgGen">&#127922; Loop-Generator</button>
     <button class="menuBtn" data-go="pgSet">&#9881; Einstellungen</button>
     <button class="menuBtn" data-go="pgPad">&#9835; Akkord-Pad</button>
+    <button class="menuBtn" data-go="pgPre">&#128190; Presets</button>
   </div>
+</div>
+<div class="page" id="pgPre">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+<div class="wrap" style="max-width:760px">
+  <div class="pgTitle">&#128190; Presets</div>
+  <div class="small mut pgSub">Ein Preset merkt sich <b>alle</b> Einstellungen dieser App: Akkorde, T&ouml;ne, Improvisieren, Melodie, Ganzk&ouml;rper, Kamera-Steuerung mit angelernten Bewegungen und Profilen, Akkord-Pad, Looper mit den WAV-Dateien, Hintergrundfoto und eigene SoundFont.</div>
+  <div class="bar">
+    <div id="fpGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"></div>
+    <div class="row" style="margin-top:14px">
+      <span class="mut">Name</span>
+      <input id="fpName" type="text" maxlength="30" placeholder="Preset-Name" style="flex:1;min-width:140px;font-size:16px">
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="fpSave" class="big start">Speichern</button>
+      <button id="fpLoad" class="big">Laden</button>
+      <button id="fpDel" class="big">L&ouml;schen</button>
+    </div>
+    <div class="row" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+      <button id="fpExport" title="Alle Presets als eine Datei sichern (Backup, Umzug zwischen PC und iPad)">&#8659; Alle exportieren</button>
+      <button id="fpImport" title="Eine gesicherte Preset-Datei wieder einspielen">&#8657; Importieren</button>
+      <button id="fpShare" class="start" hidden>Datei jetzt teilen</button>
+    </div>
+    <div class="small mut" id="fpInfo" style="margin-top:10px;min-height:18px"></div>
+  </div>
+</div>
 </div>
 <div class="page" id="pgPad">
   <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
@@ -1651,6 +1677,164 @@ const GEN = (() => {
       presetInfo('Einspielen fehlgeschlagen: ' + ((e && (e.message || e.name)) || 'unbekannt'), true);
     }
   }
+  // ---------- Presets der ganzen App (Startseite): alle Einstellungen (localStorage swcam.v1.*), Looper-WAVs, Hintergrundfoto, eigene SoundFont ----------
+  // Laden schreibt alles zurück und lädt die Seite neu – so übernimmt jeder Bereich seine Einstellungen; die WAVs setzt danach fpStartup().
+  const FP_DB = 'swcam-fullpresets', FP_ST = 'p', FP_N = 8, FP_MAGIC = 'SWCAM001', FP_LOADKEY = STORE + '.fullLoad';
+  const fpOwnKey = k => (k === STORE || k.startsWith(STORE + '.')) && k !== STORE + '.preset' && k !== FP_LOADKEY;
+  function fpDo(mode, fn) {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(FP_DB, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(FP_ST, { keyPath: 'slot' });
+      r.onerror = () => rej(r.error);
+      r.onsuccess = () => {
+        const db = r.result, tx = db.transaction(FP_ST, mode), req = fn(tx.objectStore(FP_ST));
+        tx.oncomplete = () => { db.close(); res(req && req.result); };
+        tx.onerror = tx.onabort = () => { db.close(); rej(tx.error); };
+      };
+    });
+  }
+  const fpInfo = (m, err) => { $('fpInfo').textContent = m || ''; $('fpInfo').className = 'small ' + (err ? 'err' : 'mut'); };
+  let fpSel = 0, fpList = [];
+  try { fpSel = +sessionStorage.getItem('swkamera.fpSel') || 0; } catch (e) {}
+  async function fpRefresh() {
+    try { fpList = (await fpDo('readonly', s => s.getAll())) || []; } catch (e) { fpInfo('Presets sind in diesem Browser nicht verfügbar.', true); return; }
+    const g = $('fpGrid'); g.innerHTML = '';
+    for (let n = 1; n <= FP_N; n++) {
+      const p = fpList.find(x => x.slot === n), b = document.createElement('button');
+      b.style.cssText = 'font-size:15px;padding:14px 6px;min-height:64px;border-radius:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' + (p ? ';border-color:var(--gold)' : ';opacity:.5') + (n === fpSel ? ';outline:3px solid var(--acc)' : '');
+      b.textContent = n + ': ' + (p ? p.name : 'leer');
+      b.title = p ? p.name + ' – gespeichert ' + new Date(p.date).toLocaleString('de-DE') : 'leerer Platz';
+      b.onclick = () => { fpSel = n; try { sessionStorage.setItem('swkamera.fpSel', n); } catch (e) {} $('fpName').value = p ? p.name : ''; fpInfo(''); fpRefresh(); };
+      g.appendChild(b);
+    }
+  }
+  async function fpSave() {
+    if (!fpSel) { fpInfo('Erst oben einen Platz antippen.', true); return; }
+    const old = fpList.find(x => x.slot === fpSel);
+    const name = ($('fpName').value || '').trim() || ('Preset ' + fpSel);
+    if (old && !(await ask('Platz ' + fpSel + ' („' + old.name + '“) mit den jetzigen Einstellungen überschreiben?'))) return;
+    fpInfo('Speichere …');
+    try {
+      const ls = {};
+      Object.keys(localStorage).filter(fpOwnKey).forEach(k => { ls[k] = localStorage.getItem(k); });
+      const sf = {};
+      for (const k of ['main', 'bgimg']) { try { sf[k] = (await sfDb('readonly', s => s.get(k))) || null; } catch (e) { sf[k] = null; } }
+      const loop = { projBpm, ch: chans.map(c => ({ fileName: c.fileName || '', bytes: c.bytes || null, bpm: c.bpm || null, bpmGuess: !!c.bpmGuess })) };
+      await fpDo('readwrite', s => s.put({ slot: fpSel, name, date: Date.now(), ls, sf, loop }));
+      await fpRefresh();
+      const wav = loop.ch.filter(c => c.bytes).length;
+      fpInfo('Gespeichert auf Platz ' + fpSel + ': ' + name + ' (' + (wav ? wav + (wav === 1 ? ' WAV-Datei' : ' WAV-Dateien') : 'ohne WAV-Dateien') + (sf.main ? ', eigene SoundFont' : '') + (sf.bgimg ? ', Hintergrundfoto' : '') + ').');
+    } catch (e) { fpInfo('Speichern fehlgeschlagen: ' + ((e && (e.name || e.message)) || 'unbekannter Fehler') + ' (Speicher voll?)', true); }
+  }
+  async function fpLoad() {
+    const p = fpList.find(x => x.slot === fpSel);
+    if (!p) { fpInfo(fpSel ? 'Auf diesem Platz ist noch nichts gespeichert.' : 'Erst oben einen Platz antippen.', true); return; }
+    if (!(await ask('„' + p.name + '“ laden? Die jetzigen Einstellungen werden dabei ersetzt (vorher speichern, wenn du sie behalten willst).'))) return;
+    fpInfo('Lade …');
+    try {
+      await sfDb('readwrite', s => { if (p.sf && p.sf.main) s.put(p.sf.main, 'main'); else s.delete('main'); return p.sf && p.sf.bgimg ? s.put(p.sf.bgimg, 'bgimg') : s.delete('bgimg'); });
+      Object.keys(localStorage).filter(fpOwnKey).forEach(k => localStorage.removeItem(k));
+      localStorage.removeItem(STORE + '.preset');   // sonst lädt der Looper beim Start sein zuletzt gewähltes Preset
+      Object.entries(p.ls || {}).forEach(([k, v]) => { if (fpOwnKey(k)) localStorage.setItem(k, v); });
+      localStorage.setItem(FP_LOADKEY, String(p.slot));
+    } catch (e) { fpInfo('Laden fehlgeschlagen: ' + ((e && (e.name || e.message)) || 'unbekannt'), true); return; }
+    location.reload();
+  }
+  async function fpDel() {
+    const p = fpList.find(x => x.slot === fpSel);
+    if (!p || !(await ask('Preset „' + p.name + '“ (Platz ' + p.slot + ') löschen?'))) return;
+    await fpDo('readwrite', s => s.delete(p.slot));
+    $('fpName').value = ''; await fpRefresh(); fpInfo('Gelöscht: ' + p.name);
+  }
+  // Nach dem Neuladen: WAV-Dateien und Projekt-Tempo des geladenen Presets in den Looper
+  async function fpStartup(slot) {
+    try {
+      const p = await fpDo('readonly', s => s.get(slot));
+      if (!p) return;
+      const L = p.loop || { ch: [] };
+      for (let i = 0; i < N; i++) {
+        const d = L.ch[i] || {};
+        if (d.bytes) { await setSample(chans[i], d.bytes, d.fileName || ('Kanal ' + (i + 1)), d.bpm || null); if (d.bpm && d.bpmGuess) { chans[i].bpmGuess = true; updateBpmTag(chans[i]); } }
+        else clearSample(chans[i]);
+      }
+      setProjBpm(L.projBpm || null);
+      fpSel = slot; await fpRefresh(); $('fpName').value = p.name;
+      fpInfo('Geladen: ' + p.name);
+    } catch (e) { fpInfo('Die WAV-Dateien des Presets konnten nicht geladen werden.', true); }
+  }
+  // Export/Import: eine Datei „SWCAM001“ + Länge + JSON-Kopf + rohe Daten (WAVs, Foto, SoundFont); im Kopf steht statt der Daten {$bin: Nr}
+  function fpPack(v, bins) {
+    if (v instanceof ArrayBuffer) { bins.push(v); return { $bin: bins.length - 1 }; }
+    if (Array.isArray(v)) return v.map(x => fpPack(x, bins));
+    if (v && typeof v === 'object') { const o = {}; Object.keys(v).forEach(k => { o[k] = fpPack(v[k], bins); }); return o; }
+    return v;
+  }
+  function fpUnpack(v, bins) {
+    if (Array.isArray(v)) return v.map(x => fpUnpack(x, bins));
+    if (v && typeof v === 'object') {
+      if (typeof v.$bin === 'number') { if (!bins[v.$bin]) throw new Error('Datei abgeschnitten'); return bins[v.$bin]; }
+      const o = {}; Object.keys(v).forEach(k => { o[k] = fpUnpack(v[k], bins); }); return o;
+    }
+    return v;
+  }
+  let fpPending = null;
+  async function fpExport() {
+    $('fpShare').hidden = true; fpPending = null;
+    if (!fpList.length) { fpInfo('Es gibt noch keine gespeicherten Presets.', true); return; }
+    const bins = [], head = { version: 1, presets: fpPack([...fpList].sort((a, b) => a.slot - b.slot), bins) };
+    head.lens = bins.map(b => b.byteLength);
+    const json = new TextEncoder().encode(JSON.stringify(head));
+    const lenBuf = new DataView(new ArrayBuffer(4)); lenBuf.setUint32(0, json.length, true);
+    const blob = new Blob([FP_MAGIC, lenBuf.buffer, json, ...bins], { type: 'application/octet-stream' });
+    const d = new Date(), z = n => String(n).padStart(2, '0');
+    const name = 'SoundWhacker_Kamera_Presets_' + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '.swcam';
+    const msg = fpList.length + ' Presets (' + (blob.size / 1048576).toFixed(1) + ' MB)';
+    if (!window.showDirectoryPicker && navigator.share) {
+      const file = { name, bytes: blob, type: 'application/octet-stream' };
+      if (await shareFiles([file])) { fpInfo(msg + ': Teilen-Menü geöffnet – „In Dateien sichern“ wählen.'); return; }
+      fpPending = file; $('fpShare').hidden = false;   // Berührung abgelaufen: ein zweiter Tipp öffnet das Teilen-Menü sicher
+      fpInfo(msg + ' sind bereit – bitte „Datei jetzt teilen“ tippen.');
+      return;
+    }
+    downloadBlob(blob, name);
+    fpInfo(msg + ' exportiert (siehe Downloads-Ordner).');
+  }
+  $('fpShare').onclick = async () => {
+    if (!fpPending) return;
+    try {
+      await navigator.share({ files: [new File([fpPending.bytes], fpPending.name, { type: fpPending.type })] });
+      $('fpShare').hidden = true; fpPending = null;
+      fpInfo('Teilen-Menü geöffnet – „In Dateien sichern“ wählen.');
+    } catch (e) { if (!(e && e.name === 'AbortError')) fpInfo('Teilen nicht möglich: ' + ((e && (e.name + ': ' + e.message)) || 'unbekannt'), true); }
+  };
+  async function fpImport(file) {
+    try {
+      const buf = await file.arrayBuffer();
+      if (new TextDecoder().decode(new Uint8Array(buf, 0, Math.min(8, buf.byteLength))) !== FP_MAGIC) { fpInfo('Das ist keine Preset-Datei der Kamera-App (.swcam).', true); return; }
+      const hl = new DataView(buf).getUint32(8, true);
+      if (12 + hl > buf.byteLength) { fpInfo('Preset-Datei ist beschädigt (unvollständig).', true); return; }
+      const head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 12, hl)));
+      let pos = 12 + hl;
+      const bins = (head.lens || []).map(n => { if (pos + n > buf.byteLength) throw new Error('Datei abgeschnitten'); const b = buf.slice(pos, pos + n); pos += n; return b; });
+      const list = fpUnpack(head.presets || [], bins).filter(p => p && p.slot >= 1 && p.slot <= FP_N && p.ls);
+      if (!list.length) { fpInfo('Die Datei enthält keine Presets.', true); return; }
+      const clash = list.filter(p => fpList.some(x => x.slot === p.slot));
+      let use = list;
+      if (clash.length && !(await ask(clash.length + ' von ' + list.length + ' Plätzen sind schon belegt (' + clash.map(p => p.slot + ': ' + p.name).slice(0, 3).join(', ') + (clash.length > 3 ? ' …' : '') + '). Überschreiben?'))) use = list.filter(p => !clash.includes(p));
+      if (!use.length) { fpInfo('Nichts importiert.'); return; }
+      await fpDo('readwrite', s => { let r; use.forEach(p => { r = s.put(p); }); return r; });
+      await fpRefresh();
+      fpInfo(use.length + ' Presets importiert' + (use.length < list.length ? ' (' + (list.length - use.length) + ' übersprungen)' : '') + '. Zum Benutzen Platz antippen und „Laden“.');
+    } catch (e) { fpInfo('Importieren fehlgeschlagen: ' + ((e && (e.message || e.name)) || 'unbekannt'), true); }
+  }
+  $('fpSave').onclick = fpSave; $('fpLoad').onclick = fpLoad; $('fpDel').onclick = fpDel; $('fpExport').onclick = fpExport;
+  $('fpImport').onclick = () => {
+    const fi = document.createElement('input');
+    fi.type = 'file';   // ohne accept (iOS graut sonst Dateien aus)
+    fi.onchange = () => { if (fi.files[0]) fpImport(fi.files[0]); };
+    fi.click();
+  };
+
   $('presetExport').onclick = exportPresets;
   $('presetImport').onclick = () => {
     const fi = document.createElement('input');
@@ -4587,10 +4771,11 @@ const GEN = (() => {
   const saved = load();
   chans.forEach(buildChannel);
   if (window.indexedDB) {
-    let last = null;
-    try { last = localStorage.getItem(STORE + '.preset'); } catch (e) {}
-    refreshPresets(last).then(() => { if (last && $('presetSel').value === last) return loadPreset(last); })
+    let last = null, full = 0;
+    try { last = localStorage.getItem(STORE + '.preset'); full = +localStorage.getItem(FP_LOADKEY) || 0; localStorage.removeItem(FP_LOADKEY); } catch (e) {}
+    refreshPresets(last).then(() => { if (!full && last && $('presetSel').value === last) return loadPreset(last); })
       .catch(() => presetInfo('Presets sind in diesem Browser nicht verfügbar.', true));
+    fpRefresh().then(() => { if (full) return fpStartup(full); });
   } else {
     presetInfo('Presets sind in diesem Browser nicht verfügbar.', true);
   }
@@ -4599,7 +4784,7 @@ const GEN = (() => {
 <script>
 // Startseite und Unterseiten (jede Unterseite hat ihre Elternseite; „Zurück“ führt dorthin)
 (function () {
-  const PARENT = { pgWas: '', pgKam: '', pgGen: '', pgSet: '', pgPad: '', pgAkk: 'pgWas', pgTon: 'pgWas', pgImp: 'pgWas', pgLoop: 'pgWas', pgSf: 'pgSet', pgFern: 'pgSet' };
+  const PARENT = { pgWas: '', pgKam: '', pgGen: '', pgSet: '', pgPad: '', pgPre: '', pgAkk: 'pgWas', pgTon: 'pgWas', pgImp: 'pgWas', pgLoop: 'pgWas', pgSf: 'pgSet', pgFern: 'pgSet' };
   let cur = '';
   function go(id) {
     document.querySelectorAll('.page.open').forEach(p => p.classList.remove('open'));
