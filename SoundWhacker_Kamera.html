@@ -87,7 +87,10 @@
   #padBar button.on{background:#1d4d2e;border-color:var(--on)}
   #padBar #padEdit{background:#c96a00;border-color:#ffb347;color:#fff;font-weight:700}   /* wichtig: auffällig (Größe wie die anderen Knöpfe) */
   #padBar #padEdit.on{background:#1d7a3a;border-color:#5fe08a}
-  #padBgBtns{display:inline-flex;gap:6px;flex-wrap:wrap;vertical-align:middle}
+  #padBgL{position:relative;display:inline-block}
+  #padBgBtns{position:absolute;left:0;top:calc(100% + 6px);z-index:20;display:flex;flex-direction:column;gap:6px;padding:8px;min-width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  #padBgBtns[hidden]{display:none}
+  #padBgBtns button{text-align:left;white-space:nowrap}
   #padCenter{background:#b3261e;border-color:#ff6b5e;color:#fff;font-weight:700}   /* wichtig: fällt auf */
   #padGrid{position:absolute;left:12px;right:12px;top:84px;bottom:12px;border:1px solid var(--line);border-radius:16px;touch-action:none;user-select:none;-webkit-user-select:none}
   .padBtn{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;border:3px solid var(--gold);background:#152035;font-weight:800;line-height:1.15;padding:0;touch-action:none}
@@ -168,7 +171,7 @@
     <button id="padHeadBtn" title="Die Nase f&uuml;hrt einen Zeiger &uuml;bers Pad; bleibt er auf einem Knopf, erklingt der Akkord">&#128566; Kopf</button>
     <button id="padCenter" title="Jetzige Kopfhaltung als Mitte nehmen" hidden>&#8982; Mitte</button>
     <button id="padVidBtn" title="Kamerabild zeigen oder ausblenden (verschieben und Gr&ouml;&szlig;e unter &bdquo;Bearbeiten&ldquo;)" hidden>&#128247; Bild</button>
-    <span class="small mut" id="padBgL" hidden>Hintergrund <span id="padBgBtns"><button data-m="none">Kamerabild</button><button data-m="blur">verschwommen</button><button data-m="stage">B&uuml;hne</button><button data-m="image">&#128444; eigenes Bild</button></span></span>
+    <span id="padBgL" hidden><button id="padBgMenu">Hintergrund: <b id="padBgName">Kamerabild</b> &#9662;</button><span id="padBgBtns" hidden><button data-m="none">Kamerabild</button><button data-m="blur">verschwommen</button><button data-m="stage">B&uuml;hne</button><button data-m="image">&#128444; eigenes Bild &hellip;</button></span></span>
     <label class="small mut">Verweilen <select id="padDwell"><option value="0">sofort</option><option value="250">0,25 s</option><option value="500">0,5 s</option><option value="1000" selected>1 s</option><option value="1500">1,5 s</option><option value="2000">2 s</option></select></label>
     <label class="small mut">Bewegung <select id="padGain"><option value="3">gro&szlig;</option><option value="4.5" selected>mittel</option><option value="6.5">klein</option></select></label>
     <label class="small mut" id="padInstL">Instrument <select id="padInst" style="max-width:220px" disabled><option>&ndash; wird geladen &ndash;</option></select></label>
@@ -4402,7 +4405,15 @@ const GEN = (() => {
       if (parseFloat(grid.style.top) !== t) { grid.style.top = t + 'px'; pad.btns.forEach((x, k) => place(k)); }
     }).observe($('padBar'));
     // Hintergrund des Kamerabilds (verschwommen, Bühne, eigenes Bild) – dieselbe Einstellung wie bei der Kamera-Steuerung
-    function padBgSync() { document.querySelectorAll('#padBgBtns button').forEach(b => b.classList.toggle('on', b.dataset.m === BG.mode)); }
+    function padBgSync() {
+      document.querySelectorAll('#padBgBtns button').forEach(b => b.classList.toggle('on', b.dataset.m === BG.mode));
+      const cur = document.querySelector('#padBgBtns button[data-m="' + BG.mode + '"]');
+      $('padBgName').textContent = cur ? cur.textContent.replace(/[🖼…]/gu, '').trim() : '';
+    }
+    // aufklappbares Menü (eigenes, weil die Fotoauswahl am iPad nur aus einem echten Tipp aufgeht – nicht aus einer Auswahlliste)
+    const bgMenu = open => { $('padBgBtns').hidden = !open; };
+    $('padBgMenu').onclick = e => { e.stopPropagation(); bgMenu($('padBgBtns').hidden); };
+    document.addEventListener('pointerdown', e => { if (!$('padBgBtns').hidden && !e.target.closest('#padBgL')) bgMenu(false); }, true);
     // iPad: die Bildauswahl muss direkt im Tipp aufgehen (nach einem await blockiert Safari sie)
     function padPickImage() {
       document.querySelectorAll('input.padPickIn').forEach(x => x.remove());   // abgebrochene Auswahl von vorher
@@ -4421,6 +4432,7 @@ const GEN = (() => {
     // Knöpfe statt Auswahlliste: ein echter Tipp darf auf dem iPad die Fotoauswahl öffnen
     document.querySelectorAll('#padBgBtns button').forEach(b => b.onclick = async () => {
       const m = b.dataset.m;
+      bgMenu(false);
       if (m === 'image') { padPickImage(); return; }   // Modus wechselt erst, wenn ein Bild gewählt wurde
       await bgSetMode(m); padBgSync();
       if (BG.mode !== 'none' && H.on && ges.vision) bgEnsureSeg();
