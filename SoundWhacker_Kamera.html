@@ -98,9 +98,9 @@
   .padSw{width:40px;height:40px;border-radius:50%;border:2px solid var(--line);cursor:pointer}
   .padSw.sel{border-color:#fff;box-shadow:0 0 0 2px var(--acc)}
   #padPtr{position:absolute;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:3px solid #fff;pointer-events:none;display:none;z-index:5;background:rgba(255,255,255,.12)}
-  .padPrevBox{position:fixed;width:150px;z-index:102;pointer-events:none;touch-action:none}
+  .padPrevBox{position:fixed;width:150px;z-index:0;pointer-events:none;touch-action:none}   /* liegt hinter Leiste und Knöpfen – kann so den ganzen Bildschirm füllen */
   .padPrevBox video{display:block;width:100%;border-radius:10px;transform:scaleX(-1);opacity:.85;background:#000}
-  .padPrevBox.edit{pointer-events:auto;cursor:move;outline:2px dashed #fff;outline-offset:3px;border-radius:10px}
+  .padPrevBox.edit{pointer-events:auto;cursor:move;outline:2px dashed #fff;outline-offset:-3px;border-radius:10px;z-index:6}
   .padPrevBox.off{opacity:0}   /* aus: unsichtbar, läuft aber weiter (iPad liefert sonst kein Bild) */
   .padPrevBox.edit.off{opacity:.35}
   .padPrevBox .padRs{display:none} .padPrevBox.edit .padRs{display:flex}
@@ -4346,11 +4346,13 @@ const GEN = (() => {
     if (!cfg.prev) cfg.prev = { on: true, x: null, y: null, w: 150 };
     function prevPlace() {
       const b = H.box; if (!b) return;
-      const P = cfg.prev, w = Math.min(Math.max(80, P.w || 150), innerWidth * 0.7);
+      const v = b.querySelector('video'), asp = v && v.videoWidth ? v.videoWidth / v.videoHeight : 16 / 9;
+      const P = cfg.prev, maxW = Math.max(innerWidth, innerHeight * asp);   // groß genug, um alles zu bedecken
+      const w = Math.min(Math.max(80, P.w || 150), maxW), h = w / asp;
       b.style.width = w + 'px';
-      const h = b.offsetHeight || w * 0.5625;
+      const cl = (val, size, room) => Math.min(Math.max(0, room - size), Math.max(Math.min(0, room - size), val));   // im Fenster halten – oder, wenn größer, das Fenster bedeckt halten
       if (P.x == null) { b.style.left = (innerWidth - w - 20) + 'px'; b.style.top = (innerHeight - h - 20) + 'px'; }
-      else { b.style.left = Math.min(innerWidth - w, Math.max(0, P.x / 100 * innerWidth - w / 2)) + 'px'; b.style.top = Math.min(innerHeight - h, Math.max(0, P.y / 100 * innerHeight - h / 2)) + 'px'; }
+      else { b.style.left = cl(P.x / 100 * innerWidth - w / 2, w, innerWidth) + 'px'; b.style.top = cl(P.y / 100 * innerHeight - h / 2, h, innerHeight) + 'px'; }
       b.classList.toggle('off', !P.on); b.classList.toggle('edit', pad.edit);
       $('padVidBtn').classList.toggle('on', !!P.on);
     }
@@ -4370,8 +4372,9 @@ const GEN = (() => {
         if (!d || !pp.has(e.pointerId)) return;
         pp.set(e.pointerId, { x: e.clientX, y: e.clientY });
         const P = cfg.prev, r = box.getBoundingClientRect();
-        if (d.pinch) { if (pp.size >= 2) P.w = d.w0 * span() / d.d0; }
-        else if (d.rs) P.w = d.w0 + Math.max(e.clientX - d.x0, e.clientY - d.y0);
+        const v = box.querySelector('video'), asp = v && v.videoWidth ? v.videoWidth / v.videoHeight : 16 / 9, maxW = Math.max(innerWidth, innerHeight * asp);
+        if (d.pinch) { if (pp.size >= 2) P.w = Math.min(maxW, d.w0 * span() / d.d0); }
+        else if (d.rs) P.w = Math.min(maxW, d.w0 + Math.max(e.clientX - d.x0, e.clientY - d.y0));
         else { P.x = (d.l0 + e.clientX - d.x0 + r.width / 2) / innerWidth * 100; P.y = (d.t0 + e.clientY - d.y0 + r.height / 2) / innerHeight * 100; }
         if (P.x == null) { P.x = (r.left + r.width / 2) / innerWidth * 100; P.y = (r.top + r.height / 2) / innerHeight * 100; }
         prevPlace();
@@ -4406,7 +4409,7 @@ const GEN = (() => {
         const v = H.vid = document.createElement('video'); v.setAttribute('playsinline', ''); v.muted = true;
         const box = H.box = document.createElement('div'); box.className = 'padPrevBox';
         box.appendChild(v); box.insertAdjacentHTML('beforeend', '<span class="padRs" title="Größe ändern">&#8600;</span>');
-        document.body.appendChild(box); prevPlace(); prevInit(box);
+        $('pgPad').insertBefore(box, $('pgPad').firstChild); prevPlace(); prevInit(box);
         v.srcObject = stream;
         const tryPlay = () => { const pl = v.play(); if (pl && pl.catch) pl.catch(() => {}); return pl; };
         try { await Promise.race([tryPlay(), new Promise(r => setTimeout(r, 3000))]); } catch (e) {}
