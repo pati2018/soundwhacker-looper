@@ -97,7 +97,12 @@
   .padSw{width:40px;height:40px;border-radius:50%;border:2px solid var(--line);cursor:pointer}
   .padSw.sel{border-color:#fff;box-shadow:0 0 0 2px var(--acc)}
   #padPtr{position:absolute;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:3px solid #fff;pointer-events:none;display:none;z-index:5;background:rgba(255,255,255,.12)}
-  .padPrev{position:fixed;right:20px;bottom:20px;width:150px;border-radius:10px;transform:scaleX(-1);opacity:.85;z-index:102;pointer-events:none;background:#000}
+  .padPrevBox{position:fixed;width:150px;z-index:102;pointer-events:none;touch-action:none}
+  .padPrevBox video{display:block;width:100%;border-radius:10px;transform:scaleX(-1);opacity:.85;background:#000}
+  .padPrevBox.edit{pointer-events:auto;cursor:move;outline:2px dashed #fff;outline-offset:3px;border-radius:10px}
+  .padPrevBox.off{opacity:0}   /* aus: unsichtbar, läuft aber weiter (iPad liefert sonst kein Bild) */
+  .padPrevBox.edit.off{opacity:.35}
+  .padPrevBox .padRs{display:none} .padPrevBox.edit .padRs{display:flex}
 </style>
 </head>
 <body>
@@ -155,6 +160,7 @@
     <label class="small mut">Spielt <select id="padMode" style="font-size:16px"><option value="akk">&#127929; Akkorde</option><option value="ton">&#127925; T&ouml;ne</option><option value="imp">&#127922; Improvisieren</option><option value="kan">&#128257; Loops</option></select></label>
     <button id="padHeadBtn" title="Die Nase f&uuml;hrt einen Zeiger &uuml;bers Pad; bleibt er auf einem Knopf, erklingt der Akkord">&#128566; Kopf</button>
     <button id="padCenter" title="Jetzige Kopfhaltung als Mitte nehmen" hidden>&#8982; Mitte</button>
+    <button id="padVidBtn" title="Kamerabild zeigen oder ausblenden (verschieben und Gr&ouml;&szlig;e unter &bdquo;Bearbeiten&ldquo;)" hidden>&#128247; Bild</button>
     <label class="small mut">Verweilen <select id="padDwell"><option value="0">sofort</option><option value="250">0,25 s</option><option value="500">0,5 s</option><option value="1000" selected>1 s</option><option value="1500">1,5 s</option><option value="2000">2 s</option></select></label>
     <label class="small mut">Bewegung <select id="padGain"><option value="3">gro&szlig;</option><option value="4.5" selected>mittel</option><option value="6.5">klein</option></select></label>
     <label class="small mut" id="padInstL">Instrument <select id="padInst" style="max-width:220px" disabled><option>&ndash; wird geladen &ndash;</option></select></label>
@@ -4333,7 +4339,48 @@ const GEN = (() => {
       pad.edit = !pad.edit; play(-1); if ($('padPick')) $('padPick').remove();
       grid.classList.toggle('edit', pad.edit); $('padEdit').classList.toggle('on', pad.edit);
       $('padEdit').innerHTML = pad.edit ? '&#10004; Fertig' : '&#9998; Bearbeiten';
+      prevPlace();
     };
+    // Kamerabild der Kopfsteuerung: an/aus, Lage (Mitte in % des Fensters) und Breite (px) werden gemerkt
+    if (!cfg.prev) cfg.prev = { on: true, x: null, y: null, w: 150 };
+    function prevPlace() {
+      const b = H.box; if (!b) return;
+      const P = cfg.prev, w = Math.min(Math.max(80, P.w || 150), innerWidth * 0.7);
+      b.style.width = w + 'px';
+      const h = b.offsetHeight || w * 0.5625;
+      if (P.x == null) { b.style.left = (innerWidth - w - 20) + 'px'; b.style.top = (innerHeight - h - 20) + 'px'; }
+      else { b.style.left = Math.min(innerWidth - w, Math.max(0, P.x / 100 * innerWidth - w / 2)) + 'px'; b.style.top = Math.min(innerHeight - h, Math.max(0, P.y / 100 * innerHeight - h / 2)) + 'px'; }
+      b.classList.toggle('off', !P.on); b.classList.toggle('edit', pad.edit);
+      $('padVidBtn').classList.toggle('on', !!P.on);
+    }
+    function prevInit(box) {   // ziehen = verschieben, ↘ ziehen (PC) oder zwei Finger (iPad) = Größe
+      const pp = new Map(); let d = null;
+      const span = () => { const [a, b] = [...pp.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+      box.addEventListener('pointerdown', e => {
+        if (!pad.edit) return;
+        e.preventDefault(); e.stopPropagation();
+        pp.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        try { box.setPointerCapture(e.pointerId); } catch (e2) {}
+        const r = box.getBoundingClientRect();
+        if (pp.size === 2) { d = { pinch: true, d0: span(), w0: r.width }; return; }
+        d = { rs: !!e.target.closest('.padRs'), x0: e.clientX, y0: e.clientY, w0: r.width, l0: r.left, t0: r.top };
+      });
+      box.addEventListener('pointermove', e => {
+        if (!d || !pp.has(e.pointerId)) return;
+        pp.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const P = cfg.prev, r = box.getBoundingClientRect();
+        if (d.pinch) { if (pp.size >= 2) P.w = d.w0 * span() / d.d0; }
+        else if (d.rs) P.w = d.w0 + Math.max(e.clientX - d.x0, e.clientY - d.y0);
+        else { P.x = (d.l0 + e.clientX - d.x0 + r.width / 2) / innerWidth * 100; P.y = (d.t0 + e.clientY - d.y0 + r.height / 2) / innerHeight * 100; }
+        if (P.x == null) { P.x = (r.left + r.width / 2) / innerWidth * 100; P.y = (r.top + r.height / 2) / innerHeight * 100; }
+        prevPlace();
+      });
+      const end = e => { pp.delete(e.pointerId); if (!pp.size && d) { d = null; save(); } };
+      box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+      box.querySelector('video').addEventListener('loadedmetadata', prevPlace);   // Höhe erst mit dem ersten Bild bekannt
+    }
+    $('padVidBtn').onclick = () => { cfg.prev.on = !cfg.prev.on; save(); prevPlace(); };
+    addEventListener('resize', prevPlace);
     [['padDwell', 'dwell'], ['padGain', 'gain']].forEach(([id, k]) => {
       const s = $(id);
       if ([...s.options].some(o => +o.value === +cfg[k])) s.value = String(cfg[k]);
@@ -4343,7 +4390,7 @@ const GEN = (() => {
     // Kopfsteuerung: eigene Kamera nur für das Pad (die Kamera-Steuerung wird dafür ausgeschaltet)
     async function headStart() {
       if (H.on) return;
-      H.on = true; $('padHeadBtn').classList.add('on'); $('padCenter').hidden = false;
+      H.on = true; $('padHeadBtn').classList.add('on'); $('padCenter').hidden = $('padVidBtn').hidden = false;
       try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Dieser Browser gibt die Kamera nicht frei');
         if (ges.on) gesStop();
@@ -4355,8 +4402,11 @@ const GEN = (() => {
         H.stream = stream;
         const alive = () => H.on && H.stream === stream;
         // frisches, sichtbares Video (das iPad liefert sonst manchmal kein Bild)
-        const v = H.vid = document.createElement('video'); v.setAttribute('playsinline', ''); v.muted = true; v.className = 'padPrev';
-        document.body.appendChild(v); v.srcObject = stream;
+        const v = H.vid = document.createElement('video'); v.setAttribute('playsinline', ''); v.muted = true;
+        const box = H.box = document.createElement('div'); box.className = 'padPrevBox';
+        box.appendChild(v); box.insertAdjacentHTML('beforeend', '<span class="padRs" title="Größe ändern">&#8600;</span>');
+        document.body.appendChild(box); prevPlace(); prevInit(box);
+        v.srcObject = stream;
         const tryPlay = () => { const pl = v.play(); if (pl && pl.catch) pl.catch(() => {}); return pl; };
         try { await Promise.race([tryPlay(), new Promise(r => setTimeout(r, 3000))]); } catch (e) {}
         for (let k = 0; k < 30 && alive() && v.readyState < 2; k++) await new Promise(r => setTimeout(r, 100));
@@ -4387,10 +4437,11 @@ const GEN = (() => {
     function headStop() {
       H.on = false; cancelAnimationFrame(H.loop);
       if (H.stream) { H.stream.getTracks().forEach(t => t.stop()); H.stream = null; }
-      if (H.vid) { H.vid.srcObject = null; H.vid.remove(); H.vid = null; }
+      if (H.vid) { H.vid.srcObject = null; H.vid = null; }
+      if (H.box) { H.box.remove(); H.box = null; }
       ptr.style.display = 'none'; H.target = -1;
       if (!down) play(-1);
-      $('padHeadBtn').classList.remove('on'); $('padCenter').hidden = true; stat('');
+      $('padHeadBtn').classList.remove('on'); $('padCenter').hidden = $('padVidBtn').hidden = true; stat('');
     }
     function headLoop() {
       if (!H.on) return;
