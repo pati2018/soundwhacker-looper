@@ -80,6 +80,17 @@
   #presetInfo:empty{display:none}
   .row:has(> #sfInfo:empty){display:none}
   .page details>div:first-of-type,.page details>.row:first-of-type{margin-top:0!important}
+  /* Akkord-Pad: große Knöpfe zum Antippen oder per Kopf (Nase führt den Zeiger) */
+  #pgPad{overflow:hidden}
+  #padBar{position:absolute;top:12px;left:150px;right:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;min-height:48px}
+  #padBar button.on{background:#1d4d2e;border-color:var(--on)}
+  #padGrid{position:absolute;left:12px;right:12px;top:84px;bottom:12px;border:1px solid var(--line);border-radius:16px;touch-action:none;user-select:none;-webkit-user-select:none}
+  .padBtn{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;border:3px solid var(--gold);background:#152035;font-weight:800;line-height:1.15;padding:0;touch-action:none}
+  .padBtn small{font-weight:500;opacity:.7}
+  .padBtn.active{background:#2f8a4c;border-color:var(--on);box-shadow:0 0 30px var(--on)}
+  #padGrid.edit .padBtn{border-style:dashed;cursor:move}
+  #padPtr{position:absolute;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:3px solid #fff;pointer-events:none;display:none;z-index:5;background:rgba(255,255,255,.12)}
+  .padPrev{position:fixed;right:20px;bottom:20px;width:150px;border-radius:10px;transform:scaleX(-1);opacity:.85;z-index:102;pointer-events:none;background:#000}
 </style>
 </head>
 <body>
@@ -102,7 +113,22 @@
     <button class="menuBtn" data-go="pgKam">&#128587; Was bewegt sich?</button>
     <button class="menuBtn" data-go="pgGen">&#127922; Loop-Generator</button>
     <button class="menuBtn" data-go="pgSet">&#9881; Einstellungen</button>
+    <button class="menuBtn" data-go="pgPad">&#9835; Akkord-Pad</button>
   </div>
+</div>
+<div class="page" id="pgPad">
+  <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
+  <div id="padBar">
+    <button id="padHeadBtn" title="Die Nase f&uuml;hrt einen Zeiger &uuml;bers Pad; bleibt er auf einem Knopf, erklingt der Akkord">&#128566; Kopf</button>
+    <button id="padCenter" title="Jetzige Kopfhaltung als Mitte nehmen" hidden>&#8982; Mitte</button>
+    <label class="small mut">Verweilen <select id="padDwell"><option value="0">sofort</option><option value="250">0,25 s</option><option value="500">0,5 s</option><option value="1000" selected>1 s</option><option value="1500">1,5 s</option><option value="2000">2 s</option></select></label>
+    <label class="small mut">Bewegung <select id="padGain"><option value="3">gro&szlig;</option><option value="4.5" selected>mittel</option><option value="6.5">klein</option></select></label>
+    <label class="small mut">Kn&ouml;pfe <select id="padSize"><option value="0.75">klein</option><option value="1" selected>mittel</option><option value="1.3">gro&szlig;</option></select></label>
+    <button id="padEdit" title="Kn&ouml;pfe verschieben">&#9998; Verschieben</button>
+    <span class="small mut" id="padStat"></span>
+  </div>
+  <div id="padGrid"></div>
+  <div id="padPtr"></div>
 </div>
 <div class="page" id="pgWas">
   <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
@@ -3947,6 +3973,182 @@ const GEN = (() => {
         : f.type === 'ton' ? NN[f.pc] + f.oct : NN[f.pc] + (f.type === 'moll' ? 'm' : f.type === 'dur7' ? '7' : '');
     }
   }
+
+  // ---------- Akkord-Pad: die Felder Akkord 1–5 als große Knöpfe – antippen, darübergleiten oder per Kopf (Nase führt den Zeiger) ----------
+  (function padInit() {
+    const grid = $('padGrid'), ptr = $('padPtr'), PAD_KEY = STORE + '.pad';
+    const DEF = [{ x: 18, y: 28 }, { x: 50, y: 22 }, { x: 82, y: 28 }, { x: 32, y: 72 }, { x: 68, y: 72 }];   // Mitte der Knöpfe in % des Pads
+    let cfg = { pos: DEF.map(p => Object.assign({}, p)), dwell: 1000, gain: 4.5, size: 1 };
+    try { const c = JSON.parse(localStorage.getItem(PAD_KEY) || 'null'); if (c) cfg = Object.assign(cfg, c); } catch (e) {}
+    const save = () => { try { localStorage.setItem(PAD_KEY, JSON.stringify(cfg)); } catch (e) {} };
+    const pad = { cur: -1, edit: false, btns: [], head: { on: false, stream: null, vid: null, face: null, loop: 0, cx: null, cy: null, px: .5, py: .5, lastT: -1, target: -1, since: 0, leaveT: 0, lost: 0 } };
+    const H = pad.head, stat = t => { $('padStat').textContent = t || ''; };
+    const NN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
+    const TL = { ton: 'Ton', dur: 'Dur', moll: 'Moll', dur7: 'Dur 7' };
+
+    function build() {
+      grid.innerHTML = ''; pad.btns = [];
+      const sz = Math.round(Math.min(grid.clientWidth, grid.clientHeight) * 0.3 * cfg.size);
+      for (let i = 0; i < 5; i++) {
+        const f = chCfg.fields[i], p = cfg.pos[i] || DEF[i], b = document.createElement('button');
+        b.className = 'padBtn'; b.dataset.i = i;
+        b.innerHTML = NN[f.pc] + '<small>' + TL[f.type] + '</small>';
+        b.style.width = b.style.height = sz + 'px'; b.style.fontSize = Math.round(sz / 4) + 'px';
+        b.style.left = 'calc(' + p.x + '% - ' + sz / 2 + 'px)'; b.style.top = 'calc(' + p.y + '% - ' + sz / 2 + 'px)';
+        grid.appendChild(b); pad.btns.push(b);
+      }
+      play(pad.cur, true);
+    }
+    function play(i, force) {   // i = -1: Stille
+      if (i === pad.cur && !force) return;
+      if (pad.cur >= 0 && !force) chStop(pad.cur);
+      pad.cur = i;
+      pad.btns.forEach((b, k) => b.classList.toggle('active', k === i));
+      if (i >= 0 && !force) chStart(i);
+    }
+    const btnAt = (x, y) => { const el = document.elementFromPoint(x, y), b = el && el.closest('.padBtn'); return b && grid.contains(b) ? +b.dataset.i : -1; };
+
+    // Finger und Maus: Knopf unter dem Finger klingt, beim Weitergleiten wechselt der Akkord
+    let drag = null, down = false;
+    grid.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const b = e.target.closest('.padBtn') || pad.btns[btnAt(e.clientX, e.clientY)];
+      if (pad.edit) {
+        if (!b) return;
+        const r = grid.getBoundingClientRect(), i = +b.dataset.i, p = cfg.pos[i];
+        drag = { i, b, dx: e.clientX - (r.left + p.x / 100 * r.width), dy: e.clientY - (r.top + p.y / 100 * r.height) };
+        try { grid.setPointerCapture(e.pointerId); } catch (e2) {}
+        return;
+      }
+      down = true; try { grid.setPointerCapture(e.pointerId); } catch (e2) {}
+      play(b ? +b.dataset.i : -1);
+    });
+    grid.addEventListener('pointermove', e => {
+      if (drag) {
+        const r = grid.getBoundingClientRect(), p = cfg.pos[drag.i], sz = drag.b.offsetWidth / 2;
+        p.x = Math.min(100 - sz / r.width * 100, Math.max(sz / r.width * 100, (e.clientX - drag.dx - r.left) / r.width * 100));
+        p.y = Math.min(100 - sz / r.height * 100, Math.max(sz / r.height * 100, (e.clientY - drag.dy - r.top) / r.height * 100));
+        drag.b.style.left = 'calc(' + p.x + '% - ' + sz + 'px)'; drag.b.style.top = 'calc(' + p.y + '% - ' + sz + 'px)';
+      } else if (down) play(btnAt(e.clientX, e.clientY));
+    });
+    const up = () => { if (drag) { drag = null; save(); } if (down) { down = false; play(-1); } };
+    grid.addEventListener('pointerup', up); grid.addEventListener('pointercancel', up);
+
+    $('padEdit').onclick = () => {
+      pad.edit = !pad.edit; play(-1);
+      grid.classList.toggle('edit', pad.edit); $('padEdit').classList.toggle('on', pad.edit);
+      $('padEdit').innerHTML = pad.edit ? '&#10004; Fertig' : '&#9998; Verschieben';
+    };
+    [['padDwell', 'dwell'], ['padGain', 'gain'], ['padSize', 'size']].forEach(([id, k]) => {
+      const s = $(id);
+      if ([...s.options].some(o => +o.value === +cfg[k])) s.value = String(cfg[k]);
+      s.onchange = () => { cfg[k] = +s.value; save(); if (k === 'size') build(); };
+    });
+
+    // Kopfsteuerung: eigene Kamera nur für das Pad (die Kamera-Steuerung wird dafür ausgeschaltet)
+    async function headStart() {
+      if (H.on) return;
+      H.on = true; $('padHeadBtn').classList.add('on'); $('padCenter').hidden = false;
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Dieser Browser gibt die Kamera nicht frei');
+        if (ges.on) gesStop();
+        stat('Kamera wird gestartet …');
+        // iPad: getUserMedia direkt im Tipp starten; hängt es, nach 10 s eine klare Meldung
+        const gum = navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: false });
+        const stream = await Promise.race([gum, new Promise((_, rej) => setTimeout(() => rej(new Error('Kamera antwortet nicht – in den iPad-Einstellungen (Safari → Kamera) erlauben und neu laden')), 10000))]);
+        if (!H.on) { stream.getTracks().forEach(t => t.stop()); return; }
+        H.stream = stream;
+        const alive = () => H.on && H.stream === stream;
+        // frisches, sichtbares Video (das iPad liefert sonst manchmal kein Bild)
+        const v = H.vid = document.createElement('video'); v.setAttribute('playsinline', ''); v.muted = true; v.className = 'padPrev';
+        document.body.appendChild(v); v.srcObject = stream;
+        const tryPlay = () => { const pl = v.play(); if (pl && pl.catch) pl.catch(() => {}); return pl; };
+        try { await Promise.race([tryPlay(), new Promise(r => setTimeout(r, 3000))]); } catch (e) {}
+        for (let k = 0; k < 30 && alive() && v.readyState < 2; k++) await new Promise(r => setTimeout(r, 100));
+        if (!alive()) return;
+        if (v.readyState < 2) {   // iPad lässt das Video nicht von selbst laufen: ein Tipp startet es
+          stat('Einmal auf den Bildschirm tippen, um die Kamera zu starten');
+          const tap = () => tryPlay();
+          $('pgPad').addEventListener('pointerdown', tap, true);
+          for (let k = 0; k < 150 && alive() && v.readyState < 2; k++) await new Promise(r => setTimeout(r, 100));
+          $('pgPad').removeEventListener('pointerdown', tap, true);
+          if (!alive()) return;
+          if (v.readyState < 2) throw new Error('Kein Kamerabild – Kopf aus und wieder an tippen');
+        }
+        if (!H.face) {
+          stat('Gesichtserkennung wird geladen …');
+          if (!ges.vision) { ges.vision = await import(MP_BASE + 'vendor/mediapipe/vision_bundle.mjs'); ges.fs = await ges.vision.FilesetResolver.forVisionTasks(MP_BASE + 'vendor/mediapipe/wasm'); }
+          const opts = d => ({ baseOptions: { modelAssetPath: MP_BASE + 'models/face_landmarker.task', delegate: d }, runningMode: 'VIDEO', numFaces: 1 });
+          try { H.face = await ges.vision.FaceLandmarker.createFromOptions(ges.fs, opts('GPU')); } catch (e) { H.face = await ges.vision.FaceLandmarker.createFromOptions(ges.fs, opts('CPU')); }
+        }
+        if (!alive()) return;
+        H.cx = null; stat('Gerade auf den Bildschirm schauen …');
+        H.loop = requestAnimationFrame(headLoop);
+      } catch (e) {
+        const m = { NotAllowedError: 'Kamera nicht erlaubt', NotFoundError: 'Keine Kamera gefunden', NotReadableError: 'Kamera wird von einer anderen App benutzt' };
+        headStop(); stat(m[e && e.name] || ('Kopfsteuerung startet nicht: ' + ((e && e.message) || e)));
+      }
+    }
+    function headStop() {
+      H.on = false; cancelAnimationFrame(H.loop);
+      if (H.stream) { H.stream.getTracks().forEach(t => t.stop()); H.stream = null; }
+      if (H.vid) { H.vid.srcObject = null; H.vid.remove(); H.vid = null; }
+      ptr.style.display = 'none'; H.target = -1;
+      if (!down) play(-1);
+      $('padHeadBtn').classList.remove('on'); $('padCenter').hidden = true; stat('');
+    }
+    function headLoop() {
+      if (!H.on) return;
+      H.loop = requestAnimationFrame(headLoop);
+      const v = H.vid;
+      if (!v || v.readyState < 2 || v.currentTime === H.lastT) return;
+      H.lastT = v.currentTime;
+      let r; try { r = H.face.detectForVideo(v, performance.now()); } catch (e) { return; }
+      const lm = r && r.faceLandmarks && r.faceLandmarks[0], now = performance.now();
+      if (!lm) { if (!H.lost) H.lost = now; if (now - H.lost > 600) { ptr.style.display = 'none'; stat('Kein Gesicht erkannt'); headHover(-1, now); } return; }
+      H.lost = 0;
+      const nx = lm[1].x, ny = lm[1].y;   // Nasenspitze
+      if (H.cx == null) { H.cx = nx; H.cy = ny; H.px = .5; H.py = .5; }
+      stat('');
+      // Kamerabild ist ungespiegelt: Kopf nach rechts (vom Kind aus) = Nase im Bild nach links = Zeiger nach rechts
+      const tx = Math.min(1, Math.max(0, .5 + (H.cx - nx) * cfg.gain)), ty = Math.min(1, Math.max(0, .5 + (ny - H.cy) * cfg.gain * 1.4));
+      H.px += (tx - H.px) * .35; H.py += (ty - H.py) * .35;   // glätten
+      const W = grid.clientWidth, Hh = grid.clientHeight, x = H.px * W, y = H.py * Hh;
+      ptr.style.display = 'block'; ptr.style.left = (grid.offsetLeft + x) + 'px'; ptr.style.top = (grid.offsetTop + y) + 'px';
+      // Treffer: Knopf unter dem Zeiger (mit etwas Rand); bei Überlappung gewinnt die nächste Mitte
+      let hit = -1, hd = Infinity;
+      if (!pad.edit) pad.btns.forEach((b, i) => {
+        const m = 24, l = b.offsetLeft, t = b.offsetTop, w = b.offsetWidth, h = b.offsetHeight;
+        if (x < l - m || x > l + w + m || y < t - m || y > t + h + m) return;
+        const d = Math.hypot(x - (l + w / 2), y - (t + h / 2));
+        if (d < hd) { hd = d; hit = i; }
+      });
+      headHover(hit, now);
+    }
+    function headHover(i, now) {
+      if (down) return;   // Finger hat Vorrang
+      if (i !== H.target) { H.target = i; H.since = now; }
+      let prog = 0;
+      if (i >= 0) {
+        H.leaveT = 0;
+        if (i !== pad.cur) { prog = cfg.dwell > 0 ? Math.min(1, (now - H.since) / cfg.dwell) : 1; if (prog >= 1) play(i); }   // „sofort“: klingt bei Berührung
+        else prog = 1;
+      } else if (pad.cur >= 0) {   // kurz danebengerutscht? erst nach 0,4 s verstummen
+        if (!H.leaveT) H.leaveT = now;
+        if (now - H.leaveT > 400) play(-1);
+      }
+      ptr.style.background = prog > 0 ? 'conic-gradient(var(--acc) ' + Math.round(prog * 360) + 'deg, rgba(255,255,255,.12) 0)' : 'rgba(255,255,255,.12)';
+    }
+    $('padHeadBtn').onclick = () => (H.on ? headStop() : headStart());
+    $('padCenter').onclick = () => { H.cx = null; };
+
+    // Seite geöffnet: Klang vorbereiten und Knöpfe neu aufbauen (Akkorde können sich geändert haben); verlassen: alles aus
+    new MutationObserver(() => {
+      if ($('pgPad').classList.contains('open')) { build(); try { ensureAudio(); ctx.resume(); chEnsure().catch(() => {}); } catch (e) {} }
+      else { if (H.on) headStop(); down = false; play(-1); }
+    }).observe($('pgPad'), { attributes: true, attributeFilter: ['class'] });
+    window.addEventListener('resize', () => { if ($('pgPad').classList.contains('open')) build(); });
+  })();
   chUi();
   if (chCfg.grpA || chCfg.grpB || chCfg.grpC) setTimeout(() => chEnsure().catch(() => {}), 0);   // beim Start schon laden, damit der erste Tastendruck sofort klingt
 
@@ -4339,7 +4541,7 @@ const GEN = (() => {
 <script>
 // Startseite und Unterseiten (jede Unterseite hat ihre Elternseite; „Zurück“ führt dorthin)
 (function () {
-  const PARENT = { pgWas: '', pgKam: '', pgGen: '', pgSet: '', pgAkk: 'pgWas', pgTon: 'pgWas', pgImp: 'pgWas', pgLoop: 'pgWas', pgSf: 'pgSet', pgFern: 'pgSet' };
+  const PARENT = { pgWas: '', pgKam: '', pgGen: '', pgSet: '', pgPad: '', pgAkk: 'pgWas', pgTon: 'pgWas', pgImp: 'pgWas', pgLoop: 'pgWas', pgSf: 'pgSet', pgFern: 'pgSet' };
   let cur = '';
   function go(id) {
     document.querySelectorAll('.page.open').forEach(p => p.classList.remove('open'));
