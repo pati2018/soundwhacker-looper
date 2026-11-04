@@ -104,6 +104,9 @@
   .padPrevBox.off{opacity:0}   /* aus: unsichtbar, läuft aber weiter (iPad liefert sonst kein Bild) */
   .padPrevBox.edit.off{opacity:.35}
   .padPrevBox .padRs{display:none} .padPrevBox.edit .padRs{display:flex}
+  .padPrevBox canvas{display:none;width:100%;border-radius:10px;opacity:.85}
+  .padPrevBox.bg canvas{display:block}
+  .padPrevBox.bg video{position:absolute;left:0;top:0;opacity:.01}
 </style>
 </head>
 <body>
@@ -162,6 +165,8 @@
     <button id="padHeadBtn" title="Die Nase f&uuml;hrt einen Zeiger &uuml;bers Pad; bleibt er auf einem Knopf, erklingt der Akkord">&#128566; Kopf</button>
     <button id="padCenter" title="Jetzige Kopfhaltung als Mitte nehmen" hidden>&#8982; Mitte</button>
     <button id="padVidBtn" title="Kamerabild zeigen oder ausblenden (verschieben und Gr&ouml;&szlig;e unter &bdquo;Bearbeiten&ldquo;)" hidden>&#128247; Bild</button>
+    <label class="small mut" id="padBgL" hidden>Hintergrund <select id="padBgSel"><option value="none">Kamerabild</option><option value="blur">verschwommen</option><option value="stage">B&uuml;hne</option><option value="image">eigenes Bild &hellip;</option></select></label>
+    <button id="padBgFile" hidden>&#128444; Bild w&auml;hlen</button>
     <label class="small mut">Verweilen <select id="padDwell"><option value="0">sofort</option><option value="250">0,25 s</option><option value="500">0,5 s</option><option value="1000" selected>1 s</option><option value="1500">1,5 s</option><option value="2000">2 s</option></select></label>
     <label class="small mut">Bewegung <select id="padGain"><option value="3">gro&szlig;</option><option value="4.5" selected>mittel</option><option value="6.5">klein</option></select></label>
     <label class="small mut" id="padInstL">Instrument <select id="padInst" style="max-width:220px" disabled><option>&ndash; wird geladen &ndash;</option></select></label>
@@ -4384,6 +4389,26 @@ const GEN = (() => {
       box.querySelector('video').addEventListener('loadedmetadata', prevPlace);   // Höhe erst mit dem ersten Bild bekannt
     }
     $('padVidBtn').onclick = () => { cfg.prev.on = !cfg.prev.on; save(); prevPlace(); };
+    // Hintergrund des Kamerabilds (verschwommen, Bühne, eigenes Bild) – dieselbe Einstellung wie bei der Kamera-Steuerung
+    function padBgSync() { $('padBgSel').value = BG.mode; $('padBgFile').hidden = !H.on || BG.mode !== 'image'; }
+    $('padBgSel').onchange = async () => {
+      await bgSetMode($('padBgSel').value); padBgSync();
+      if (BG.mode !== 'none' && H.on && ges.vision) bgEnsureSeg();
+      if (BG.mode === 'image' && !BG.img) $('padBgFile').click();   // noch kein Bild: gleich auswählen
+    };
+    $('padBgFile').onclick = () => { $('bgFileBtn').click(); };
+    function padBgFrame(v) {
+      const b = H.box; if (!b) return;
+      const use = BG.mode !== 'none' && BG.seg;
+      if (use) { try { bgSegment(v); } catch (e) { bgErr(e); } }
+      const show = use && BG.mask;
+      b.classList.toggle('bg', !!show);
+      if (!show) return;
+      const c = b.querySelector('canvas'), W = Math.min(640, v.videoWidth || 640), Hh = Math.round(W * (v.videoHeight || 360) / (v.videoWidth || 640));
+      if (c.width !== W || c.height !== Hh) { c.width = W; c.height = Hh; }
+      const g = c.getContext('2d');
+      bgDrawBack(g, v, W, Hh); bgDrawPerson(g, v, W, Hh);   // beides schon gespiegelt (wie ein Spiegel)
+    }
     addEventListener('resize', prevPlace);
     [['padDwell', 'dwell'], ['padGain', 'gain']].forEach(([id, k]) => {
       const s = $(id);
@@ -4394,7 +4419,7 @@ const GEN = (() => {
     // Kopfsteuerung: eigene Kamera nur für das Pad (die Kamera-Steuerung wird dafür ausgeschaltet)
     async function headStart() {
       if (H.on) return;
-      H.on = true; $('padHeadBtn').classList.add('on'); $('padCenter').hidden = $('padVidBtn').hidden = false;
+      H.on = true; $('padHeadBtn').classList.add('on'); $('padCenter').hidden = $('padVidBtn').hidden = $('padBgL').hidden = false; padBgSync();
       try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Dieser Browser gibt die Kamera nicht frei');
         if (ges.on) gesStop();
@@ -4408,7 +4433,7 @@ const GEN = (() => {
         // frisches, sichtbares Video (das iPad liefert sonst manchmal kein Bild)
         const v = H.vid = document.createElement('video'); v.setAttribute('playsinline', ''); v.muted = true;
         const box = H.box = document.createElement('div'); box.className = 'padPrevBox';
-        box.appendChild(v); box.insertAdjacentHTML('beforeend', '<span class="padRs" title="Größe ändern">&#8600;</span>');
+        box.appendChild(v); box.insertAdjacentHTML('beforeend', '<canvas></canvas><span class="padRs" title="Größe ändern">&#8600;</span>');
         $('pgPad').insertBefore(box, $('pgPad').firstChild); prevPlace(); prevInit(box);
         v.srcObject = stream;
         const tryPlay = () => { const pl = v.play(); if (pl && pl.catch) pl.catch(() => {}); return pl; };
@@ -4431,6 +4456,7 @@ const GEN = (() => {
           try { H.face = await ges.vision.FaceLandmarker.createFromOptions(ges.fs, opts('GPU')); } catch (e) { H.face = await ges.vision.FaceLandmarker.createFromOptions(ges.fs, opts('CPU')); }
         }
         if (!alive()) return;
+        if (BG.mode !== 'none') bgEnsureSeg();
         H.cx = null; stat('Gerade auf den Bildschirm schauen …');
         H.loop = requestAnimationFrame(headLoop);
       } catch (e) {
@@ -4445,7 +4471,7 @@ const GEN = (() => {
       if (H.box) { H.box.remove(); H.box = null; }
       ptr.style.display = 'none'; H.target = -1;
       if (!down) play(-1);
-      $('padHeadBtn').classList.remove('on'); $('padCenter').hidden = $('padVidBtn').hidden = true; stat('');
+      $('padHeadBtn').classList.remove('on'); $('padCenter').hidden = $('padVidBtn').hidden = $('padBgL').hidden = $('padBgFile').hidden = true; stat('');
     }
     function headLoop() {
       if (!H.on) return;
@@ -4453,6 +4479,7 @@ const GEN = (() => {
       const v = H.vid;
       if (!v || v.readyState < 2 || v.currentTime === H.lastT) return;
       H.lastT = v.currentTime;
+      padBgFrame(v);
       let r; try { r = H.face.detectForVideo(v, performance.now()); } catch (e) { return; }
       const lm = r && r.faceLandmarks && r.faceLandmarks[0], now = performance.now();
       if (!lm) { if (!H.lost) H.lost = now; if (now - H.lost > 600) { ptr.style.display = 'none'; stat('Kein Gesicht erkannt'); headHover(-1, now); } return; }
