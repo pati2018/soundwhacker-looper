@@ -86,7 +86,7 @@
   #padBar button.on{background:#1d4d2e;border-color:var(--on)}
   #padGrid{position:absolute;left:12px;right:12px;top:84px;bottom:12px;border:1px solid var(--line);border-radius:16px;touch-action:none;user-select:none;-webkit-user-select:none}
   .padBtn{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;border:3px solid var(--gold);background:#152035;font-weight:800;line-height:1.15;padding:0;touch-action:none}
-  .padBtn small{font-weight:500;opacity:.7}
+  .padBtn small{font-weight:500;opacity:.75;white-space:nowrap;margin-top:.2em}
   .padBtn.active{background:#2f8a4c!important;border-color:var(--on);box-shadow:0 0 30px var(--on)}
   #padGrid.edit .padBtn{border-style:dashed;cursor:move}
   .padCol,.padRs{position:absolute;display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;border:2px solid #fff;background:var(--card2);font-size:16px;font-weight:400}
@@ -4208,7 +4208,10 @@ const GEN = (() => {
       const h = cfg.shape === 'rect' ? Math.round(w * 0.6) : w;
       b.style.width = w + 'px'; b.style.height = h + 'px';
       b.style.borderRadius = cfg.shape === 'round' ? '50%' : '16px';
-      b.style.fontSize = Math.round(Math.min(w, h * 1.5) / 4) + 'px';
+      const fs = Math.round(Math.min(w, h * 1.5) / 4);
+      b.style.fontSize = fs + 'px';
+      const sm = b.querySelector('small');   // Zusatz (Dur, Moll-Pentatonik …) kleiner und so, dass er in den Knopf passt
+      if (sm) sm.style.fontSize = Math.max(9, Math.round(Math.min(fs * 0.5, w * (cfg.shape === 'round' ? 0.72 : 0.88) / (sm.textContent.length * 0.56)))) + 'px';
       b.style.background = cfg.col[i] || '';
       b.style.left = 'calc(' + p.x + '% - ' + w / 2 + 'px)'; b.style.top = 'calc(' + p.y + '% - ' + h / 2 + 'px)';
     }
