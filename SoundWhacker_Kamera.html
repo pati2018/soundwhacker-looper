@@ -81,7 +81,8 @@
   .row:has(> #sfInfo:empty){display:none}
   .page details>div:first-of-type,.page details>.row:first-of-type{margin-top:0!important}
   /* Klang-Pad: große Knöpfe zum Antippen oder per Kopf (Nase führt den Zeiger) */
-  #pgPad{overflow:hidden}
+  #pgPad{overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}   /* iPad: langes Drücken öffnet kein Kopieren/Nachschlagen-Menü */
+  button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   #padBar{position:absolute;top:12px;left:150px;right:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;min-height:48px}
   #padBar button.on{background:#1d4d2e;border-color:var(--on)}
   #padGrid{position:absolute;left:12px;right:12px;top:84px;bottom:12px;border:1px solid var(--line);border-radius:16px;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -4254,6 +4255,7 @@ const GEN = (() => {
     const volSel = () => $('chVol' + MODES[cfg.mode].g);
     $('padVol').oninput = () => { volSel().value = $('padVol').value; volSel().oninput(); };
     $('padVol').onchange = () => volSel().onchange();
+    $('pgPad').addEventListener('contextmenu', e => e.preventDefault());   // langes Drücken: kein Menü
     $('padShape').onclick = () => { cfg.shape = SHAPES[(SHAPES.indexOf(cfg.shape) + 1) % SHAPES.length]; save(); build(); };
     function play(i, force) {   // i = -1: Stille
       if (i === pad.cur && !force) return;
