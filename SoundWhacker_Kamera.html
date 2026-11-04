@@ -152,15 +152,15 @@
 <div class="page" id="pgPad">
   <button class="pgBack" data-back="1">&#11013; Zur&uuml;ck</button>
   <div id="padBar">
-    <label class="small mut">Spielt <select id="padMode" style="font-size:16px"><option value="akk">&#127929; Akkorde</option><option value="ton">&#127925; T&ouml;ne</option><option value="imp">&#127922; Improvisieren</option></select></label>
+    <label class="small mut">Spielt <select id="padMode" style="font-size:16px"><option value="akk">&#127929; Akkorde</option><option value="ton">&#127925; T&ouml;ne</option><option value="imp">&#127922; Improvisieren</option><option value="kan">&#128257; Loops</option></select></label>
     <button id="padHeadBtn" title="Die Nase f&uuml;hrt einen Zeiger &uuml;bers Pad; bleibt er auf einem Knopf, erklingt der Akkord">&#128566; Kopf</button>
     <button id="padCenter" title="Jetzige Kopfhaltung als Mitte nehmen" hidden>&#8982; Mitte</button>
     <label class="small mut">Verweilen <select id="padDwell"><option value="0">sofort</option><option value="250">0,25 s</option><option value="500">0,5 s</option><option value="1000" selected>1 s</option><option value="1500">1,5 s</option><option value="2000">2 s</option></select></label>
     <label class="small mut">Bewegung <select id="padGain"><option value="3">gro&szlig;</option><option value="4.5" selected>mittel</option><option value="6.5">klein</option></select></label>
-    <label class="small mut">Instrument <select id="padInst" style="max-width:220px" disabled><option>&ndash; wird geladen &ndash;</option></select></label>
+    <label class="small mut" id="padInstL">Instrument <select id="padInst" style="max-width:220px" disabled><option>&ndash; wird geladen &ndash;</option></select></label>
     <button id="padLoopBtn" title="Alle Loops starten und h&ouml;rbar schalten (wie &bdquo;Alle vorh&ouml;ren&ldquo;) bzw. stoppen">&#9654; Looper</button>
     <label class="small mut" title="Lautst&auml;rke aller Loops zusammen">&#128257; Looper <input type="range" id="padLoopVol" min="0" max="100" value="100" style="width:140px"></label>
-    <label class="small mut" title="Lautst&auml;rke der Pad-Kl&auml;nge">&#9835; Pad <input type="range" id="padVol" min="0" max="100" value="80" style="width:140px"></label>
+    <label class="small mut" id="padVolL" title="Lautst&auml;rke der Pad-Kl&auml;nge">&#9835; Pad <input type="range" id="padVol" min="0" max="100" value="80" style="width:140px"></label>
     <button id="padShape" title="Form der Kn&ouml;pfe: Kreis, Quadrat, Rechteck">&#11044;</button>
     <button id="padEdit" title="Kn&ouml;pfe verschieben, Gr&ouml;&szlig;e &auml;ndern (am Eck ziehen oder mit zwei Fingern), Farbe w&auml;hlen">&#9998; Bearbeiten</button>
     <span class="small mut" id="padStat"></span>
@@ -4199,7 +4199,8 @@ const GEN = (() => {
     const H = pad.head, stat = t => { $('padStat').textContent = t || ''; };
     const NN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
     const TL = { ton: 'Ton', dur: 'Dur', moll: 'Moll', dur7: 'Dur 7' };
-    const MODES = { akk: { base: 0, g: 'A' }, ton: { base: 5, g: 'B' }, imp: { base: 10, g: 'C' } };   // welche Felder das Pad spielt
+    const MODES = { akk: { base: 0, g: 'A' }, ton: { base: 5, g: 'B' }, imp: { base: 10, g: 'C' }, kan: { base: -1, g: '' } };   // welche Felder das Pad spielt (kan = Looper-Kanäle 1–5)
+    const isKan = () => cfg.mode === 'kan';
     if (!MODES[cfg.mode]) cfg.mode = 'akk';
     const fld = i => MODES[cfg.mode].base + i;
     const OCT = { 2: 'sehr tief', 3: 'tief', 4: 'mittel', 5: 'hoch', 6: 'sehr hoch' };
@@ -4220,15 +4221,23 @@ const GEN = (() => {
       grid.innerHTML = ''; pad.btns = [];
       const bar = $('padBar'); grid.style.top = Math.max(84, bar.offsetTop + bar.offsetHeight + 12) + 'px';   // Leiste kann umbrechen (iPad hochkant)
       for (let i = 0; i < 5; i++) {
-        const f = chCfg.fields[fld(i)], b = document.createElement('button');
+        const b = document.createElement('button');
         b.className = 'padBtn'; b.dataset.i = i;
-        const sub = f.type === 'impro' ? MEL_SCALES[f.scale].label : f.type === 'ton' ? OCT[f.oct] : TL[f.type];
-        b.innerHTML = (f.type === 'impro' ? '&#127922; ' : '') + NN[f.pc] + '<small>' + sub + '</small><span class="padCol" title="Farbe">&#127912;</span><span class="padRs" title="Größe ändern">&#8600;</span>';
+        let main, sub;
+        if (isKan()) {   // Loop-Kanal: einfach „Loop 1“ … „Loop 5“
+          main = 'Loop ' + (i + 1); sub = '';
+        } else {
+          const f = chCfg.fields[fld(i)];
+          main = (f.type === 'impro' ? '&#127922; ' : '') + NN[f.pc];
+          sub = f.type === 'impro' ? MEL_SCALES[f.scale].label : f.type === 'ton' ? OCT[f.oct] : TL[f.type];
+        }
+        b.innerHTML = main + (sub ? '<small>' + sub + '</small>' : '') + '<span class="padCol" title="Farbe">&#127912;</span><span class="padRs" title="Größe ändern">&#8600;</span>';
         grid.appendChild(b); pad.btns.push(b); place(i);
       }
       $('padShape').textContent = SHAPE_ICON[cfg.shape];
       $('padMode').value = cfg.mode;
-      $('padVol').value = chCfg['vol' + MODES[cfg.mode].g];
+      $('padInstL').hidden = $('padVolL').hidden = isKan();   // bei Loops: kein Instrument, Lautstärke über „Looper“
+      if (!isKan()) $('padVol').value = chCfg['vol' + MODES[cfg.mode].g];
       play(pad.cur, true);
     }
     function pick(i) {   // Farbauswahl neben dem Knopf
@@ -4242,27 +4251,35 @@ const GEN = (() => {
     }
     function fillInst() {   // Instrumentenliste wie bei „Akkorde/Töne/Improvisieren → Alle Felder auf“
       const src = $('sfPreset'), s = $('padInst'), g = MODES[cfg.mode].g;
-      if (!src || src.disabled) return;
+      if (!src || src.disabled || !g) return;
       s.innerHTML = src.innerHTML; s.disabled = false;
       if ([...s.options].some(o => o.value === chCfg['preset' + g])) s.value = chCfg['preset' + g];
     }
-    $('padInst').onchange = () => { play(-1); const sel = $('chPreset' + MODES[cfg.mode].g); sel.value = $('padInst').value; sel.dispatchEvent(new Event('change')); };
+    $('padInst').onchange = () => { if (isKan()) return; play(-1); const sel = $('chPreset' + MODES[cfg.mode].g); sel.value = $('padInst').value; sel.dispatchEvent(new Event('change')); };
     $('padMode').onchange = () => { play(-1); cfg.mode = $('padMode').value; save(); build(); fillInst(); };
     // Zwei Regler: Looper (alle Loops zusammen) und Pad (= Lautstärke des Bereichs Akkorde/Töne/Improvisieren)
     $('padLoopVol').value = loopVol;
     $('padLoopVol').oninput = () => { loopVol = +$('padLoopVol').value; if (loopBus) loopBus.gain.setTargetAtTime(loopVol / 100, ctx.currentTime, 0.02); };
     $('padLoopVol').onchange = () => { try { localStorage.setItem(STORE + '.loopVol', loopVol); } catch (e) {} };
     const volSel = () => $('chVol' + MODES[cfg.mode].g);
-    $('padVol').oninput = () => { volSel().value = $('padVol').value; volSel().oninput(); };
-    $('padVol').onchange = () => volSel().onchange();
+    $('padVol').oninput = () => { if (isKan()) return; volSel().value = $('padVol').value; volSel().oninput(); };
+    $('padVol').onchange = () => { if (!isKan()) volSel().onchange(); };
     $('pgPad').addEventListener('contextmenu', e => e.preventDefault());   // langes Drücken: kein Menü
     $('padShape').onclick = () => { cfg.shape = SHAPES[(SHAPES.indexOf(cfg.shape) + 1) % SHAPES.length]; save(); build(); };
+    function padOn(i) {   // Feld bzw. Loop-Kanal starten
+      if (!isKan()) { chStart(fld(i)); return; }
+      if (!chans[i].buffer) { stat('Kanal ' + (i + 1) + ' hat noch keine WAV-Datei.'); return; }
+      stat('');
+      if (!playing) start();
+      press(chans[i], true, 'pad');
+    }
+    function padOff(i) { if (isKan()) press(chans[i], false, 'pad'); else chStop(fld(i)); }
     function play(i, force) {   // i = -1: Stille
       if (i === pad.cur && !force) return;
-      if (pad.cur >= 0 && !force) chStop(fld(pad.cur));
+      if (pad.cur >= 0 && !force) padOff(pad.cur);
       pad.cur = i;
       pad.btns.forEach((b, k) => b.classList.toggle('active', k === i));
-      if (i >= 0 && !force) chStart(fld(i));
+      if (i >= 0 && !force) padOn(i);
     }
     const btnAt = (x, y) => { const el = document.elementFromPoint(x, y), b = el && el.closest('.padBtn'); return b && grid.contains(b) ? +b.dataset.i : -1; };
 
