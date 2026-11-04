@@ -4391,12 +4391,28 @@ const GEN = (() => {
     $('padVidBtn').onclick = () => { cfg.prev.on = !cfg.prev.on; save(); prevPlace(); };
     // Hintergrund des Kamerabilds (verschwommen, Bühne, eigenes Bild) – dieselbe Einstellung wie bei der Kamera-Steuerung
     function padBgSync() { $('padBgSel').value = BG.mode; $('padBgFile').hidden = !H.on || BG.mode !== 'image'; }
+    // iPad: die Bildauswahl muss direkt im Tipp aufgehen (nach einem await blockiert Safari sie)
+    function padPickImage() {
+      document.querySelectorAll('input.padPickIn').forEach(x => x.remove());   // abgebrochene Auswahl von vorher
+      const fi = document.createElement('input');
+      fi.type = 'file'; fi.accept = 'image/*'; fi.className = 'padPickIn';
+      fi.style.cssText = 'position:fixed;left:-1000px;top:0;opacity:0';
+      document.body.appendChild(fi);
+      fi.onchange = async () => {
+        const f = fi.files[0]; fi.remove();
+        if (!f) return;
+        try { await bgLoadImage(f, true); if (BG.mode !== 'image') await bgSetMode('image'); padBgSync(); stat('Bild übernommen.'); }
+        catch (e) { stat('Dieses Bild konnte nicht geöffnet werden.'); }
+      };
+      fi.click();
+    }
     $('padBgSel').onchange = async () => {
-      await bgSetMode($('padBgSel').value); padBgSync();
+      const m = $('padBgSel').value;
+      if (m === 'image') padPickImage();   // „eigenes Bild …“: immer gleich auswählen lassen
+      await bgSetMode(m); padBgSync();
       if (BG.mode !== 'none' && H.on && ges.vision) bgEnsureSeg();
-      if (BG.mode === 'image' && !BG.img) $('padBgFile').click();   // noch kein Bild: gleich auswählen
     };
-    $('padBgFile').onclick = () => { $('bgFileBtn').click(); };
+    $('padBgFile').onclick = padPickImage;
     function padBgFrame(v) {
       const b = H.box; if (!b) return;
       const use = BG.mode !== 'none' && BG.seg;
