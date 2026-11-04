@@ -83,8 +83,10 @@
   /* Klang-Pad: große Knöpfe zum Antippen oder per Kopf (Nase führt den Zeiger) */
   #pgPad{overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}   /* iPad: langes Drücken öffnet kein Kopieren/Nachschlagen-Menü */
   button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-  #padBar{position:absolute;top:12px;left:150px;right:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;min-height:48px}
+  #padBar{position:absolute;z-index:3;top:12px;left:150px;right:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;min-height:48px}
   #padBar button.on{background:#1d4d2e;border-color:var(--on)}
+  #padBar #padEdit{background:#c96a00;border-color:#ffb347;color:#fff;font-weight:700;font-size:18px;padding:10px 20px}   /* wichtig: groß und auffällig */
+  #padBar #padEdit.on{background:#1d7a3a;border-color:#5fe08a}
   #padBgBtns{display:inline-flex;gap:6px;flex-wrap:wrap;vertical-align:middle}
   #padCenter{background:#b3261e;border-color:#ff6b5e;color:#fff;font-weight:700}   /* wichtig: fällt auf */
   #padGrid{position:absolute;left:12px;right:12px;top:84px;bottom:12px;border:1px solid var(--line);border-radius:16px;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -101,7 +103,7 @@
   #padPtr{position:absolute;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:3px solid #fff;pointer-events:none;display:none;z-index:5;background:rgba(255,255,255,.12)}
   .padPrevBox{position:fixed;width:150px;z-index:0;pointer-events:none;touch-action:none}   /* liegt hinter Leiste und Knöpfen – kann so den ganzen Bildschirm füllen */
   .padPrevBox video{display:block;width:100%;border-radius:10px;transform:scaleX(-1);opacity:.85;background:#000}
-  .padPrevBox.edit{pointer-events:auto;cursor:move;outline:2px dashed #fff;outline-offset:-3px;border-radius:10px;z-index:6}
+  .padPrevBox.edit{outline:2px dashed #fff;outline-offset:-3px;border-radius:10px}
   .padPrevBox.off{opacity:0}   /* aus: unsichtbar, läuft aber weiter (iPad liefert sonst kein Bild) */
   .padPrevBox.edit.off{opacity:.35}
   .padPrevBox .padRs{display:none} .padPrevBox.edit .padRs{display:flex}
@@ -4361,20 +4363,26 @@ const GEN = (() => {
       b.classList.toggle('off', !P.on); b.classList.toggle('edit', pad.edit);
       $('padVidBtn').classList.toggle('on', !!P.on);
     }
-    function prevInit(box) {   // ziehen = verschieben, ↘ ziehen (PC) oder zwei Finger (iPad) = Größe
+    function prevInit(box) { box.querySelector('video').addEventListener('loadedmetadata', prevPlace); }   // Höhe erst mit dem ersten Bild bekannt
+    // Bearbeiten: das Kamerabild liegt hinter Leiste und Knöpfen – gegriffen wird es an einer freien Stelle des Pads.
+    // ziehen = verschieben, an der Ecke ↘ ziehen (PC) oder zwei Finger (iPad) = Größe
+    (function prevDrag() {
       const pp = new Map(); let d = null;
       const span = () => { const [a, b] = [...pp.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
-      box.addEventListener('pointerdown', e => {
-        if (!pad.edit) return;
-        e.preventDefault(); e.stopPropagation();
-        pp.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        try { box.setPointerCapture(e.pointerId); } catch (e2) {}
+      const inBox = (x, y, r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      $('pgPad').addEventListener('pointerdown', e => {
+        const box = H.box;
+        if (!pad.edit || !box || e.target.closest('button, select, input, label, .padBtn, #padPick')) return;
         const r = box.getBoundingClientRect();
+        if (!pp.size && !inBox(e.clientX, e.clientY, r)) return;
+        pp.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (pp.size === 2) { d = { pinch: true, d0: span(), w0: r.width }; return; }
-        d = { rs: !!e.target.closest('.padRs'), x0: e.clientX, y0: e.clientY, w0: r.width, l0: r.left, t0: r.top };
+        const rs = e.clientX > r.right - 44 && e.clientY > r.bottom - 44;   // Ecke unten rechts
+        d = { rs, x0: e.clientX, y0: e.clientY, w0: r.width, l0: r.left, t0: r.top };
       });
-      box.addEventListener('pointermove', e => {
-        if (!d || !pp.has(e.pointerId)) return;
+      $('pgPad').addEventListener('pointermove', e => {
+        const box = H.box;
+        if (!d || !box || !pp.has(e.pointerId)) return;
         pp.set(e.pointerId, { x: e.clientX, y: e.clientY });
         const P = cfg.prev, r = box.getBoundingClientRect();
         const v = box.querySelector('video'), asp = v && v.videoWidth ? v.videoWidth / v.videoHeight : 16 / 9, maxW = Math.max(innerWidth, innerHeight * asp);
@@ -4385,10 +4393,14 @@ const GEN = (() => {
         prevPlace();
       });
       const end = e => { pp.delete(e.pointerId); if (!pp.size && d) { d = null; save(); } };
-      box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
-      box.querySelector('video').addEventListener('loadedmetadata', prevPlace);   // Höhe erst mit dem ersten Bild bekannt
-    }
+      $('pgPad').addEventListener('pointerup', end); $('pgPad').addEventListener('pointercancel', end);
+    })();
     $('padVidBtn').onclick = () => { cfg.prev.on = !cfg.prev.on; save(); prevPlace(); };
+    // Leiste wird höher, wenn Knöpfe dazukommen (z. B. bei „Kopf“): Pad-Feld rückt mit, sonst verdeckt es die untere Zeile
+    if (window.ResizeObserver) new ResizeObserver(() => {
+      const bar = $('padBar'), t = Math.max(84, bar.offsetTop + bar.offsetHeight + 12);
+      if (parseFloat(grid.style.top) !== t) { grid.style.top = t + 'px'; pad.btns.forEach((x, k) => place(k)); }
+    }).observe($('padBar'));
     // Hintergrund des Kamerabilds (verschwommen, Bühne, eigenes Bild) – dieselbe Einstellung wie bei der Kamera-Steuerung
     function padBgSync() { document.querySelectorAll('#padBgBtns button').forEach(b => b.classList.toggle('on', b.dataset.m === BG.mode)); }
     // iPad: die Bildauswahl muss direkt im Tipp aufgehen (nach einem await blockiert Safari sie)
