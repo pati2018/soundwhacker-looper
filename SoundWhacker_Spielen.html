@@ -360,6 +360,7 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemreihezeile button{font-size:16px;padding:9px 14px;border-radius:10px}
 #gemreihezeile button[aria-pressed="true"]{background:#FFD700;color:#111;border-color:#FFD700;font-weight:700}
 #gemfalsch{font-size:22px;font-weight:800;color:#ff8a8a;min-height:1.3em;margin-top:4px}
+#gemarea:not(.reihe) #gemfalsch{display:none}
 #gemzeigenzeile{display:flex;justify-content:center;margin:-6px 0 12px}
 #gemzeigenzeile[hidden]{display:none}
 #gemzeigen{font-size:18px;padding:12px 22px;border-radius:14px}
@@ -373,6 +374,8 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemdran .danach{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:10px;font-size:15px;color:#8aa0b3;flex-wrap:wrap}
 #gemdran .danach i{font-style:normal;width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#111;font-weight:800;opacity:.85}
 #gemdran .danach i:nth-of-type(2){opacity:.6}#gemdran .danach i:nth-of-type(3){opacity:.4}
+#gemdran.ohnekreis .kreis,#gemdran.ohnekreis .danach{display:none}
+#gemdran.ohnekreis .txt{font-size:clamp(30px,6vw,48px);font-weight:900;color:var(--c);margin:6px 0 8px}
 #gemdran.wechsel .kreis{animation:gemdranNeu .35s ease-out,gemdranPuls 1.1s ease-out .35s infinite}
 @keyframes gemdranPuls{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c) 70%,transparent)}100%{box-shadow:0 0 0 34px transparent}}
 @keyframes gemdranNeu{0%{transform:scale(.6)}70%{transform:scale(1.08)}100%{transform:scale(1)}}
@@ -2347,13 +2350,12 @@ document.getElementById('hilfeback').onclick=()=>{
       const fertig=T.length>0&&p>=T.length, dranSW=zeig&&!fertig?swVon(T[p]):0;
       box.querySelectorAll('button').forEach(b=>{ const i=+b.dataset.sw, m=F&&F[i]; b.querySelector('b').textContent=m!=null?tonName(m):'–'; b.disabled=m==null; b.classList.toggle('dran',i===dranSW); });
       $g('gemfalsch').textContent='';
-      const d=$g('gemdran'); d.hidden=!dranSW;
+      const d=$g('gemdran'); d.hidden=!dranSW; d.classList.add('ohnekreis');   // Feste SW-Töne: nur „SWx ist dran!“ in SW-Farbe, ohne Ball und Vorschau
       if(dranSW){
         d.style.setProperty('--c',FARBEN[dranSW]);
         d.querySelector('.nr').textContent=dranSW; d.querySelector('.ton').textContent=tonName(F[dranSW]);
         d.querySelector('.txt').textContent='SW'+dranSW+' ist dran!';
-        const nach=[1,2,3].map(k=>swVon(T[p+k])).filter(Boolean);
-        d.querySelector('.danach').innerHTML=nach.length?'danach: '+nach.map(i=>'<i style="background:'+FARBEN[i]+'">'+i+'</i>').join(''):'';
+        d.querySelector('.danach').innerHTML='';
         if(d.dataset.p!==String(p)){ d.dataset.p=p; d.classList.remove('wechsel'); void d.offsetWidth; d.classList.add('wechsel'); }
       }
       $g('gemjetzt').style.display=dranSW?'none':'';
@@ -2364,12 +2366,12 @@ document.getElementById('hilfeback').onclick=()=>{
       $g('gemfertig').hidden=true;   // Feste SW-Töne: kein „Geschafft“ – das Lied läuft weiter
       $g('gemnaechst').textContent=fertig?T.length+' Töne gespielt':p+' von '+T.length;
       $g('gemfort').firstElementChild.style.width=(T.length?100*p/T.length:0)+'%';
-      const band=$g('gemband'); if(band.childElementCount!==T.length||!band.dataset.fest){ band.dataset.fest='1'; band.innerHTML=T.map(t=>{ const i=swVon(t); return '<span style="border-color:'+(FARBEN[i]||'')+'"><i style="color:'+(FARBEN[i]||'#888')+'">SW'+i+'</i>'+tonText(t)+'</span>'; }).join(''); }
-      [...band.children].forEach((el,i)=>{ el.className=i<p?'war':i===p?'jetzt':''; });
+      const band=$g('gemband'); if(band.childElementCount!==T.length||!band.dataset.fest){ band.dataset.fest='1'; band.innerHTML=T.map(t=>{ const i=swVon(t); return '<span data-sw="'+i+'" style="border-color:'+(FARBEN[i]||'')+'"><i style="color:'+(FARBEN[i]||'#888')+'">SW'+i+'</i>'+tonText(t)+'</span>'; }).join(''); }
+      [...band.children].forEach((el,i)=>{ el.className=i<p?'war':i===p?'jetzt':''; el.style.background=i===p?FARBEN[+el.dataset.sw]||'':''; el.style.borderColor=FARBEN[+el.dataset.sw]||''; });   // aktueller Ton leuchtet in der Farbe seines SW
       bandZu(band.children[Math.min(p,T.length-1)]);
       return;
     }
-    const dran=G.reihe?G.dran:0, d=$g('gemdran'); $g('gemarea').classList.toggle('reihe',!!dran);
+    const dran=G.reihe?G.dran:0, d=$g('gemdran'); d.classList.remove('ohnekreis'); $g('gemarea').classList.toggle('reihe',!!dran);
     d.hidden=!dran;
     if(dran){   // Feste Reihenfolge: groß zeigen, welcher SW dran ist
       d.style.setProperty('--c',FARBEN[dran]);
