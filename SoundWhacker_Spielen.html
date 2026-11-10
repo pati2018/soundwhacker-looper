@@ -339,6 +339,8 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemband span.jetzt{color:#111;background:#FFD700;border-color:#FFD700;font-weight:700}
 #gemfort{height:12px;background:#0e1626;border-radius:6px;margin-top:18px;overflow:hidden}
 #gemfort i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4a8,#FFD700);transition:width .15s}
+#gemspiel{display:block;width:100%;margin-top:16px;padding:26px 20px;font-size:28px;font-weight:700;border-radius:20px;border-color:#FFD700;color:#FFD700;touch-action:none;user-select:none;-webkit-user-select:none}
+#gemspiel.an{background:#FFD700;color:#111}
 #gemfertig{font-size:clamp(34px,8vw,64px);font-weight:800;color:#FFD700;margin-top:10px}
 #gedankenarea{
   display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
@@ -955,8 +957,9 @@ button.btn{font-size:13px;white-space:nowrap}
       <div id="gemfort"><i></i></div>
       <div id="gemband"></div>
     </div>
+    <button id="gemspiel" class="btn">&#9654; N&auml;chster Ton</button>
     <div class="mut" style="text-align:center;margin-top:16px;font-size:15px;line-height:1.6">
-      Egal welcher SoundWhacker (oder Taste 1&ndash;5): <b>jeder Schlag spielt den n&auml;chsten Ton</b>. Jeder SW klingt mit seinem eigenen Instrument (einstellen unter &#9834; Soundwhackers einstellen).<br>
+      Egal welcher SoundWhacker (oder Taste 1&ndash;5 oder der Knopf &#9654; N&auml;chster Ton): <b>jeder Schlag spielt den n&auml;chsten Ton</b>. Jeder SW klingt mit seinem eigenen Instrument (einstellen unter &#9834; Soundwhackers einstellen).<br>
       Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.
     </div>
   </div>
@@ -2247,6 +2250,13 @@ document.getElementById('hilfeback').onclick=()=>{
   };
   $g('gemback').onclick=()=>{ window.swGemein.stop(); window.swGemein.onChange=null; $g('gemarea').classList.remove('open'); };
   $g('gemlied').onchange=()=>{ $g('gemlied').blur(); laden(); };
+  // Ohne SoundWhacker: großer Knopf spielt wie ein SW (gedrückt halten = Ton klingt), mit dem Klang von SW1
+  (function(){ const k=$g('gemspiel'); let an=false;
+    const runter=e=>{ e.preventDefault(); if(an) return; an=true; k.classList.add('an'); try{ k.setPointerCapture(e.pointerId); }catch(x){} if(window.swTouch) swTouch(1,true); };
+    const hoch=()=>{ if(!an) return; an=false; k.classList.remove('an'); if(window.swTouch) swTouch(1,false); };
+    k.addEventListener('pointerdown',runter); ['pointerup','pointercancel','lostpointercapture'].forEach(t=>k.addEventListener(t,hoch));
+    k.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter') e.preventDefault(); });
+  })();
   $g('gemvorne').onclick=()=>{ $g('gemvorne').blur(); puls=0; window.swGemein.vonVorne(); };
 })();
 
