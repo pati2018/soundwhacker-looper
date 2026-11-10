@@ -995,9 +995,9 @@ button.btn{font-size:13px;white-space:nowrap}
       <button id="gemvorne" class="btn">&#9198; Von vorne</button>
     </div>
     <div class="gemkopf" id="gemmodus" role="group" aria-label="Modus">
-      <button class="btn" data-m="reihum" title="Jeder Schlag (egal welcher SW) spielt den nächsten Ton">&#128257; Reihum</button>
-      <button class="btn" data-m="reihe" title="SW1 → SW2 → SW3 … – wer nicht dran ist, bleibt stumm">&#128290; Feste Reihenfolge</button>
-      <button class="btn" data-m="fest" title="SW1 = tiefster … SW5 = höchster Ton (nur ⭐-Lieder)">&#127919; Feste T&ouml;ne</button>
+      <button class="btn" data-m="reihum" title="Jeder Schlag (egal welcher SW) spielt den nächsten Ton">&#128257; Keine SW-Reihenfolge</button>
+      <button class="btn" data-m="reihe" title="SW1 → SW2 → SW3 … – wer nicht dran ist, bleibt stumm">&#128290; Feste SW-Reihenfolge</button>
+      <button class="btn" data-m="fest" title="SW1 = tiefster … SW5 = höchster Ton (nur ⭐-Lieder)">&#127919; Feste SW-T&ouml;ne</button>
     </div>
     <div id="gemreihezeile" hidden>
       <span class="mut">Mitspieler:</span>
@@ -1023,8 +1023,8 @@ button.btn{font-size:13px;white-space:nowrap}
     <button id="gemspiel" class="btn">&#9654; N&auml;chster Ton</button>
     <div id="gemfest" hidden></div>
     <div class="mut" style="text-align:center;margin-top:16px;font-size:15px;line-height:1.6">
-      <b>Reihum:</b> egal welcher SoundWhacker (oder Taste 1&ndash;5 oder der Knopf &#9654; N&auml;chster Ton) &ndash; <b>jeder Schlag spielt den n&auml;chsten Ton</b>. <b>Feste Reihenfolge:</b> wie Reihum, aber immer SW1 &rarr; SW2 &rarr; &hellip; &ndash; wer nicht dran ist, bleibt stumm. Jeder SW klingt mit seinem eigenen Instrument (einstellen unter &#9834; Soundwhackers einstellen).<br>
-      Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.<br><b>Feste T&ouml;ne</b> (nur &#11088;-Lieder): die T&ouml;ne des Lieds werden verteilt &ndash; SW1 der tiefste, SW5 der h&ouml;chste; jeder SW spielt immer seinen Ton. Mit <b>&#128064; Zeigen, wer dran ist</b> leuchtet der SW, der als N&auml;chstes dran ist &ndash; mit dem richtigen SW geht das Lied weiter.<br>Lied und Modus werden im &#128190; Preset mitgespeichert (auch beim Export/Import).
+      <b>Keine SW-Reihenfolge:</b> egal welcher SoundWhacker (oder Taste 1&ndash;5 oder der Knopf &#9654; N&auml;chster Ton) &ndash; <b>jeder Schlag spielt den n&auml;chsten Ton</b>. <b>Feste SW-Reihenfolge:</b> wie ohne Reihenfolge, aber immer SW1 &rarr; SW2 &rarr; &hellip; &ndash; wer nicht dran ist, bleibt stumm. Jeder SW klingt mit seinem eigenen Instrument (einstellen unter &#9834; Soundwhackers einstellen).<br>
+      Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.<br><b>Feste SW-T&ouml;ne</b> (nur &#11088;-Lieder): die T&ouml;ne des Lieds werden verteilt &ndash; SW1 der tiefste, SW5 der h&ouml;chste; jeder SW spielt immer seinen Ton. Mit <b>&#128064; Zeigen, wer dran ist</b> leuchtet der SW, der als N&auml;chstes dran ist &ndash; mit dem richtigen SW geht das Lied weiter.<br>Lied und Modus werden im &#128190; Preset mitgespeichert (auch beim Export/Import).
     </div>
   </div>
 </div>
@@ -2339,7 +2339,7 @@ document.getElementById('hilfeback').onclick=()=>{
     $g('gemfest').hidden=!fest; $g('gemzeigenzeile').hidden=!fest||!F;
     const zb=$g('gemzeigen'); zb.setAttribute('aria-pressed',G.zeigenAn); zb.textContent='👀 Zeigen, wer dran ist: '+(G.zeigenAn?'EIN':'AUS');
     $g('gemhinweis').hidden=!(fest&&!F&&T.length);
-    $g('gemhinweis').textContent='Dieses Lied hat '+vor.length+' verschiedene Töne – „Feste Töne“ geht nur mit höchstens 5 (⭐). Bitte ein ⭐-Lied wählen oder „Reihum“ spielen.';
+    $g('gemhinweis').textContent='Dieses Lied hat '+vor.length+' verschiedene Töne – „Feste SW-Töne“ geht nur mit höchstens 5 (⭐). Bitte ein ⭐-Lied wählen oder „Keine SW-Reihenfolge“ spielen.';
     if(fest){
       const box=$g('gemfest');
       if(box.childElementCount!==5){ box.innerHTML=[1,2,3,4,5].map(i=>'<button style="--c:'+FARBEN[i]+'" data-sw="'+i+'">SW'+i+'<b></b></button>').join(''); box.querySelectorAll('button').forEach(b=>knopf(b,+b.dataset.sw)); }
