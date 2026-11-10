@@ -355,6 +355,11 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemfest button{will-change:opacity,transform}
 #gemfest button.an{opacity:.55}
 #gemfest button:disabled{opacity:.3}
+#gemreihezeile{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin:-6px 0 12px}
+#gemreihezeile[hidden]{display:none}
+#gemreihezeile button{font-size:16px;padding:9px 14px;border-radius:10px}
+#gemreihezeile button[aria-pressed="true"]{background:#FFD700;color:#111;border-color:#FFD700;font-weight:700}
+#gemfalsch{font-size:22px;font-weight:800;color:#ff8a8a;min-height:1.3em;margin-top:4px}
 #gemzeigenzeile{display:flex;justify-content:center;margin:-6px 0 12px}
 #gemzeigenzeile[hidden]{display:none}
 #gemzeigen{font-size:18px;padding:12px 22px;border-radius:14px}
@@ -376,6 +381,8 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemband span i{font-style:normal;display:block;font-size:11px;font-weight:800}
 #gemband span.jetzt i{color:#111!important}
 #gemband{max-height:96px;overflow-y:auto}
+#gemarea.reihe #gemsilbe{font-size:clamp(20px,4vw,30px);min-height:0}
+#gemarea.reihe #gembuehne{padding-top:12px}
 #gemarea.zeig #gemband{max-height:44px;margin-top:10px}
 #gemarea.zeig #gemfort{margin-top:10px}
 #gemarea.zeig #gemvorrat,#gemarea.zeig #gemnaechst{display:none!important}
@@ -988,8 +995,13 @@ button.btn{font-size:13px;white-space:nowrap}
       <button id="gemvorne" class="btn">&#9198; Von vorne</button>
     </div>
     <div class="gemkopf" id="gemmodus" role="group" aria-label="Modus">
-      <button class="btn" data-m="reihum">&#128257; Reihum &ndash; jeder Schlag = n&auml;chster Ton</button>
-      <button class="btn" data-m="fest">&#127919; Feste T&ouml;ne &ndash; SW1 tief &hellip; SW5 hoch</button>
+      <button class="btn" data-m="reihum" title="Jeder Schlag (egal welcher SW) spielt den nächsten Ton">&#128257; Reihum</button>
+      <button class="btn" data-m="reihe" title="SW1 → SW2 → SW3 … – wer nicht dran ist, bleibt stumm">&#128290; Feste Reihenfolge</button>
+      <button class="btn" data-m="fest" title="SW1 = tiefster … SW5 = höchster Ton (nur ⭐-Lieder)">&#127919; Feste T&ouml;ne</button>
+    </div>
+    <div id="gemreihezeile" hidden>
+      <span class="mut">Mitspieler:</span>
+      <button class="btn" data-n="2">SW1&ndash;2</button><button class="btn" data-n="3">SW1&ndash;3</button><button class="btn" data-n="4">SW1&ndash;4</button><button class="btn" data-n="5">SW1&ndash;5</button>
     </div>
     <div id="gemzeigenzeile" hidden>
       <button id="gemzeigen" class="btn" aria-pressed="false">&#128064; Zeigen, wer dran ist: AUS</button>
@@ -998,6 +1010,7 @@ button.btn{font-size:13px;white-space:nowrap}
       <div id="gemtitel"></div>
       <div id="gemvorrat"></div>
       <div id="gemhinweis" hidden></div>
+      <div id="gemfalsch"></div>
       <div id="gemdran" hidden><div class="kreis"><span class="nr"></span><span class="ton"></span></div><div class="txt"></div><div class="danach"></div></div>
       <div id="gemjetzt"></div>
       <div id="gemsilbe"></div>
@@ -1010,7 +1023,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <button id="gemspiel" class="btn">&#9654; N&auml;chster Ton</button>
     <div id="gemfest" hidden></div>
     <div class="mut" style="text-align:center;margin-top:16px;font-size:15px;line-height:1.6">
-      Egal welcher SoundWhacker (oder Taste 1&ndash;5 oder der Knopf &#9654; N&auml;chster Ton): <b>jeder Schlag spielt den n&auml;chsten Ton</b>. Jeder SW klingt mit seinem eigenen Instrument (einstellen unter &#9834; Soundwhackers einstellen).<br>
+      <b>Reihum:</b> egal welcher SoundWhacker (oder Taste 1&ndash;5 oder der Knopf &#9654; N&auml;chster Ton) &ndash; <b>jeder Schlag spielt den n&auml;chsten Ton</b>. <b>Feste Reihenfolge:</b> wie Reihum, aber immer SW1 &rarr; SW2 &rarr; &hellip; &ndash; wer nicht dran ist, bleibt stumm. Jeder SW klingt mit seinem eigenen Instrument (einstellen unter &#9834; Soundwhackers einstellen).<br>
       Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.<br><b>Feste T&ouml;ne</b> (nur &#11088;-Lieder): die T&ouml;ne des Lieds werden verteilt &ndash; SW1 der tiefste, SW5 der h&ouml;chste; jeder SW spielt immer seinen Ton. Mit <b>&#128064; Zeigen, wer dran ist</b> leuchtet der SW, der als N&auml;chstes dran ist &ndash; mit dem richtigen SW geht das Lied weiter.<br>Lied und Modus werden im &#128190; Preset mitgespeichert (auch beim Export/Import).
     </div>
   </div>
@@ -1216,7 +1229,8 @@ button.btn{font-size:13px;white-space:nowrap}
       arpBpm: 120, arpDiv: arr6(0), arpTgm: arr6(false), liveMode: arr6(true), tmv: 1,   // liveMode = 🎹 (Melodie Schritt für Schritt)
       slots: [0, 1, 2, 3, 4, 5].map(() => ({ root: -1, qual: 0, ts: 0 })), activeSlot: 0,
       lpresets: [null, null, null, null, null, null, null, null, null], dpresets: [null, null, null, null, null],
-      gemModus: 'reihum', gemZeigen: false,   // Feste Töne: anzeigen, welcher SW als Nächstes dran ist
+      gemModus: 'reihum', gemZeigen: false, gemReiheN: 5,   // Feste Reihenfolge: mit SW1 bis SW n
+        // Feste Töne: anzeigen, welcher SW als Nächstes dran ist
         // Gemeinsame Melodie: 'reihum' (jeder Schlag = nächster Ton) oder 'fest' (SW1 tiefster … SW5 höchster Ton)
       gemLied: ''   // Gemeinsame Melodie: gewähltes Lied ('lied:<id>' aus der Tischharfe oder 'sw:<1–5>')
     };
@@ -1407,7 +1421,7 @@ button.btn{font-size:13px;white-space:nowrap}
   }
   // ---------- Gemeinsame Melodie: alle SW spielen zusammen ein Lied – jeder Schlag (egal welcher SW) = nächster Ton ----------
   // Jeder SW klingt mit seinem eigenen Instrument; am Liedende passiert nichts mehr, bis „Von vorne“ gedrückt wird.
-  const GM = { aktiv: false, toene: [], pos: 0, wer: 0, fest: null, letzt: null, zeigen: false, klingt: [0, 1, 2, 3, 4, 5].map(() => null), onChange: null };
+  const GM = { aktiv: false, toene: [], pos: 0, wer: 0, fest: null, letzt: null, zeigen: false, reihe: 0, zug: 0, falsch: 0, falschT: 0, klingt: [0, 1, 2, 3, 4, 5].map(() => null), onChange: null };
   let gmMeldT = 0;   // Anzeige erst im nächsten Bildschirm-Takt und gebündelt – der Ton geht vorher raus, die Seite rechnet weniger
   const gmMeld = () => { if (gmMeldT) return; gmMeldT = requestAnimationFrame(() => { gmMeldT = 0; if (GM.onChange) try { GM.onChange(); } catch (e) {} }); };
   function gmLos(id) { if (GM.klingt[id]) { GM.klingt[id].forEach(n => off(id, n)); GM.klingt[id] = null; } }
@@ -1426,26 +1440,33 @@ button.btn{font-size:13px;white-space:nowrap}
       gmMeld(); return;
     }
     if (!GM.toene.length) { gmMeld(); return; }
+    if (GM.reihe) {   // Feste Reihenfolge: SW1 → SW2 → … → SWn → SW1; wer nicht dran ist, bleibt stumm
+      const dran = (GM.zug % GM.reihe) + 1;
+      if (id !== dran) { GM.falsch = id; GM.falschT = performance.now(); gmMeld(); return; }
+      GM.zug++; GM.falsch = 0;
+    }
     if (GM.pos >= GM.toene.length) GM.pos = 0;   // Reihum: nach dem letzten Ton geht es einfach wieder von vorn los
     const t = GM.toene[GM.pos++];
     t.n.forEach(n => on(id, n, 127)); GM.klingt[id] = t.n; GM.wer = id;
     gmMeld();
   }
   window.swGemein = {
-    start(toene, fest) {   // toene: [{ n: [Midi …], s: 'Silbe' }] · fest: [_, Ton SW1 … Ton SW5] oder null (= reihum)
+    start(toene, fest, reihe) {   // toene: [{ n: [Midi …], s: 'Silbe' }] · fest: [_, Ton SW1 … Ton SW5] oder null (= reihum)
       for (let id = 1; id <= 5; id++) { if (R.touched[id]) touch(id, false); gmLos(id); }
-      GM.toene = toene || []; GM.fest = fest || null; GM.zeigen = !!S.gemZeigen; GM.pos = 0; GM.wer = 0; GM.letzt = null; GM.aktiv = true; gmMeld();
+      GM.toene = toene || []; GM.fest = fest || null; GM.reihe = reihe || 0; GM.zug = 0; GM.falsch = 0; GM.zeigen = !!S.gemZeigen; GM.pos = 0; GM.wer = 0; GM.letzt = null; GM.aktiv = true; gmMeld();
     },
     stop() { for (let id = 1; id <= 5; id++) { gmLos(id); R.touched[id] = false; } GM.aktiv = false; gmMeld(); },
     zeigen(v) { GM.zeigen = !!v; S.gemZeigen = !!v; save(); GM.pos = 0; gmMeld(); },
     get zeigenAn() { return GM.zeigen; },
-    vonVorne() { for (let id = 1; id <= 5; id++) gmLos(id); GM.pos = 0; GM.wer = 0; GM.letzt = null; gmMeld(); },
+    vonVorne() { for (let id = 1; id <= 5; id++) gmLos(id); GM.zug = 0; GM.falsch = 0; GM.pos = 0; GM.wer = 0; GM.letzt = null; gmMeld(); },
     get aktiv() { return GM.aktiv; }, get pos() { return GM.pos; }, get anzahl() { return GM.toene.length; },
     get toene() { return GM.toene; }, get wer() { return GM.wer; }, get fest() { return GM.fest; }, get letzt() { return GM.letzt; },
+    get reihe() { return GM.reihe; }, get dran() { return GM.reihe ? (GM.zug % GM.reihe) + 1 : 0; }, get falsch() { return GM.falsch && performance.now() - GM.falschT < 1500 ? GM.falsch : 0; },
     set onChange(f) { GM.onChange = f; }
   };
   window.swGemLied = { get: () => S.gemLied || '', set: v => { S.gemLied = String(v || ''); save(); },
-    modus: () => S.gemModus === 'fest' ? 'fest' : 'reihum', setModus: v => { S.gemModus = v === 'fest' ? 'fest' : 'reihum'; save(); } };
+    modus: () => ['fest', 'reihe'].includes(S.gemModus) ? S.gemModus : 'reihum', setModus: v => { S.gemModus = ['fest', 'reihe'].includes(v) ? v : 'reihum'; save(); },
+    anzahl: () => Math.min(5, Math.max(2, S.gemReiheN || 5)), setAnzahl: n => { S.gemReiheN = Math.min(5, Math.max(2, +n || 5)); save(); } };
   window.swMelodie = id => (S.mel[id] || []).filter(st => st.n && st.n.length).map(st => ({ n: st.n.slice() }));   // eigene Melodie eines SW
 
   function touch(id, pressed) {
@@ -1633,7 +1654,7 @@ button.btn{font-size:13px;white-space:nowrap}
       rv: a(i => S.rev[i] != null ? S.rev[i] : 30), lo: a(i => S.loopOn[i] ? 1 : 0), lch: a(i => S.loopCh[i] || i), ad: a(i => S.arpDiv[i] || 0), ae: a(i => R.arpEn[i] ? 1 : 0), sv: a(i => S.vol[i] != null ? S.vol[i] : 100), ab: S.arpBpm,
       slsr: a(i => i && S.slots[i].root >= 0 ? S.slots[i].root : 255), slsq: a(i => i ? S.slots[i].qual : 0), slst: a(i => i ? S.slots[i].ts : 0),
       slsa: S.activeSlot, tgm: [1, 2, 3, 4, 5].reduce((m, i) => m | (S.arpTgm[i] ? 1 << (i - 1) : 0), 0), ch: a(i => S.midiCh[i] || i),
-      gl: S.gemLied || '', gmo: S.gemModus || 'reihum', gmz: S.gemZeigen ? 1 : 0   // Liedauswahl und Modus der Gemeinsamen Melodie
+      gl: S.gemLied || '', gmo: S.gemModus || 'reihum', gmz: S.gemZeigen ? 1 : 0, gmn: S.gemReiheN || 5   // Liedauswahl und Modus der Gemeinsamen Melodie
     });
     return P;
   }
@@ -1654,7 +1675,7 @@ button.btn{font-size:13px;white-space:nowrap}
     }
     S.improMode = S.improEn.some((v, i) => i && v);
     S.arpBpm = P.ab || 120; S.activeSlot = P.slsa || 0;
-    if (P.gl) S.gemLied = P.gl; if (P.gmo) S.gemModus = P.gmo; if (P.gmz != null) S.gemZeigen = !!P.gmz;   // ältere Presets ohne Liedauswahl lassen die jetzige stehen
+    if (P.gl) S.gemLied = P.gl; if (P.gmo) S.gemModus = P.gmo; if (P.gmz != null) S.gemZeigen = !!P.gmz; if (P.gmn) S.gemReiheN = P.gmn;   // ältere Presets ohne Liedauswahl lassen die jetzige stehen
     for (let i = 1; i <= 5; i++) applyChannel(i);
     save();
   }
@@ -2309,6 +2330,7 @@ document.getElementById('hilfeback').onclick=()=>{
     $g('gemtitel').textContent=titel||'Kein Lied gewählt';
     $g('gemvorrat').textContent=vor.length?(vor.length<=5?'⭐ ':'')+vor.length+' verschiedene Töne: '+vor.map(tonName).join(' '):'';
     const fest=swGemLied.modus()==='fest', F=G.fest;
+    $g('gemarea').classList.remove('reihe');
     const zeig=fest&&!!F&&G.zeigenAn;   // Feste Töne mit Anzeige, wer dran ist
     $g('gemarea').classList.toggle('zeig',zeig);
     ['gemnaechst','gemfort','gemband','gemfertig','gemvorne'].forEach(id=>$g(id).style.display=fest&&!zeig?'none':'');
@@ -2324,6 +2346,7 @@ document.getElementById('hilfeback').onclick=()=>{
       const swVon=t=>{ if(!t||!F) return 0; for(let i=1;i<=5;i++) if(t.n.includes(F[i])) return i; return 0; };
       const fertig=T.length>0&&p>=T.length, dranSW=zeig&&!fertig?swVon(T[p]):0;
       box.querySelectorAll('button').forEach(b=>{ const i=+b.dataset.sw, m=F&&F[i]; b.querySelector('b').textContent=m!=null?tonName(m):'–'; b.disabled=m==null; b.classList.toggle('dran',i===dranSW); });
+      $g('gemfalsch').textContent='';
       const d=$g('gemdran'); d.hidden=!dranSW;
       if(dranSW){
         d.style.setProperty('--c',FARBEN[dranSW]);
@@ -2346,7 +2369,19 @@ document.getElementById('hilfeback').onclick=()=>{
       bandZu(band.children[Math.min(p,T.length-1)]);
       return;
     }
-    $g('gemdran').hidden=true; $g('gemjetzt').style.display=''; if($g('gemband').dataset.fest){ delete $g('gemband').dataset.fest; $g('gemband').innerHTML=''; }
+    const dran=G.reihe?G.dran:0, d=$g('gemdran'); $g('gemarea').classList.toggle('reihe',!!dran);
+    d.hidden=!dran;
+    if(dran){   // Feste Reihenfolge: groß zeigen, welcher SW dran ist
+      d.style.setProperty('--c',FARBEN[dran]);
+      d.querySelector('.nr').textContent=dran; d.querySelector('.ton').textContent=T.length?tonText(T[p%T.length]):'';
+      d.querySelector('.txt').textContent='SW'+dran+' ist dran!';
+      const nach=[1,2,3].map(k=>((dran-1+k)%G.reihe)+1);
+      d.querySelector('.danach').innerHTML='danach: '+nach.map(i=>'<i style="background:'+FARBEN[i]+'">'+i+'</i>').join('');
+      if(d.dataset.p!==String(p)){ d.dataset.p=p; d.classList.remove('wechsel'); void d.offsetWidth; d.classList.add('wechsel'); }
+    }
+    const fx=G.reihe?G.falsch:0; $g('gemfalsch').textContent=fx?'SW'+fx+' ist noch nicht dran – erst SW'+dran+'!':'';
+    if(fx) setTimeout(()=>{ if(window.swGemein.onChange) zeigen(); },1600);
+    $g('gemjetzt').style.display=dran?'none':''; if($g('gemband').dataset.fest){ delete $g('gemband').dataset.fest; $g('gemband').innerHTML=''; }
     const letzter=p>0?T[p-1]:null;
     $g('gemjetzt').textContent=letzter?tonText(letzter):'♪';
     $g('gemsilbe').textContent=letzter&&letzter.s?letzter.s:'';
@@ -2364,9 +2399,11 @@ document.getElementById('hilfeback').onclick=()=>{
     const w=$g('gemlied').value; swGemLied.set(w); const r=toeneVon(w); titel=r.titel; puls=0; $g('gemband').innerHTML='';
     let fest=null; const v=verschiedene(r.toene);
     if(swGemLied.modus()==='fest'&&v.length&&v.length<=5){ fest=[null,null,null,null,null,null]; v.forEach((m,i)=>fest[i+1]=m); }   // SW1 = tiefster Ton …
-    window.swGemein.start(r.toene,fest);
+    window.swGemein.start(r.toene,fest,swGemLied.modus()==='reihe'?swGemLied.anzahl():0);
   }
-  function modusZeigen(){ const m=swGemLied.modus(); $g('gemmodus').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===m)); }
+  function modusZeigen(){ const m=swGemLied.modus(); $g('gemmodus').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===m));
+    $g('gemreihezeile').hidden=m!=='reihe'; $g('gemreihezeile').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.n===swGemLied.anzahl())); }
+  $g('gemreihezeile').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; b.blur(); swGemLied.setAnzahl(b.dataset.n); modusZeigen(); laden(); });
   $g('gemmodus').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; b.blur(); swGemLied.setModus(b.dataset.m); modusZeigen(); laden(); });
   $g('gemopen').onclick=async()=>{
     $g('gemarea').classList.add('open');
@@ -2378,8 +2415,8 @@ document.getElementById('hilfeback').onclick=()=>{
   // Ohne SoundWhacker: Knöpfe spielen wie ein SW (gedrückt halten = Ton klingt) – „Nächster Ton“ mit dem Klang von SW1, im Modus Feste Töne je ein Knopf für SW1–SW5
   // Am iPad über Touch-Ereignisse (wie ein SW: ein sauberes „an“ und ein „aus“), am PC über die Maus.
   // Jeder Ton klingt mindestens 0,3 s – ein zu früh abgeschnittener Ton knackt sonst auf älteren iPads.
-  function knopf(k,sw){ let an=false, t0=0, ausT=0, touchId=null;
-    const runter=()=>{ if(an||k.disabled) return; an=true; if(ausT){ clearTimeout(ausT); ausT=0; if(window.swTouch) swTouch(sw,false); } t0=performance.now(); if(window.swTouch) swTouch(sw,true); requestAnimationFrame(()=>{ if(an) k.classList.add('an'); }); };
+  function knopf(k,swWahl){ let an=false, t0=0, ausT=0, touchId=null, sw=1;   // swWahl: Nummer oder Funktion (Feste Reihenfolge: der SW, der dran ist)
+    const runter=()=>{ if(an||k.disabled) return; an=true; if(ausT){ clearTimeout(ausT); ausT=0; if(window.swTouch) swTouch(sw,false); } sw=typeof swWahl==='function'?swWahl():swWahl; t0=performance.now(); if(window.swTouch) swTouch(sw,true); requestAnimationFrame(()=>{ if(an) k.classList.add('an'); }); };
     const hoch=()=>{ if(!an) return; an=false; requestAnimationFrame(()=>k.classList.remove('an'));
       const rest=Math.max(0,300-(performance.now()-t0)); clearTimeout(ausT); ausT=setTimeout(()=>{ ausT=0; if(!an&&window.swTouch) swTouch(sw,false); },rest); };
     k.addEventListener('touchstart',e=>{ e.preventDefault(); if(touchId!==null) return; touchId=e.changedTouches[0].identifier; runter(); },{passive:false});
@@ -2392,7 +2429,7 @@ document.getElementById('hilfeback').onclick=()=>{
     k.addEventListener('contextmenu',e=>e.preventDefault());
     k.addEventListener('selectstart',e=>e.preventDefault());
   }
-  knopf($g('gemspiel'),1);
+  knopf($g('gemspiel'),()=>window.swGemein.reihe?window.swGemein.dran:1);
   $g('gemzeigen').onclick=()=>{ $g('gemzeigen').blur(); puls=0; window.swGemein.zeigen(!window.swGemein.zeigenAn); };
   $g('gemvorne').onclick=()=>{ $g('gemvorne').blur(); puls=0; window.swGemein.vonVorne(); };
 })();
