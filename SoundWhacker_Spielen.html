@@ -962,7 +962,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <button id="gemspiel" class="btn">&#9654; N&auml;chster Ton</button>
     <div class="mut" style="text-align:center;margin-top:16px;font-size:15px;line-height:1.6">
       Egal welcher SoundWhacker (oder Taste 1&ndash;5 oder der Knopf &#9654; N&auml;chster Ton): <b>jeder Schlag spielt den n&auml;chsten Ton</b>. Jeder SW klingt mit seinem eigenen Instrument (einstellen unter &#9834; Soundwhackers einstellen).<br>
-      Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.
+      Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.<br>Das gew&auml;hlte Lied wird im &#128190; Preset mitgespeichert (auch beim Export/Import).
     </div>
   </div>
 </div>
@@ -1166,7 +1166,8 @@ button.btn{font-size:13px;white-space:nowrap}
       vol: arr6(100), rev: arr6(30), midiCh: [0, 1, 2, 3, 4, 5],
       arpBpm: 120, arpDiv: arr6(0), arpTgm: arr6(false), liveMode: arr6(true), tmv: 1,   // liveMode = 🎹 (Melodie Schritt für Schritt)
       slots: [0, 1, 2, 3, 4, 5].map(() => ({ root: -1, qual: 0, ts: 0 })), activeSlot: 0,
-      lpresets: [null, null, null, null, null, null, null, null, null], dpresets: [null, null, null, null, null]
+      lpresets: [null, null, null, null, null, null, null, null, null], dpresets: [null, null, null, null, null],
+      gemLied: ''   // Gemeinsame Melodie: gewähltes Lied ('lied:<id>' aus der Tischharfe oder 'sw:<1–5>')
     };
   }
   let S = defaults();
@@ -1379,6 +1380,7 @@ button.btn{font-size:13px;white-space:nowrap}
     get toene() { return GM.toene; }, get wer() { return GM.wer; },
     set onChange(f) { GM.onChange = f; }
   };
+  window.swGemLied = { get: () => S.gemLied || '', set: v => { S.gemLied = String(v || ''); save(); } };
   window.swMelodie = id => (S.mel[id] || []).filter(st => st.n && st.n.length).map(st => ({ n: st.n.slice() }));   // eigene Melodie eines SW
 
   function touch(id, pressed) {
@@ -1565,7 +1567,8 @@ button.btn{font-size:13px;white-space:nowrap}
       ir: a(i => S.improRoot[i] || 0), is: a(i => S.improScale[i] || 0), io: a(i => S.improOct[i] || 4), ie: a(i => S.improEn[i] ? 1 : 0), iq: a(i => S.improQ[i] ? 1 : 0),
       rv: a(i => S.rev[i] != null ? S.rev[i] : 30), lo: a(i => S.loopOn[i] ? 1 : 0), lch: a(i => S.loopCh[i] || i), ad: a(i => S.arpDiv[i] || 0), ae: a(i => R.arpEn[i] ? 1 : 0), sv: a(i => S.vol[i] != null ? S.vol[i] : 100), ab: S.arpBpm,
       slsr: a(i => i && S.slots[i].root >= 0 ? S.slots[i].root : 255), slsq: a(i => i ? S.slots[i].qual : 0), slst: a(i => i ? S.slots[i].ts : 0),
-      slsa: S.activeSlot, tgm: [1, 2, 3, 4, 5].reduce((m, i) => m | (S.arpTgm[i] ? 1 << (i - 1) : 0), 0), ch: a(i => S.midiCh[i] || i)
+      slsa: S.activeSlot, tgm: [1, 2, 3, 4, 5].reduce((m, i) => m | (S.arpTgm[i] ? 1 << (i - 1) : 0), 0), ch: a(i => S.midiCh[i] || i),
+      gl: S.gemLied || ''   // Liedauswahl der Gemeinsamen Melodie
     });
     return P;
   }
@@ -1586,6 +1589,7 @@ button.btn{font-size:13px;white-space:nowrap}
     }
     S.improMode = S.improEn.some((v, i) => i && v);
     S.arpBpm = P.ab || 120; S.activeSlot = P.slsa || 0;
+    if (P.gl) S.gemLied = P.gl;   // ältere Presets ohne Liedauswahl lassen die jetzige stehen
     for (let i = 1; i <= 5; i++) applyChannel(i);
     save();
   }
@@ -2212,7 +2216,8 @@ document.getElementById('hilfeback').onclick=()=>{
     return liederLaden||(liederLaden=new Promise(ok=>{ const sc=document.createElement('script'); sc.src='../tischharfe/lieder.js?v=1'; sc.onload=ok; sc.onerror=()=>{ liederLaden=null; ok(); }; document.head.appendChild(sc); }));
   }
   function auswahlBauen(){
-    const sel=$g('gemlied'), alt=sel.value||localStorage.getItem(KEY)||'lied:entchen'; sel.innerHTML='';
+    let gem=swGemLied.get(); if(!gem){ try{ gem=localStorage.getItem(KEY)||''; }catch(e){} if(gem) swGemLied.set(gem); }
+    const sel=$g('gemlied'), alt=gem||'lied:entchen'; sel.innerHTML='';
     const gruppe=name=>{ const g=document.createElement('optgroup'); g.label=name; sel.appendChild(g); return g; };
     if(window.HARFE){
       const gr={}; HARFE.LIEDER.forEach(l=>{ (gr[l.gruppe]||(gr[l.gruppe]=gruppe(l.gruppe))).appendChild(new Option(l.titel,'lied:'+l.id)); });
@@ -2244,7 +2249,7 @@ document.getElementById('hilfeback').onclick=()=>{
     const cur=band.children[Math.max(0,p-1)]; if(cur&&cur.scrollIntoView&&p>0) cur.scrollIntoView({block:'nearest',inline:'nearest'});
     if(letzter&&p!==puls){ puls=p; const j=$g('gemjetzt'); j.classList.add('puls'); setTimeout(()=>j.classList.remove('puls'),120); }
   }
-  function laden(){ const w=$g('gemlied').value; try{ localStorage.setItem(KEY,w); }catch(e){} const r=toeneVon(w); titel=r.titel; puls=0; $g('gemband').innerHTML=''; window.swGemein.start(r.toene); }
+  function laden(){ const w=$g('gemlied').value; swGemLied.set(w); const r=toeneVon(w); titel=r.titel; puls=0; $g('gemband').innerHTML=''; window.swGemein.start(r.toene); }
   $g('gemopen').onclick=async()=>{
     $g('gemarea').classList.add('open');
     await lieder(); auswahlBauen();
