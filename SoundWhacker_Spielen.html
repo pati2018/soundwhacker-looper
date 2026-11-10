@@ -2376,14 +2376,20 @@ document.getElementById('hilfeback').onclick=()=>{
   $g('gemback').onclick=()=>{ window.swGemein.stop(); window.swGemein.onChange=null; $g('gemarea').classList.remove('open'); };
   $g('gemlied').onchange=()=>{ $g('gemlied').blur(); laden(); };
   // Ohne SoundWhacker: Knöpfe spielen wie ein SW (gedrückt halten = Ton klingt) – „Nächster Ton“ mit dem Klang von SW1, im Modus Feste Töne je ein Knopf für SW1–SW5
-  function knopf(k,sw){ let an=false, pid=null;
-    const runter=e=>{ e.preventDefault(); if(an||k.disabled) return; an=true; pid=e.pointerId; if(window.swTouch) swTouch(sw,true); requestAnimationFrame(()=>{ if(an) k.classList.add('an'); }); };
-    const hoch=e=>{ if(!an||(e&&e.pointerId!==pid)) return; an=false; pid=null; if(window.swTouch) swTouch(sw,false); requestAnimationFrame(()=>k.classList.remove('an')); };
-    k.addEventListener('pointerdown',runter); ['pointerup','pointercancel'].forEach(t=>window.addEventListener(t,hoch));
+  // Am iPad über Touch-Ereignisse (wie ein SW: ein sauberes „an“ und ein „aus“), am PC über die Maus.
+  // Jeder Ton klingt mindestens 0,3 s – ein zu früh abgeschnittener Ton knackt sonst auf älteren iPads.
+  function knopf(k,sw){ let an=false, t0=0, ausT=0, touchId=null;
+    const runter=()=>{ if(an||k.disabled) return; an=true; if(ausT){ clearTimeout(ausT); ausT=0; if(window.swTouch) swTouch(sw,false); } t0=performance.now(); if(window.swTouch) swTouch(sw,true); requestAnimationFrame(()=>{ if(an) k.classList.add('an'); }); };
+    const hoch=()=>{ if(!an) return; an=false; requestAnimationFrame(()=>k.classList.remove('an'));
+      const rest=Math.max(0,300-(performance.now()-t0)); clearTimeout(ausT); ausT=setTimeout(()=>{ ausT=0; if(!an&&window.swTouch) swTouch(sw,false); },rest); };
+    k.addEventListener('touchstart',e=>{ e.preventDefault(); if(touchId!==null) return; touchId=e.changedTouches[0].identifier; runter(); },{passive:false});
+    const touchEnde=e=>{ for(const t of e.changedTouches) if(t.identifier===touchId){ touchId=null; hoch(); } };
+    k.addEventListener('touchend',touchEnde,{passive:false}); k.addEventListener('touchcancel',touchEnde,{passive:false});
+    k.addEventListener('mousedown',e=>{ e.preventDefault(); runter(); });
+    window.addEventListener('mouseup',()=>{ if(touchId===null) hoch(); });
     k.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter') e.preventDefault(); });
     // langes Drücken: kein Menü (Kopieren/Teilen …) und kein Markieren
     k.addEventListener('contextmenu',e=>e.preventDefault());
-    k.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
     k.addEventListener('selectstart',e=>e.preventDefault());
   }
   knopf($g('gemspiel'),1);
