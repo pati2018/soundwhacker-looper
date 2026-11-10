@@ -2375,8 +2375,7 @@ document.getElementById('hilfeback').onclick=()=>{
       d.style.setProperty('--c',FARBEN[dran]);
       d.querySelector('.nr').textContent=dran; d.querySelector('.ton').textContent=T.length?tonText(T[p%T.length]):'';
       d.querySelector('.txt').textContent='SW'+dran+' ist dran!';
-      const nach=[1,2,3].map(k=>((dran-1+k)%G.reihe)+1);
-      d.querySelector('.danach').innerHTML='danach: '+nach.map(i=>'<i style="background:'+FARBEN[i]+'">'+i+'</i>').join('');
+      d.querySelector('.danach').innerHTML='';   // Feste SW-Reihenfolge: keine Vorschau „danach“
       if(d.dataset.p!==String(p)){ d.dataset.p=p; d.classList.remove('wechsel'); void d.offsetWidth; d.classList.add('wechsel'); }
     }
     const fx=G.reihe?G.falsch:0; $g('gemfalsch').textContent=fx?'SW'+fx+' ist noch nicht dran – erst SW'+dran+'!':'';
