@@ -6,7 +6,7 @@
 const CACHE = 'swlooper-v1';
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./', './index.html', './SoundWhacker_Looper.html', './SoundWhacker_Kamera.html', './SoundWhacker_Spielen.html'])).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./', './index.html', './SoundWhacker_Looper.html', './SoundWhacker_Kamera.html', './SoundWhacker_Spielen.html', './spielen.webmanifest', './icons/spielen-192.png', './icons/spielen-512.png', './icons/spielen-touch-180.png', './icons/spielen-32.png'])).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2740"/><stop offset="1" stop-color="#0b0f14"/></linearGradient>
+    <linearGradient id="glanz" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".0"/><stop offset=".35" stop-color="#fff" stop-opacity=".35"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Noten -->
+  <g fill="#FFD700">
+    <ellipse cx="170" cy="138" rx="26" ry="19" transform="rotate(-20 170 138)"/><rect x="190" y="58" width="9" height="82"/>
+    <ellipse cx="310" cy="112" rx="26" ry="19" transform="rotate(-20 310 112)"/><ellipse cx="380" cy="96" rx="26" ry="19" transform="rotate(-20 380 96)"/>
+    <rect x="330" y="34" width="9" height="80"/><rect x="400" y="18" width="9" height="80"/><path d="M330 34 L409 18 L409 36 L330 52Z"/>
+  </g>
+  <!-- fünf SoundWhacker -->
+  <g>
+    <rect x="70"  y="250" width="64" height="210" rx="32" fill="#e5484d"/>
+    <rect x="148" y="222" width="64" height="238" rx="32" fill="#f08c2e"/>
+    <rect x="224" y="194" width="64" height="266" rx="32" fill="#f2cf3a"/>
+    <rect x="300" y="222" width="64" height="238" rx="32" fill="#46b37b"/>
+    <rect x="378" y="250" width="64" height="210" rx="32" fill="#3f8ee8"/>
+    <g fill="url(#glanz)">
+      <rect x="70" y="250" width="64" height="210" rx="32"/><rect x="148" y="222" width="64" height="238" rx="32"/><rect x="224" y="194" width="64" height="266" rx="32"/><rect x="300" y="222" width="64" height="238" rx="32"/><rect x="378" y="250" width="64" height="210" rx="32"/>
+    </g>
+    <g fill="#0b0f14" fill-opacity=".55" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-size="40" text-anchor="middle">
+      <text x="102" y="430">1</text><text x="180" y="430">2</text><text x="256" y="430">3</text><text x="332" y="430">4</text><text x="410" y="430">5</text>
+    </g>
+  </g>
+</svg>
