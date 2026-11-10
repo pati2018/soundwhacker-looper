@@ -1435,7 +1435,7 @@ button.btn{font-size:13px;white-space:nowrap}
       if (m != null) {
         on(id, m, 127); GM.klingt[id] = [m]; GM.wer = id; GM.letzt = m;
         // „Zeigen, wer dran ist“: der richtige SW bringt das Lied einen Ton weiter (andere SWs klingen trotzdem – freies Spielen bleibt)
-        if (GM.zeigen && GM.pos < GM.toene.length && GM.toene[GM.pos].n.includes(m)) GM.pos++;
+        if (GM.zeigen && GM.pos < GM.toene.length && GM.toene[GM.pos].n.includes(m)) { GM.pos++; if (GM.pos >= GM.toene.length) GM.pos = 0; }   // am Liedende einfach wieder von vorn (kein „Geschafft“)
       }
       gmMeld(); return;
     }
@@ -2361,7 +2361,7 @@ document.getElementById('hilfeback').onclick=()=>{
       $g('gemwer').textContent=zeig?(fertig?T.length+' Töne gespielt':(p>0?p+' von '+T.length+' · zuletzt: '+tonText(T[p-1])+(T[p-1].s?' („'+T[p-1].s+'“)':''):'Der leuchtende SoundWhacker ist dran')):(G.letzt!=null&&G.wer?'gespielt von SW'+G.wer:(F?'Jeder SoundWhacker spielt immer seinen Ton':''));
       if(!zeig){ if(G.letzt!=null){ const j=$g('gemjetzt'); j.classList.add('puls'); setTimeout(()=>j.classList.remove('puls'),120); } return; }
       // Liedverlauf mit SW-Nummern
-      $g('gemfertig').hidden=!fertig;
+      $g('gemfertig').hidden=true;   // Feste SW-Töne: kein „Geschafft“ – das Lied läuft weiter
       $g('gemnaechst').textContent=fertig?T.length+' Töne gespielt':p+' von '+T.length;
       $g('gemfort').firstElementChild.style.width=(T.length?100*p/T.length:0)+'%';
       const band=$g('gemband'); if(band.childElementCount!==T.length||!band.dataset.fest){ band.dataset.fest='1'; band.innerHTML=T.map(t=>{ const i=swVon(t); return '<span style="border-color:'+(FARBEN[i]||'')+'"><i style="color:'+(FARBEN[i]||'#888')+'">SW'+i+'</i>'+tonText(t)+'</span>'; }).join(''); }
