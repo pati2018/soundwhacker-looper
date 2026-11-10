@@ -2215,7 +2215,7 @@ document.getElementById('hilfeback').onclick=()=>{
   let liederLaden=null;
   function lieder(){   // Liedersammlung der Tischharfe (gleiche Seite, eigene Lieder inklusive)
     if(window.HARFE) return Promise.resolve();
-    return liederLaden||(liederLaden=new Promise(ok=>{ const sc=document.createElement('script'); sc.src='../tischharfe/lieder.js?v=1'; sc.onload=ok; sc.onerror=()=>{ liederLaden=null; ok(); }; document.head.appendChild(sc); }));
+    return liederLaden||(liederLaden=new Promise(ok=>{ const sc=document.createElement('script'); sc.src='../tischharfe/lieder.js?v=2'; sc.onload=ok; sc.onerror=()=>{ liederLaden=null; ok(); }; document.head.appendChild(sc); }));
   }
   function auswahlBauen(){
     let gem=swGemLied.get(); if(!gem){ try{ gem=localStorage.getItem(KEY)||''; }catch(e){} if(gem) swGemLied.set(gem); }
