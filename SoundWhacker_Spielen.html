@@ -621,7 +621,7 @@ button.btn{font-size:13px;white-space:nowrap}
   <div style="padding:6px 4px 4px;display:flex;gap:8px">
     <button id="swTouchAllBtn" class="btn" style="padding:14px 12px;font-size:15px;font-weight:600;white-space:nowrap">&#128263; Alle</button>
     <button id="allArpBtn" class="btn" style="display:none;flex:1;padding:14px;font-size:18px;font-weight:600">&#9654; Alle Melodien starten</button>
-    <button id="arpSyncBtn" class="btn" style="padding:14px 18px;font-size:18px;font-weight:600" title="Alle laufenden Arpeggios auf Schritt 1 synchronisieren">&#8635;</button>
+    <button id="arpSyncBtn" class="btn" style="padding:14px 18px;font-size:18px;font-weight:600" title="Von vorne: alle Melodien (Ton für Ton) beginnen wieder beim ersten Ton, laufende Arpeggios auf Schritt 1">&#8635;</button>
   </div>
   </div>
 
@@ -1872,7 +1872,8 @@ button.btn{font-size:13px;white-space:nowrap}
       }
       return ok({ on });
     },
-    '/arp_sync': () => { const t0 = A.ctx ? A.ctx.currentTime + 0.03 : 0; for (let id = 1; id <= 5; id++) if (R.arpEn[id] && S.mel[id].length) { arpSilence(id); R.arpStep[id] = 0; R.arpPrev[id] = 0; R.arpNext[id] = t0; } return ok('ok'); },
+    '/arp_sync': () => { const t0 = A.ctx ? A.ctx.currentTime + 0.03 : 0; for (let id = 1; id <= 5; id++) if (R.arpEn[id] && S.mel[id].length) { arpSilence(id); R.arpStep[id] = 0; R.arpPrev[id] = 0; R.arpNext[id] = t0; }
+      /* Melodie Ton für Ton: wieder beim ersten Ton anfangen */ for (let id = 1; id <= 5; id++) if (S.melMode[id] && !R.arpEn[id]) { melStop(id); R.melStep[id] = 0; } return ok('ok'); },
     '/arp_mute': q => { const id = idArg(q); R.arpMuted[id] = q.get('muted') === '1'; if (R.arpMuted[id]) { arpSilence(id); soundOff(id); } else kick(); return ok('ok'); },
     '/mel_arp_bpm': q => { S.arpBpm = Math.max(20, Math.min(300, +q.get('bpm') || 120)); save(); return ok('ok'); },
     '/mel_arp': () => ok({ bpm: S.arpBpm, en: R.arpEn.map((v, i) => (i && v ? 1 : 0)), div: S.arpDiv, tgm: S.arpTgm.map((v, i) => (i && v ? 1 : 0)), lv: S.liveMode.map((v, i) => (i && v ? 1 : 0)) }),
