@@ -343,7 +343,8 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemspiel{display:block;width:100%;margin-top:16px;padding:26px 20px;font-size:28px;font-weight:700;border-radius:20px;border-color:#FFD700;color:#FFD700;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 #gemspiel *{pointer-events:none}
 #gemarea #gembuehne{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-#gemspiel.an{background:#FFD700;color:#111}
+#gemspiel{will-change:opacity}
+#gemspiel.an{opacity:.55}
 #gemmodus button{font-size:17px;padding:12px 18px;border-radius:12px}
 #gemmodus button[aria-pressed="true"]{background:#FFD700;color:#111;border-color:#FFD700;font-weight:700}
 #gemfest{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}
@@ -351,7 +352,8 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemfest button{--c:#888;padding:22px 4px;border-radius:20px;border:3px solid var(--c);background:color-mix(in srgb,var(--c) 22%,#0e1626);color:#fff;font-size:15px;font-weight:700;line-height:1.25;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 #gemfest button b{display:block;font-size:clamp(26px,5vw,40px)}
 #gemfest button *{pointer-events:none}
-#gemfest button.an{background:var(--c);color:#111;transform:scale(.97)}
+#gemfest button{will-change:opacity,transform}
+#gemfest button.an{opacity:.55}
 #gemfest button:disabled{opacity:.3}
 #gemzeigenzeile{display:flex;justify-content:center;margin:-6px 0 12px}
 #gemzeigenzeile[hidden]{display:none}
@@ -893,17 +895,6 @@ button.btn{font-size:13px;white-space:nowrap}
       </div>
     </div>
 
-    <!-- ===== Klang schonen (ältere iPads) ===== -->
-    <div class="card" style="margin-top:10px">
-      <div class="set-hdr" data-sec="sec-schonen">
-        <span>&#128295; Klang schonen (&auml;ltere iPads)</span><span class="set-arr">&#9654;</span>
-      </div>
-      <div id="sec-schonen" style="display:none;margin-top:14px">
-        <div class="mut small" style="margin-bottom:12px">Knackt oder kratzt der Klang auf einem &auml;lteren iPad (z.&nbsp;B. iPad 6. Generation)? Dann hier einschalten: gr&ouml;&szlig;erer Audio-Puffer, sparsamere Klangberechnung, h&ouml;chstens 40 T&ouml;ne gleichzeitig und etwas leiser. Gilt nur f&uuml;r dieses Ger&auml;t. Nach dem Umschalten die Seite einmal <b>neu laden</b>.</div>
-        <label style="display:flex;gap:10px;align-items:center;font-size:17px;cursor:pointer"><input id="schonenCb" type="checkbox" style="width:24px;height:24px"> Klang schonen</label>
-        <div id="schonenStat" class="mut small" style="margin-top:8px"></div>
-      </div>
-    </div>
     <!-- ===== Melodie kopieren ===== -->
     <div class="card" style="margin-top:10px">
       <div class="set-hdr" data-sec="sec-melcopy">
@@ -1278,21 +1269,10 @@ button.btn{font-size:13px;white-space:nowrap}
     try { await sfDb('readwrite', s => s.put({ ver: SF_VER, bytes }, 'builtin')); } catch (e) {}
     return bytes;
   }
-  // „Klang schonen“ für ältere iPads (gilt nur für dieses Gerät): größerer Audio-Puffer, einfachere Klangberechnung,
-  // weniger gleichzeitige Stimmen und etwas leiser – gegen Knacken/Kratzen, wenn das Gerät an seine Grenze kommt
-  const schonend = () => { try { return localStorage.getItem('sw-klang-schonen') === '1'; } catch (e) { return false; } };
-  function schonenAnwenden() {
-    if (!A.synth) return;
-    const an = schonend();
-    try { A.synth.setSystemParameter('interpolationType', an ? 0 : 2); } catch (e) {}   // 0 = linear (sparsam), 2 = hermite (Standard)
-    try { A.synth.setSystemParameter('voiceCap', an ? 40 : 350); } catch (e) {}
-    if (A.out) A.out.gain.value = an ? 1.8 : 3;
-  }
-  window.swKlangSchonen = { get: schonend, set: v => { try { localStorage.setItem('sw-klang-schonen', v ? '1' : '0'); } catch (e) {} schonenAnwenden(); } };
   function audioCtx() {
     if (A.ctx) return A.ctx;
     try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
-    A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: schonend() ? 'playback' : 'interactive' });
+    A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     (window.swCtxs = window.swCtxs || []).push(A.ctx);   // Kopfsteuerung: Ton beim Kamerastart kurz anhalten können
     return A.ctx;
   }
@@ -1319,7 +1299,6 @@ button.btn{font-size:13px;white-space:nowrap}
         A.synth = synth;
         if (!S.instrList.length) { S.instrList = sfInstrList(); save(); if (window.swOnInstrList) window.swOnInstrList(); }   // beim ersten Start aus der SoundFont
         for (let id = 1; id <= 5; id++) applyChannel(id);
-        schonenAnwenden();
         if (window.swOnSynthReady) window.swOnSynthReady();
         status('');
         return synth;
@@ -1429,7 +1408,8 @@ button.btn{font-size:13px;white-space:nowrap}
   // ---------- Gemeinsame Melodie: alle SW spielen zusammen ein Lied – jeder Schlag (egal welcher SW) = nächster Ton ----------
   // Jeder SW klingt mit seinem eigenen Instrument; am Liedende passiert nichts mehr, bis „Von vorne“ gedrückt wird.
   const GM = { aktiv: false, toene: [], pos: 0, wer: 0, fest: null, letzt: null, zeigen: false, klingt: [0, 1, 2, 3, 4, 5].map(() => null), onChange: null };
-  const gmMeld = () => { if (GM.onChange) try { GM.onChange(); } catch (e) {} };
+  let gmMeldT = 0;   // Anzeige erst im nächsten Bildschirm-Takt und gebündelt – der Ton geht vorher raus, die Seite rechnet weniger
+  const gmMeld = () => { if (gmMeldT) return; gmMeldT = requestAnimationFrame(() => { gmMeldT = 0; if (GM.onChange) try { GM.onChange(); } catch (e) {} }); };
   function gmLos(id) { if (GM.klingt[id]) { GM.klingt[id].forEach(n => off(id, n)); GM.klingt[id] = null; } }
   function gmTouch(id, pressed) {
     if (!pressed) { gmLos(id); gmMeld(); return; }
@@ -2248,13 +2228,6 @@ document.querySelectorAll('.set-hdr').forEach(h=>{
   window.loadMidiChanUI();
 })();
 
-// ===== Klang schonen =====
-(function(){
-  const cb=document.getElementById('schonenCb'), st=document.getElementById('schonenStat');
-  if(!cb||!window.swKlangSchonen) return;
-  cb.checked=swKlangSchonen.get();
-  cb.onchange=()=>{ swKlangSchonen.set(cb.checked); st.textContent=(cb.checked?'Eingeschaltet':'Ausgeschaltet')+' – bitte die Seite einmal neu laden, damit alles wirkt.'; };
-})();
 // ===== Melodie kopieren =====
 (function(){
   const fromSel=document.getElementById('melCopyFrom');
@@ -2326,6 +2299,7 @@ document.getElementById('hilfeback').onclick=()=>{
     return { titel:l.titel, toene:HARFE.parse(l).noten.filter(n=>n.midi!==null).map(n=>({ n:[n.midi], s:n.silbe||'' })) };
   }
   let titel='', puls=0;
+  function bandZu(el){ const band=$g('gemband'); if(!el) return; const o=el.offsetTop-band.offsetTop; if(o<band.scrollTop||o+el.offsetHeight>band.scrollTop+band.clientHeight) band.scrollTop=Math.max(0,o-4); }
   const tonText=t=>t?t.n.map(tonName).join(' '):'';
   function zeigen(){
     const G=window.swGemein; if(!G) return;
@@ -2368,7 +2342,7 @@ document.getElementById('hilfeback').onclick=()=>{
       $g('gemfort').firstElementChild.style.width=(T.length?100*p/T.length:0)+'%';
       const band=$g('gemband'); if(band.childElementCount!==T.length||!band.dataset.fest){ band.dataset.fest='1'; band.innerHTML=T.map(t=>{ const i=swVon(t); return '<span style="border-color:'+(FARBEN[i]||'')+'"><i style="color:'+(FARBEN[i]||'#888')+'">SW'+i+'</i>'+tonText(t)+'</span>'; }).join(''); }
       [...band.children].forEach((el,i)=>{ el.className=i<p?'war':i===p?'jetzt':''; });
-      const cur=band.children[Math.min(p,T.length-1)]; if(cur&&cur.scrollIntoView&&p>0) cur.scrollIntoView({block:'nearest',inline:'nearest'});
+      bandZu(band.children[Math.min(p,T.length-1)]);
       return;
     }
     $g('gemdran').hidden=true; $g('gemjetzt').style.display=''; if($g('gemband').dataset.fest){ delete $g('gemband').dataset.fest; $g('gemband').innerHTML=''; }
@@ -2381,7 +2355,7 @@ document.getElementById('hilfeback').onclick=()=>{
     $g('gemfort').firstElementChild.style.width=(T.length?100*p/T.length:0)+'%';
     const band=$g('gemband'); if(band.childElementCount!==T.length){ band.innerHTML=T.map(t=>'<span>'+tonText(t)+'</span>').join(''); }
     [...band.children].forEach((el,i)=>{ el.className=i<p-1?'war':i===p-1?'jetzt':''; });
-    const cur=band.children[Math.max(0,p-1)]; if(cur&&cur.scrollIntoView&&p>0) cur.scrollIntoView({block:'nearest',inline:'nearest'});
+    if(p>0) bandZu(band.children[p-1]);
     if(letzter&&p!==puls){ puls=p; const j=$g('gemjetzt'); j.classList.add('puls'); setTimeout(()=>j.classList.remove('puls'),120); }
   }
   const FARBEN=['','#e5484d','#f08c2e','#f2cf3a','#46b37b','#3f8ee8'];
@@ -2401,10 +2375,10 @@ document.getElementById('hilfeback').onclick=()=>{
   $g('gemback').onclick=()=>{ window.swGemein.stop(); window.swGemein.onChange=null; $g('gemarea').classList.remove('open'); };
   $g('gemlied').onchange=()=>{ $g('gemlied').blur(); laden(); };
   // Ohne SoundWhacker: Knöpfe spielen wie ein SW (gedrückt halten = Ton klingt) – „Nächster Ton“ mit dem Klang von SW1, im Modus Feste Töne je ein Knopf für SW1–SW5
-  function knopf(k,sw){ let an=false;
-    const runter=e=>{ e.preventDefault(); if(an||k.disabled) return; an=true; k.classList.add('an'); try{ k.setPointerCapture(e.pointerId); }catch(x){} if(window.swTouch) swTouch(sw,true); };
-    const hoch=()=>{ if(!an) return; an=false; k.classList.remove('an'); if(window.swTouch) swTouch(sw,false); };
-    k.addEventListener('pointerdown',runter); ['pointerup','pointercancel','lostpointercapture'].forEach(t=>k.addEventListener(t,hoch));
+  function knopf(k,sw){ let an=false, pid=null;
+    const runter=e=>{ e.preventDefault(); if(an||k.disabled) return; an=true; pid=e.pointerId; if(window.swTouch) swTouch(sw,true); requestAnimationFrame(()=>{ if(an) k.classList.add('an'); }); };
+    const hoch=e=>{ if(!an||(e&&e.pointerId!==pid)) return; an=false; pid=null; if(window.swTouch) swTouch(sw,false); requestAnimationFrame(()=>k.classList.remove('an')); };
+    k.addEventListener('pointerdown',runter); ['pointerup','pointercancel'].forEach(t=>window.addEventListener(t,hoch));
     k.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter') e.preventDefault(); });
     // langes Drücken: kein Menü (Kopieren/Teilen …) und kein Markieren
     k.addEventListener('contextmenu',e=>e.preventDefault());
