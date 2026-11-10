@@ -344,6 +344,16 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemspiel *{pointer-events:none}
 #gemarea #gembuehne{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #gemspiel.an{background:#FFD700;color:#111}
+#gemmodus button{font-size:17px;padding:12px 18px;border-radius:12px}
+#gemmodus button[aria-pressed="true"]{background:#FFD700;color:#111;border-color:#FFD700;font-weight:700}
+#gemfest{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}
+#gemfest[hidden]{display:none}
+#gemfest button{--c:#888;padding:22px 4px;border-radius:20px;border:3px solid var(--c);background:color-mix(in srgb,var(--c) 22%,#0e1626);color:#fff;font-size:15px;font-weight:700;line-height:1.25;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#gemfest button b{display:block;font-size:clamp(26px,5vw,40px)}
+#gemfest button *{pointer-events:none}
+#gemfest button.an{background:var(--c);color:#111;transform:scale(.97)}
+#gemfest button:disabled{opacity:.3}
+#gemhinweis{font-size:18px;color:#ffcf8a;margin-top:10px}
 #gemfertig{font-size:clamp(34px,8vw,64px);font-weight:800;color:#FFD700;margin-top:10px}
 #gedankenarea{
   display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
@@ -950,9 +960,14 @@ button.btn{font-size:13px;white-space:nowrap}
       <select id="gemlied" aria-label="Lied"></select>
       <button id="gemvorne" class="btn">&#9198; Von vorne</button>
     </div>
+    <div class="gemkopf" id="gemmodus" role="group" aria-label="Modus">
+      <button class="btn" data-m="reihum">&#128257; Reihum &ndash; jeder Schlag = n&auml;chster Ton</button>
+      <button class="btn" data-m="fest">&#127919; Feste T&ouml;ne &ndash; SW1 tief &hellip; SW5 hoch</button>
+    </div>
     <div id="gembuehne">
       <div id="gemtitel"></div>
       <div id="gemvorrat"></div>
+      <div id="gemhinweis" hidden></div>
       <div id="gemjetzt"></div>
       <div id="gemsilbe"></div>
       <div id="gemwer"></div>
@@ -962,9 +977,10 @@ button.btn{font-size:13px;white-space:nowrap}
       <div id="gemband"></div>
     </div>
     <button id="gemspiel" class="btn">&#9654; N&auml;chster Ton</button>
+    <div id="gemfest" hidden></div>
     <div class="mut" style="text-align:center;margin-top:16px;font-size:15px;line-height:1.6">
       Egal welcher SoundWhacker (oder Taste 1&ndash;5 oder der Knopf &#9654; N&auml;chster Ton): <b>jeder Schlag spielt den n&auml;chsten Ton</b>. Jeder SW klingt mit seinem eigenen Instrument (einstellen unter &#9834; Soundwhackers einstellen).<br>
-      Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.<br>Das gew&auml;hlte Lied wird im &#128190; Preset mitgespeichert (auch beim Export/Import).
+      Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.<br><b>Feste T&ouml;ne</b> (nur &#11088;-Lieder): die T&ouml;ne des Lieds werden verteilt &ndash; SW1 der tiefste, SW5 der h&ouml;chste; jeder SW spielt immer seinen Ton.<br>Lied und Modus werden im &#128190; Preset mitgespeichert (auch beim Export/Import).
     </div>
   </div>
 </div>
@@ -1169,6 +1185,7 @@ button.btn{font-size:13px;white-space:nowrap}
       arpBpm: 120, arpDiv: arr6(0), arpTgm: arr6(false), liveMode: arr6(true), tmv: 1,   // liveMode = 🎹 (Melodie Schritt für Schritt)
       slots: [0, 1, 2, 3, 4, 5].map(() => ({ root: -1, qual: 0, ts: 0 })), activeSlot: 0,
       lpresets: [null, null, null, null, null, null, null, null, null], dpresets: [null, null, null, null, null],
+      gemModus: 'reihum',   // Gemeinsame Melodie: 'reihum' (jeder Schlag = nächster Ton) oder 'fest' (SW1 tiefster … SW5 höchster Ton)
       gemLied: ''   // Gemeinsame Melodie: gewähltes Lied ('lied:<id>' aus der Tischharfe oder 'sw:<1–5>')
     };
   }
@@ -1358,7 +1375,7 @@ button.btn{font-size:13px;white-space:nowrap}
   }
   // ---------- Gemeinsame Melodie: alle SW spielen zusammen ein Lied – jeder Schlag (egal welcher SW) = nächster Ton ----------
   // Jeder SW klingt mit seinem eigenen Instrument; am Liedende passiert nichts mehr, bis „Von vorne“ gedrückt wird.
-  const GM = { aktiv: false, toene: [], pos: 0, wer: 0, klingt: [0, 1, 2, 3, 4, 5].map(() => null), onChange: null };
+  const GM = { aktiv: false, toene: [], pos: 0, wer: 0, fest: null, letzt: null, klingt: [0, 1, 2, 3, 4, 5].map(() => null), onChange: null };
   const gmMeld = () => { if (GM.onChange) try { GM.onChange(); } catch (e) {} };
   function gmLos(id) { if (GM.klingt[id]) { GM.klingt[id].forEach(n => off(id, n)); GM.klingt[id] = null; } }
   function gmTouch(id, pressed) {
@@ -1366,23 +1383,29 @@ button.btn{font-size:13px;white-space:nowrap}
     kick();
     if (!A.synth) { status('🔊 Klang wird geladen – gleich nochmal'); return; }   // Ton nicht „verschenken“, solange noch nichts klingt
     gmLos(id);
+    if (GM.fest) {   // Feste Töne: jeder SW spielt immer seinen Ton (SW1 = tiefster … SW5 = höchster)
+      const m = GM.fest[id];
+      if (m != null) { on(id, m, 127); GM.klingt[id] = [m]; GM.wer = id; GM.letzt = m; }
+      gmMeld(); return;
+    }
     if (GM.pos >= GM.toene.length) { gmMeld(); return; }
     const t = GM.toene[GM.pos++];
     t.n.forEach(n => on(id, n, 127)); GM.klingt[id] = t.n; GM.wer = id;
     gmMeld();
   }
   window.swGemein = {
-    start(toene) {   // toene: [{ n: [Midi …], s: 'Silbe' }]
+    start(toene, fest) {   // toene: [{ n: [Midi …], s: 'Silbe' }] · fest: [_, Ton SW1 … Ton SW5] oder null (= reihum)
       for (let id = 1; id <= 5; id++) { if (R.touched[id]) touch(id, false); gmLos(id); }
-      GM.toene = toene || []; GM.pos = 0; GM.wer = 0; GM.aktiv = true; gmMeld();
+      GM.toene = toene || []; GM.fest = fest || null; GM.pos = 0; GM.wer = 0; GM.letzt = null; GM.aktiv = true; gmMeld();
     },
     stop() { for (let id = 1; id <= 5; id++) { gmLos(id); R.touched[id] = false; } GM.aktiv = false; gmMeld(); },
-    vonVorne() { for (let id = 1; id <= 5; id++) gmLos(id); GM.pos = 0; GM.wer = 0; gmMeld(); },
+    vonVorne() { for (let id = 1; id <= 5; id++) gmLos(id); GM.pos = 0; GM.wer = 0; GM.letzt = null; gmMeld(); },
     get aktiv() { return GM.aktiv; }, get pos() { return GM.pos; }, get anzahl() { return GM.toene.length; },
-    get toene() { return GM.toene; }, get wer() { return GM.wer; },
+    get toene() { return GM.toene; }, get wer() { return GM.wer; }, get fest() { return GM.fest; }, get letzt() { return GM.letzt; },
     set onChange(f) { GM.onChange = f; }
   };
-  window.swGemLied = { get: () => S.gemLied || '', set: v => { S.gemLied = String(v || ''); save(); } };
+  window.swGemLied = { get: () => S.gemLied || '', set: v => { S.gemLied = String(v || ''); save(); },
+    modus: () => S.gemModus === 'fest' ? 'fest' : 'reihum', setModus: v => { S.gemModus = v === 'fest' ? 'fest' : 'reihum'; save(); } };
   window.swMelodie = id => (S.mel[id] || []).filter(st => st.n && st.n.length).map(st => ({ n: st.n.slice() }));   // eigene Melodie eines SW
 
   function touch(id, pressed) {
@@ -1570,7 +1593,7 @@ button.btn{font-size:13px;white-space:nowrap}
       rv: a(i => S.rev[i] != null ? S.rev[i] : 30), lo: a(i => S.loopOn[i] ? 1 : 0), lch: a(i => S.loopCh[i] || i), ad: a(i => S.arpDiv[i] || 0), ae: a(i => R.arpEn[i] ? 1 : 0), sv: a(i => S.vol[i] != null ? S.vol[i] : 100), ab: S.arpBpm,
       slsr: a(i => i && S.slots[i].root >= 0 ? S.slots[i].root : 255), slsq: a(i => i ? S.slots[i].qual : 0), slst: a(i => i ? S.slots[i].ts : 0),
       slsa: S.activeSlot, tgm: [1, 2, 3, 4, 5].reduce((m, i) => m | (S.arpTgm[i] ? 1 << (i - 1) : 0), 0), ch: a(i => S.midiCh[i] || i),
-      gl: S.gemLied || ''   // Liedauswahl der Gemeinsamen Melodie
+      gl: S.gemLied || '', gmo: S.gemModus || 'reihum'   // Liedauswahl und Modus der Gemeinsamen Melodie
     });
     return P;
   }
@@ -1591,7 +1614,7 @@ button.btn{font-size:13px;white-space:nowrap}
     }
     S.improMode = S.improEn.some((v, i) => i && v);
     S.arpBpm = P.ab || 120; S.activeSlot = P.slsa || 0;
-    if (P.gl) S.gemLied = P.gl;   // ältere Presets ohne Liedauswahl lassen die jetzige stehen
+    if (P.gl) S.gemLied = P.gl; if (P.gmo) S.gemModus = P.gmo;   // ältere Presets ohne Liedauswahl lassen die jetzige stehen
     for (let i = 1; i <= 5; i++) applyChannel(i);
     save();
   }
@@ -2244,6 +2267,20 @@ document.getElementById('hilfeback').onclick=()=>{
     const vor=verschiedene(T);
     $g('gemtitel').textContent=titel||'Kein Lied gewählt';
     $g('gemvorrat').textContent=vor.length?(vor.length<=5?'⭐ ':'')+vor.length+' verschiedene Töne: '+vor.map(tonName).join(' '):'';
+    const fest=swGemLied.modus()==='fest', F=G.fest;
+    ['gemsilbe','gemnaechst','gemfort','gemband','gemfertig','gemvorne','gemspiel'].forEach(id=>$g(id).style.display=fest?'none':'');
+    $g('gemfest').hidden=!fest;
+    $g('gemhinweis').hidden=!(fest&&!F&&T.length);
+    $g('gemhinweis').textContent='Dieses Lied hat '+vor.length+' verschiedene Töne – „Feste Töne“ geht nur mit höchstens 5 (⭐). Bitte ein ⭐-Lied wählen oder „Reihum“ spielen.';
+    if(fest){
+      const box=$g('gemfest');
+      if(box.childElementCount!==5){ box.innerHTML=[1,2,3,4,5].map(i=>'<button style="--c:'+FARBEN[i]+'" data-sw="'+i+'">SW'+i+'<b></b></button>').join(''); box.querySelectorAll('button').forEach(b=>knopf(b,+b.dataset.sw)); }
+      box.querySelectorAll('button').forEach(b=>{ const m=F&&F[+b.dataset.sw]; b.querySelector('b').textContent=m!=null?tonName(m):'–'; b.disabled=m==null; });
+      $g('gemjetzt').textContent=G.letzt!=null?tonName(G.letzt):'♪';
+      $g('gemwer').textContent=G.letzt!=null&&G.wer?'gespielt von SW'+G.wer:(F?'Jeder SoundWhacker spielt immer seinen Ton':'');
+      if(G.letzt!=null){ const j=$g('gemjetzt'); j.classList.add('puls'); setTimeout(()=>j.classList.remove('puls'),120); }
+      return;
+    }
     const letzter=p>0?T[p-1]:null;
     $g('gemjetzt').textContent=letzter?tonText(letzter):'♪';
     $g('gemsilbe').textContent=letzter&&letzter.s?letzter.s:'';
@@ -2256,25 +2293,34 @@ document.getElementById('hilfeback').onclick=()=>{
     const cur=band.children[Math.max(0,p-1)]; if(cur&&cur.scrollIntoView&&p>0) cur.scrollIntoView({block:'nearest',inline:'nearest'});
     if(letzter&&p!==puls){ puls=p; const j=$g('gemjetzt'); j.classList.add('puls'); setTimeout(()=>j.classList.remove('puls'),120); }
   }
-  function laden(){ const w=$g('gemlied').value; swGemLied.set(w); const r=toeneVon(w); titel=r.titel; puls=0; $g('gemband').innerHTML=''; window.swGemein.start(r.toene); }
+  const FARBEN=['','#e5484d','#f08c2e','#f2cf3a','#46b37b','#3f8ee8'];
+  function laden(){
+    const w=$g('gemlied').value; swGemLied.set(w); const r=toeneVon(w); titel=r.titel; puls=0; $g('gemband').innerHTML='';
+    let fest=null; const v=verschiedene(r.toene);
+    if(swGemLied.modus()==='fest'&&v.length&&v.length<=5){ fest=[null,null,null,null,null,null]; v.forEach((m,i)=>fest[i+1]=m); }   // SW1 = tiefster Ton …
+    window.swGemein.start(r.toene,fest);
+  }
+  function modusZeigen(){ const m=swGemLied.modus(); $g('gemmodus').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===m)); }
+  $g('gemmodus').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; b.blur(); swGemLied.setModus(b.dataset.m); modusZeigen(); laden(); });
   $g('gemopen').onclick=async()=>{
     $g('gemarea').classList.add('open');
     await lieder(); auswahlBauen();
-    window.swGemein.onChange=zeigen; laden();
+    window.swGemein.onChange=zeigen; modusZeigen(); laden();
   };
   $g('gemback').onclick=()=>{ window.swGemein.stop(); window.swGemein.onChange=null; $g('gemarea').classList.remove('open'); };
   $g('gemlied').onchange=()=>{ $g('gemlied').blur(); laden(); };
-  // Ohne SoundWhacker: großer Knopf spielt wie ein SW (gedrückt halten = Ton klingt), mit dem Klang von SW1
-  (function(){ const k=$g('gemspiel'); let an=false;
-    const runter=e=>{ e.preventDefault(); if(an) return; an=true; k.classList.add('an'); try{ k.setPointerCapture(e.pointerId); }catch(x){} if(window.swTouch) swTouch(1,true); };
-    const hoch=()=>{ if(!an) return; an=false; k.classList.remove('an'); if(window.swTouch) swTouch(1,false); };
+  // Ohne SoundWhacker: Knöpfe spielen wie ein SW (gedrückt halten = Ton klingt) – „Nächster Ton“ mit dem Klang von SW1, im Modus Feste Töne je ein Knopf für SW1–SW5
+  function knopf(k,sw){ let an=false;
+    const runter=e=>{ e.preventDefault(); if(an||k.disabled) return; an=true; k.classList.add('an'); try{ k.setPointerCapture(e.pointerId); }catch(x){} if(window.swTouch) swTouch(sw,true); };
+    const hoch=()=>{ if(!an) return; an=false; k.classList.remove('an'); if(window.swTouch) swTouch(sw,false); };
     k.addEventListener('pointerdown',runter); ['pointerup','pointercancel','lostpointercapture'].forEach(t=>k.addEventListener(t,hoch));
     k.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter') e.preventDefault(); });
     // langes Drücken: kein Menü (Kopieren/Teilen …) und kein Markieren
     k.addEventListener('contextmenu',e=>e.preventDefault());
     k.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
     k.addEventListener('selectstart',e=>e.preventDefault());
-  })();
+  }
+  knopf($g('gemspiel'),1);
   $g('gemvorne').onclick=()=>{ $g('gemvorne').blur(); puls=0; window.swGemein.vonVorne(); };
 })();
 
