@@ -371,6 +371,7 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemdran .nr{font-size:clamp(40px,min(10vw,8vh),78px);font-weight:900;line-height:1}
 #gemdran .ton{font-size:clamp(20px,4vw,30px);font-weight:700;opacity:.8}
 #gemdran .txt{font-size:22px;font-weight:700;margin-top:8px}
+#gemdran .txt:empty{display:none}
 #gemdran .danach{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:10px;font-size:15px;color:#8aa0b3;flex-wrap:wrap}
 #gemdran .danach i{font-style:normal;width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#111;font-weight:800;opacity:.85}
 #gemdran .danach i:nth-of-type(2){opacity:.6}#gemdran .danach i:nth-of-type(3){opacity:.4}
@@ -2350,17 +2351,17 @@ document.getElementById('hilfeback').onclick=()=>{
       const fertig=T.length>0&&p>=T.length, dranSW=zeig&&!fertig?swVon(T[p]):0;
       box.querySelectorAll('button').forEach(b=>{ const i=+b.dataset.sw, m=F&&F[i]; b.querySelector('b').textContent=m!=null?tonName(m):'–'; b.disabled=m==null; b.classList.toggle('dran',i===dranSW); });
       $g('gemfalsch').textContent='';
-      const d=$g('gemdran'); d.hidden=!dranSW; d.classList.add('ohnekreis');   // Feste SW-Töne: nur „SWx ist dran!“ in SW-Farbe, ohne Ball und Vorschau
+      const d=$g('gemdran'); d.hidden=true; d.classList.add('ohnekreis');   // Feste SW-Töne: keine Extra-Anzeige – die Notenreihe und der leuchtende Knopf zeigen, wer dran ist   // Feste SW-Töne: nur „SWx ist dran!“ in SW-Farbe, ohne Ball und Vorschau
       if(dranSW){
         d.style.setProperty('--c',FARBEN[dranSW]);
         d.querySelector('.nr').textContent=dranSW; d.querySelector('.ton').textContent=tonName(F[dranSW]);
-        d.querySelector('.txt').textContent='SW'+dranSW+' ist dran!';
+        d.querySelector('.txt').textContent='';
         d.querySelector('.danach').innerHTML='';
         if(d.dataset.p!==String(p)){ d.dataset.p=p; d.classList.remove('wechsel'); void d.offsetWidth; d.classList.add('wechsel'); }
       }
       $g('gemjetzt').style.display=dranSW?'none':'';
       $g('gemjetzt').textContent=fertig?'':(G.letzt!=null?tonName(G.letzt):'♪');
-      $g('gemwer').textContent=zeig?(fertig?T.length+' Töne gespielt':(p>0?p+' von '+T.length+' · zuletzt: '+tonText(T[p-1])+(T[p-1].s?' („'+T[p-1].s+'“)':''):'Der leuchtende SoundWhacker ist dran')):(G.letzt!=null&&G.wer?'gespielt von SW'+G.wer:(F?'Jeder SoundWhacker spielt immer seinen Ton':''));
+      $g('gemwer').textContent=zeig?(fertig?T.length+' Töne gespielt':(p>0?p+' von '+T.length+' · zuletzt: '+tonText(T[p-1])+(T[p-1].s?' („'+T[p-1].s+'“)':''):'0 von '+T.length)):(G.letzt!=null&&G.wer?'gespielt von SW'+G.wer:(F?'Jeder SoundWhacker spielt immer seinen Ton':''));
       if(!zeig){ if(G.letzt!=null){ const j=$g('gemjetzt'); j.classList.add('puls'); setTimeout(()=>j.classList.remove('puls'),120); } return; }
       // Liedverlauf mit SW-Nummern
       $g('gemfertig').hidden=true;   // Feste SW-Töne: kein „Geschafft“ – das Lied läuft weiter
@@ -2376,7 +2377,7 @@ document.getElementById('hilfeback').onclick=()=>{
     if(dran){   // Feste Reihenfolge: groß zeigen, welcher SW dran ist
       d.style.setProperty('--c',FARBEN[dran]);
       d.querySelector('.nr').textContent=dran; d.querySelector('.ton').textContent=T.length?tonText(T[p%T.length]):'';
-      d.querySelector('.txt').textContent='SW'+dran+' ist dran!';
+      d.querySelector('.txt').textContent='';
       d.querySelector('.danach').innerHTML='';   // Feste SW-Reihenfolge: keine Vorschau „danach“
       if(d.dataset.p!==String(p)){ d.dataset.p=p; d.classList.remove('wechsel'); void d.offsetWidth; d.classList.add('wechsel'); }
     }
