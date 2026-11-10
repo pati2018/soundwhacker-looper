@@ -328,6 +328,7 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemvorne{font-size:22px;padding:14px 26px;border-radius:14px;font-weight:600}
 #gembuehne{width:100%;background:#111826;border:1px solid #1d2940;border-radius:20px;padding:22px 18px;text-align:center}
 #gemtitel{font-size:24px;font-weight:700;color:#FFD700;margin-bottom:10px}
+#gemvorrat{font-size:16px;color:#8aa0b3;margin:-4px 0 6px}
 #gemjetzt{font-size:clamp(64px,16vw,140px);font-weight:800;line-height:1.05;min-height:1.1em;transition:transform .08s}
 #gemjetzt.puls{transform:scale(1.08)}
 #gemsilbe{font-size:clamp(26px,6vw,46px);min-height:1.3em;color:#cfe0ff;margin-top:4px}
@@ -951,6 +952,7 @@ button.btn{font-size:13px;white-space:nowrap}
     </div>
     <div id="gembuehne">
       <div id="gemtitel"></div>
+      <div id="gemvorrat"></div>
       <div id="gemjetzt"></div>
       <div id="gemsilbe"></div>
       <div id="gemwer"></div>
@@ -2220,12 +2222,15 @@ document.getElementById('hilfeback').onclick=()=>{
     const sel=$g('gemlied'), alt=gem||'lied:entchen'; sel.innerHTML='';
     const gruppe=name=>{ const g=document.createElement('optgroup'); g.label=name; sel.appendChild(g); return g; };
     if(window.HARFE){
-      const gr={}; HARFE.LIEDER.forEach(l=>{ (gr[l.gruppe]||(gr[l.gruppe]=gruppe(l.gruppe))).appendChild(new Option(l.titel,'lied:'+l.id)); });
+      const gr={}; HARFE.LIEDER.forEach(l=>{ (gr[l.gruppe]||(gr[l.gruppe]=gruppe(l.gruppe))).appendChild(new Option(mitMarke(l.titel,toeneVon('lied:'+l.id).toene),'lied:'+l.id)); });
     }
     const g=gruppe('Melodien der Soundwhacker');
-    for(let i=1;i<=5;i++){ const m=window.swMelodie?swMelodie(i):[]; const o=new Option('Melodie von SW'+i+(m.length?' ('+m.length+' Töne)':' (leer)'),'sw:'+i); o.disabled=!m.length; g.appendChild(o); }
+    for(let i=1;i<=5;i++){ const m=window.swMelodie?swMelodie(i):[]; const o=new Option(m.length?mitMarke('Melodie von SW'+i,m):'Melodie von SW'+i+' (leer)','sw:'+i); o.disabled=!m.length; g.appendChild(o); }
     sel.value=alt; if(sel.selectedIndex<0||sel.options[sel.selectedIndex].disabled){ const erste=[...sel.options].find(o=>!o.disabled); if(erste) sel.value=erste.value; }
   }
+  // Lieder mit höchstens 5 verschiedenen Tönen kennzeichnen – die passen auf 5 SoundWhacker (jeder SW ein Ton)
+  const verschiedene=T=>[...new Set(T.flatMap(t=>t.n))].sort((a,b)=>a-b);
+  const mitMarke=(name,T)=>{ const v=verschiedene(T); return v.length&&v.length<=5?'⭐ '+name+' – '+v.length+' Töne':name; };
   function toeneVon(wert){
     if(wert.startsWith('sw:')){ const i=+wert.slice(3); return { titel:'Melodie von SW'+i, toene:swMelodie(i) }; }
     const l=window.HARFE&&HARFE.LIEDER.find(x=>'lied:'+x.id===wert); if(!l) return { titel:'', toene:[] };
@@ -2236,7 +2241,9 @@ document.getElementById('hilfeback').onclick=()=>{
   function zeigen(){
     const G=window.swGemein; if(!G) return;
     const T=G.toene, p=G.pos, fertig=T.length>0&&p>=T.length;
+    const vor=verschiedene(T);
     $g('gemtitel').textContent=titel||'Kein Lied gewählt';
+    $g('gemvorrat').textContent=vor.length?(vor.length<=5?'⭐ ':'')+vor.length+' verschiedene Töne: '+vor.map(tonName).join(' '):'';
     const letzter=p>0?T[p-1]:null;
     $g('gemjetzt').textContent=letzter?tonText(letzter):'♪';
     $g('gemsilbe').textContent=letzter&&letzter.s?letzter.s:'';
