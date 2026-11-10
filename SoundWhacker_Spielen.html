@@ -326,7 +326,7 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemarea .gemkopf{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
 #gemlied{font-size:20px;padding:10px 12px;min-height:52px;max-width:100%;background:#0e1626;color:#e0e8ff;border:1px solid #25324b;border-radius:12px}
 #gemvorne{font-size:22px;padding:14px 26px;border-radius:14px;font-weight:600}
-#gembuehne{width:100%;background:#111826;border:1px solid #1d2940;border-radius:20px;padding:22px 18px;text-align:center}
+#gembuehne{width:100%;background:#111826;border:1px solid #1d2940;border-radius:20px;padding:16px 18px;text-align:center}
 #gemtitel{font-size:24px;font-weight:700;color:#FFD700;margin-bottom:10px}
 #gemvorrat{font-size:16px;color:#8aa0b3;margin:-4px 0 6px}
 #gemjetzt{font-size:clamp(64px,16vw,140px);font-weight:800;line-height:1.05;min-height:1.1em;transition:transform .08s}
@@ -353,6 +353,31 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemfest button *{pointer-events:none}
 #gemfest button.an{background:var(--c);color:#111;transform:scale(.97)}
 #gemfest button:disabled{opacity:.3}
+#gemzeigenzeile{display:flex;justify-content:center;margin:-6px 0 12px}
+#gemzeigenzeile[hidden]{display:none}
+#gemzeigen{font-size:18px;padding:12px 22px;border-radius:14px}
+#gemzeigen[aria-pressed="true"]{background:#FFD700;color:#111;border-color:#FFD700;font-weight:700}
+#gemdran{--c:#888;margin:6px 0 4px}
+#gemdran[hidden]{display:none}
+#gemdran .kreis{width:clamp(110px,min(30vw,22vh),230px);height:clamp(110px,min(30vw,22vh),230px);margin:0 auto;border-radius:50%;background:var(--c);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#111;box-shadow:0 0 0 0 var(--c);animation:gemdranPuls 1.1s ease-out infinite}
+#gemdran .nr{font-size:clamp(40px,min(10vw,8vh),78px);font-weight:900;line-height:1}
+#gemdran .ton{font-size:clamp(20px,4vw,30px);font-weight:700;opacity:.8}
+#gemdran .txt{font-size:22px;font-weight:700;margin-top:8px}
+#gemdran .danach{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:10px;font-size:15px;color:#8aa0b3;flex-wrap:wrap}
+#gemdran .danach i{font-style:normal;width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#111;font-weight:800;opacity:.85}
+#gemdran .danach i:nth-of-type(2){opacity:.6}#gemdran .danach i:nth-of-type(3){opacity:.4}
+#gemdran.wechsel .kreis{animation:gemdranNeu .35s ease-out,gemdranPuls 1.1s ease-out .35s infinite}
+@keyframes gemdranPuls{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--c) 70%,transparent)}100%{box-shadow:0 0 0 34px transparent}}
+@keyframes gemdranNeu{0%{transform:scale(.6)}70%{transform:scale(1.08)}100%{transform:scale(1)}}
+#gemfest button.dran{animation:gemknopfPuls .9s ease-in-out infinite;background:var(--c);color:#111}
+@keyframes gemknopfPuls{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+#gemband span i{font-style:normal;display:block;font-size:11px;font-weight:800}
+#gemband span.jetzt i{color:#111!important}
+#gemband{max-height:96px;overflow-y:auto}
+#gemarea.zeig #gemband{max-height:44px;margin-top:10px}
+#gemarea.zeig #gemfort{margin-top:10px}
+#gemarea.zeig #gemvorrat,#gemarea.zeig #gemnaechst{display:none!important}
+#gemarea.zeig .gemkopf{margin-bottom:10px}
 #gemhinweis{font-size:18px;color:#ffcf8a;margin-top:10px}
 #gemfertig{font-size:clamp(34px,8vw,64px);font-weight:800;color:#FFD700;margin-top:10px}
 #gedankenarea{
@@ -964,10 +989,14 @@ button.btn{font-size:13px;white-space:nowrap}
       <button class="btn" data-m="reihum">&#128257; Reihum &ndash; jeder Schlag = n&auml;chster Ton</button>
       <button class="btn" data-m="fest">&#127919; Feste T&ouml;ne &ndash; SW1 tief &hellip; SW5 hoch</button>
     </div>
+    <div id="gemzeigenzeile" hidden>
+      <button id="gemzeigen" class="btn" aria-pressed="false">&#128064; Zeigen, wer dran ist: AUS</button>
+    </div>
     <div id="gembuehne">
       <div id="gemtitel"></div>
       <div id="gemvorrat"></div>
       <div id="gemhinweis" hidden></div>
+      <div id="gemdran" hidden><div class="kreis"><span class="nr"></span><span class="ton"></span></div><div class="txt"></div><div class="danach"></div></div>
       <div id="gemjetzt"></div>
       <div id="gemsilbe"></div>
       <div id="gemwer"></div>
@@ -980,7 +1009,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <div id="gemfest" hidden></div>
     <div class="mut" style="text-align:center;margin-top:16px;font-size:15px;line-height:1.6">
       Egal welcher SoundWhacker (oder Taste 1&ndash;5 oder der Knopf &#9654; N&auml;chster Ton): <b>jeder Schlag spielt den n&auml;chsten Ton</b>. Jeder SW klingt mit seinem eigenen Instrument (einstellen unter &#9834; Soundwhackers einstellen).<br>
-      Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.<br><b>Feste T&ouml;ne</b> (nur &#11088;-Lieder): die T&ouml;ne des Lieds werden verteilt &ndash; SW1 der tiefste, SW5 der h&ouml;chste; jeder SW spielt immer seinen Ton.<br>Lied und Modus werden im &#128190; Preset mitgespeichert (auch beim Export/Import).
+      Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.<br><b>Feste T&ouml;ne</b> (nur &#11088;-Lieder): die T&ouml;ne des Lieds werden verteilt &ndash; SW1 der tiefste, SW5 der h&ouml;chste; jeder SW spielt immer seinen Ton. Mit <b>&#128064; Zeigen, wer dran ist</b> leuchtet der SW, der als N&auml;chstes dran ist &ndash; mit dem richtigen SW geht das Lied weiter.<br>Lied und Modus werden im &#128190; Preset mitgespeichert (auch beim Export/Import).
     </div>
   </div>
 </div>
@@ -1185,7 +1214,8 @@ button.btn{font-size:13px;white-space:nowrap}
       arpBpm: 120, arpDiv: arr6(0), arpTgm: arr6(false), liveMode: arr6(true), tmv: 1,   // liveMode = 🎹 (Melodie Schritt für Schritt)
       slots: [0, 1, 2, 3, 4, 5].map(() => ({ root: -1, qual: 0, ts: 0 })), activeSlot: 0,
       lpresets: [null, null, null, null, null, null, null, null, null], dpresets: [null, null, null, null, null],
-      gemModus: 'reihum',   // Gemeinsame Melodie: 'reihum' (jeder Schlag = nächster Ton) oder 'fest' (SW1 tiefster … SW5 höchster Ton)
+      gemModus: 'reihum', gemZeigen: false,   // Feste Töne: anzeigen, welcher SW als Nächstes dran ist
+        // Gemeinsame Melodie: 'reihum' (jeder Schlag = nächster Ton) oder 'fest' (SW1 tiefster … SW5 höchster Ton)
       gemLied: ''   // Gemeinsame Melodie: gewähltes Lied ('lied:<id>' aus der Tischharfe oder 'sw:<1–5>')
     };
   }
@@ -1375,7 +1405,7 @@ button.btn{font-size:13px;white-space:nowrap}
   }
   // ---------- Gemeinsame Melodie: alle SW spielen zusammen ein Lied – jeder Schlag (egal welcher SW) = nächster Ton ----------
   // Jeder SW klingt mit seinem eigenen Instrument; am Liedende passiert nichts mehr, bis „Von vorne“ gedrückt wird.
-  const GM = { aktiv: false, toene: [], pos: 0, wer: 0, fest: null, letzt: null, klingt: [0, 1, 2, 3, 4, 5].map(() => null), onChange: null };
+  const GM = { aktiv: false, toene: [], pos: 0, wer: 0, fest: null, letzt: null, zeigen: false, klingt: [0, 1, 2, 3, 4, 5].map(() => null), onChange: null };
   const gmMeld = () => { if (GM.onChange) try { GM.onChange(); } catch (e) {} };
   function gmLos(id) { if (GM.klingt[id]) { GM.klingt[id].forEach(n => off(id, n)); GM.klingt[id] = null; } }
   function gmTouch(id, pressed) {
@@ -1385,7 +1415,11 @@ button.btn{font-size:13px;white-space:nowrap}
     gmLos(id);
     if (GM.fest) {   // Feste Töne: jeder SW spielt immer seinen Ton (SW1 = tiefster … SW5 = höchster)
       const m = GM.fest[id];
-      if (m != null) { on(id, m, 127); GM.klingt[id] = [m]; GM.wer = id; GM.letzt = m; }
+      if (m != null) {
+        on(id, m, 127); GM.klingt[id] = [m]; GM.wer = id; GM.letzt = m;
+        // „Zeigen, wer dran ist“: der richtige SW bringt das Lied einen Ton weiter (andere SWs klingen trotzdem – freies Spielen bleibt)
+        if (GM.zeigen && GM.pos < GM.toene.length && GM.toene[GM.pos].n.includes(m)) GM.pos++;
+      }
       gmMeld(); return;
     }
     if (GM.pos >= GM.toene.length) { gmMeld(); return; }
@@ -1396,9 +1430,11 @@ button.btn{font-size:13px;white-space:nowrap}
   window.swGemein = {
     start(toene, fest) {   // toene: [{ n: [Midi …], s: 'Silbe' }] · fest: [_, Ton SW1 … Ton SW5] oder null (= reihum)
       for (let id = 1; id <= 5; id++) { if (R.touched[id]) touch(id, false); gmLos(id); }
-      GM.toene = toene || []; GM.fest = fest || null; GM.pos = 0; GM.wer = 0; GM.letzt = null; GM.aktiv = true; gmMeld();
+      GM.toene = toene || []; GM.fest = fest || null; GM.zeigen = !!S.gemZeigen; GM.pos = 0; GM.wer = 0; GM.letzt = null; GM.aktiv = true; gmMeld();
     },
     stop() { for (let id = 1; id <= 5; id++) { gmLos(id); R.touched[id] = false; } GM.aktiv = false; gmMeld(); },
+    zeigen(v) { GM.zeigen = !!v; S.gemZeigen = !!v; save(); GM.pos = 0; gmMeld(); },
+    get zeigenAn() { return GM.zeigen; },
     vonVorne() { for (let id = 1; id <= 5; id++) gmLos(id); GM.pos = 0; GM.wer = 0; GM.letzt = null; gmMeld(); },
     get aktiv() { return GM.aktiv; }, get pos() { return GM.pos; }, get anzahl() { return GM.toene.length; },
     get toene() { return GM.toene; }, get wer() { return GM.wer; }, get fest() { return GM.fest; }, get letzt() { return GM.letzt; },
@@ -1593,7 +1629,7 @@ button.btn{font-size:13px;white-space:nowrap}
       rv: a(i => S.rev[i] != null ? S.rev[i] : 30), lo: a(i => S.loopOn[i] ? 1 : 0), lch: a(i => S.loopCh[i] || i), ad: a(i => S.arpDiv[i] || 0), ae: a(i => R.arpEn[i] ? 1 : 0), sv: a(i => S.vol[i] != null ? S.vol[i] : 100), ab: S.arpBpm,
       slsr: a(i => i && S.slots[i].root >= 0 ? S.slots[i].root : 255), slsq: a(i => i ? S.slots[i].qual : 0), slst: a(i => i ? S.slots[i].ts : 0),
       slsa: S.activeSlot, tgm: [1, 2, 3, 4, 5].reduce((m, i) => m | (S.arpTgm[i] ? 1 << (i - 1) : 0), 0), ch: a(i => S.midiCh[i] || i),
-      gl: S.gemLied || '', gmo: S.gemModus || 'reihum'   // Liedauswahl und Modus der Gemeinsamen Melodie
+      gl: S.gemLied || '', gmo: S.gemModus || 'reihum', gmz: S.gemZeigen ? 1 : 0   // Liedauswahl und Modus der Gemeinsamen Melodie
     });
     return P;
   }
@@ -1614,7 +1650,7 @@ button.btn{font-size:13px;white-space:nowrap}
     }
     S.improMode = S.improEn.some((v, i) => i && v);
     S.arpBpm = P.ab || 120; S.activeSlot = P.slsa || 0;
-    if (P.gl) S.gemLied = P.gl; if (P.gmo) S.gemModus = P.gmo;   // ältere Presets ohne Liedauswahl lassen die jetzige stehen
+    if (P.gl) S.gemLied = P.gl; if (P.gmo) S.gemModus = P.gmo; if (P.gmz != null) S.gemZeigen = !!P.gmz;   // ältere Presets ohne Liedauswahl lassen die jetzige stehen
     for (let i = 1; i <= 5; i++) applyChannel(i);
     save();
   }
@@ -2268,19 +2304,44 @@ document.getElementById('hilfeback').onclick=()=>{
     $g('gemtitel').textContent=titel||'Kein Lied gewählt';
     $g('gemvorrat').textContent=vor.length?(vor.length<=5?'⭐ ':'')+vor.length+' verschiedene Töne: '+vor.map(tonName).join(' '):'';
     const fest=swGemLied.modus()==='fest', F=G.fest;
-    ['gemsilbe','gemnaechst','gemfort','gemband','gemfertig','gemvorne','gemspiel'].forEach(id=>$g(id).style.display=fest?'none':'');
-    $g('gemfest').hidden=!fest;
+    const zeig=fest&&!!F&&G.zeigenAn;   // Feste Töne mit Anzeige, wer dran ist
+    $g('gemarea').classList.toggle('zeig',zeig);
+    ['gemnaechst','gemfort','gemband','gemfertig','gemvorne'].forEach(id=>$g(id).style.display=fest&&!zeig?'none':'');
+    $g('gemsilbe').style.display=fest?'none':'';
+    $g('gemspiel').style.display=fest?'none':'';
+    $g('gemfest').hidden=!fest; $g('gemzeigenzeile').hidden=!fest||!F;
+    const zb=$g('gemzeigen'); zb.setAttribute('aria-pressed',G.zeigenAn); zb.textContent='👀 Zeigen, wer dran ist: '+(G.zeigenAn?'EIN':'AUS');
     $g('gemhinweis').hidden=!(fest&&!F&&T.length);
     $g('gemhinweis').textContent='Dieses Lied hat '+vor.length+' verschiedene Töne – „Feste Töne“ geht nur mit höchstens 5 (⭐). Bitte ein ⭐-Lied wählen oder „Reihum“ spielen.';
     if(fest){
       const box=$g('gemfest');
       if(box.childElementCount!==5){ box.innerHTML=[1,2,3,4,5].map(i=>'<button style="--c:'+FARBEN[i]+'" data-sw="'+i+'">SW'+i+'<b></b></button>').join(''); box.querySelectorAll('button').forEach(b=>knopf(b,+b.dataset.sw)); }
-      box.querySelectorAll('button').forEach(b=>{ const m=F&&F[+b.dataset.sw]; b.querySelector('b').textContent=m!=null?tonName(m):'–'; b.disabled=m==null; });
-      $g('gemjetzt').textContent=G.letzt!=null?tonName(G.letzt):'♪';
-      $g('gemwer').textContent=G.letzt!=null&&G.wer?'gespielt von SW'+G.wer:(F?'Jeder SoundWhacker spielt immer seinen Ton':'');
-      if(G.letzt!=null){ const j=$g('gemjetzt'); j.classList.add('puls'); setTimeout(()=>j.classList.remove('puls'),120); }
+      const swVon=t=>{ if(!t||!F) return 0; for(let i=1;i<=5;i++) if(t.n.includes(F[i])) return i; return 0; };
+      const fertig=T.length>0&&p>=T.length, dranSW=zeig&&!fertig?swVon(T[p]):0;
+      box.querySelectorAll('button').forEach(b=>{ const i=+b.dataset.sw, m=F&&F[i]; b.querySelector('b').textContent=m!=null?tonName(m):'–'; b.disabled=m==null; b.classList.toggle('dran',i===dranSW); });
+      const d=$g('gemdran'); d.hidden=!dranSW;
+      if(dranSW){
+        d.style.setProperty('--c',FARBEN[dranSW]);
+        d.querySelector('.nr').textContent=dranSW; d.querySelector('.ton').textContent=tonName(F[dranSW]);
+        d.querySelector('.txt').textContent='SW'+dranSW+' ist dran!';
+        const nach=[1,2,3].map(k=>swVon(T[p+k])).filter(Boolean);
+        d.querySelector('.danach').innerHTML=nach.length?'danach: '+nach.map(i=>'<i style="background:'+FARBEN[i]+'">'+i+'</i>').join(''):'';
+        if(d.dataset.p!==String(p)){ d.dataset.p=p; d.classList.remove('wechsel'); void d.offsetWidth; d.classList.add('wechsel'); }
+      }
+      $g('gemjetzt').style.display=dranSW?'none':'';
+      $g('gemjetzt').textContent=fertig?'':(G.letzt!=null?tonName(G.letzt):'♪');
+      $g('gemwer').textContent=zeig?(fertig?T.length+' Töne gespielt':(p>0?p+' von '+T.length+' · zuletzt: '+tonText(T[p-1])+(T[p-1].s?' („'+T[p-1].s+'“)':''):'Der leuchtende SoundWhacker ist dran')):(G.letzt!=null&&G.wer?'gespielt von SW'+G.wer:(F?'Jeder SoundWhacker spielt immer seinen Ton':''));
+      if(!zeig){ if(G.letzt!=null){ const j=$g('gemjetzt'); j.classList.add('puls'); setTimeout(()=>j.classList.remove('puls'),120); } return; }
+      // Liedverlauf mit SW-Nummern
+      $g('gemfertig').hidden=!fertig;
+      $g('gemnaechst').textContent=fertig?T.length+' Töne gespielt':p+' von '+T.length;
+      $g('gemfort').firstElementChild.style.width=(T.length?100*p/T.length:0)+'%';
+      const band=$g('gemband'); if(band.childElementCount!==T.length||!band.dataset.fest){ band.dataset.fest='1'; band.innerHTML=T.map(t=>{ const i=swVon(t); return '<span style="border-color:'+(FARBEN[i]||'')+'"><i style="color:'+(FARBEN[i]||'#888')+'">SW'+i+'</i>'+tonText(t)+'</span>'; }).join(''); }
+      [...band.children].forEach((el,i)=>{ el.className=i<p?'war':i===p?'jetzt':''; });
+      const cur=band.children[Math.min(p,T.length-1)]; if(cur&&cur.scrollIntoView&&p>0) cur.scrollIntoView({block:'nearest',inline:'nearest'});
       return;
     }
+    $g('gemdran').hidden=true; $g('gemjetzt').style.display=''; if($g('gemband').dataset.fest){ delete $g('gemband').dataset.fest; $g('gemband').innerHTML=''; }
     const letzter=p>0?T[p-1]:null;
     $g('gemjetzt').textContent=letzter?tonText(letzter):'♪';
     $g('gemsilbe').textContent=letzter&&letzter.s?letzter.s:'';
@@ -2321,6 +2382,7 @@ document.getElementById('hilfeback').onclick=()=>{
     k.addEventListener('selectstart',e=>e.preventDefault());
   }
   knopf($g('gemspiel'),1);
+  $g('gemzeigen').onclick=()=>{ $g('gemzeigen').blur(); puls=0; window.swGemein.zeigen(!window.swGemein.zeigenAn); };
   $g('gemvorne').onclick=()=>{ $g('gemvorne').blur(); puls=0; window.swGemein.vonVorne(); };
 })();
 
