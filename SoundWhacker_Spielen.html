@@ -316,6 +316,30 @@ button.btn{font-size:13px;white-space:nowrap}
   overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 #hilfearea.open{display:flex}
+#gemarea{
+  display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
+  background:var(--bg);flex-direction:column;align-items:center;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#gemarea.open{display:flex}
+#gemback{position:fixed;top:16px;left:16px;z-index:101;background:#0f1724;border:1px solid #25324b;color:var(--fg);border-radius:10px;padding:10px 18px;cursor:pointer;font-size:15px}
+#gemarea .gemkopf{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
+#gemlied{font-size:20px;padding:10px 12px;min-height:52px;max-width:100%;background:#0e1626;color:#e0e8ff;border:1px solid #25324b;border-radius:12px}
+#gemvorne{font-size:22px;padding:14px 26px;border-radius:14px;font-weight:600}
+#gembuehne{width:100%;background:#111826;border:1px solid #1d2940;border-radius:20px;padding:22px 18px;text-align:center}
+#gemtitel{font-size:24px;font-weight:700;color:#FFD700;margin-bottom:10px}
+#gemjetzt{font-size:clamp(64px,16vw,140px);font-weight:800;line-height:1.05;min-height:1.1em;transition:transform .08s}
+#gemjetzt.puls{transform:scale(1.08)}
+#gemsilbe{font-size:clamp(26px,6vw,46px);min-height:1.3em;color:#cfe0ff;margin-top:4px}
+#gemwer{font-size:18px;color:#8aa0b3;min-height:1.4em;margin-top:6px}
+#gemnaechst{font-size:20px;color:#8aa0b3;margin-top:10px}
+#gemband{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+#gemband span{min-width:30px;padding:4px 6px;border-radius:8px;background:#0e1626;border:1px solid #1d2940;font-size:15px;color:#6f84a0}
+#gemband span.war{color:#a8ffb0;border-color:#2c5a34;background:#10251a}
+#gemband span.jetzt{color:#111;background:#FFD700;border-color:#FFD700;font-weight:700}
+#gemfort{height:12px;background:#0e1626;border-radius:6px;margin-top:18px;overflow:hidden}
+#gemfort i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4a8,#FFD700);transition:width .15s}
+#gemfertig{font-size:clamp(34px,8vw,64px);font-weight:800;color:#FFD700;margin-top:10px}
 #gedankenarea{
   display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;
   background:var(--bg);flex-direction:column;align-items:center;
@@ -461,6 +485,7 @@ button.btn{font-size:13px;white-space:nowrap}
   <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px">
     <button id="melopen"      class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;color:#FFD700;border-color:#FFD700">&#9834; Soundwhackers einstellen</button>
     <button id="liveopen"     class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">Unterst&uuml;tzt Spielen</button>
+    <button id="gemopen"      class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#127926; Gemeinsame Melodie</button>
     <button id="looperopen"   class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#128257; Looper</button>
     <button id="arpmakeropen" class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#127929; Arpeggio-Maker</button>
     <button id="settingsopen" class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">&#9881; Einstellungen</button>
@@ -896,6 +921,7 @@ button.btn{font-size:13px;white-space:nowrap}
         <li>Jeder SW (Taste 1&ndash;5) spielt je nach Einstellung einen <b>Akkord/Ton</b>, eine <b>Melodie</b> (Schritt f&uuml;r Schritt oder als Arpeggio) oder <b>improvisiert</b></li>
         <li>Alles einstellen unter <b>&#9834; Soundwhackers einstellen</b>; Lautst&auml;rke mit den Reglern auf der Startseite</li>
         <li><b>Unterst&uuml;tzt Spielen</b>: Akkord-Slots f&uuml;r SW1 und das Akkord-Pad zum Antippen</li>
+        <li><b>&#127926; Gemeinsame Melodie</b>: alle SWs spielen zusammen ein Lied &ndash; egal welcher SW gedr&uuml;ckt wird, es kommt immer der <b>n&auml;chste Ton</b>. Lieder aus der Tischharfe (auch dort eingespielte eigene Lieder) oder die Melodie eines SW; jeder SW klingt mit seinem Instrument</li>
         <li><b>&#127929; Arpeggio-Maker</b>: erzeugt ein Arpeggio &uuml;ber 5 Akkorde mit einem Instrument der SoundFont und l&auml;dt es als 5 Loops in den Looper</li>
         <li><b>&#128257; Looper</b>: 5 Loop-Kan&auml;le mit Loop-Generator. Steht ein SW auf <b>Looper EIN</b>, steuert SW&nbsp;1 Kanal&nbsp;1, SW&nbsp;2 Kanal&nbsp;2 &hellip;</li>
         <li>Am PC kannst du die SWs mit den Tasten 1&ndash;5 ausprobieren</li>
@@ -909,6 +935,30 @@ button.btn{font-size:13px;white-space:nowrap}
       </div>
     </div>
 
+  </div>
+</div>
+
+<div id="gemarea">
+  <button id="gemback">&#127968; Home</button>
+  <div style="width:100%;max-width:820px;padding:76px 16px 40px">
+    <div class="gemkopf">
+      <select id="gemlied" aria-label="Lied"></select>
+      <button id="gemvorne" class="btn">&#9198; Von vorne</button>
+    </div>
+    <div id="gembuehne">
+      <div id="gemtitel"></div>
+      <div id="gemjetzt"></div>
+      <div id="gemsilbe"></div>
+      <div id="gemwer"></div>
+      <div id="gemfertig" hidden>&#127881; Geschafft!</div>
+      <div id="gemnaechst"></div>
+      <div id="gemfort"><i></i></div>
+      <div id="gemband"></div>
+    </div>
+    <div class="mut" style="text-align:center;margin-top:16px;font-size:15px;line-height:1.6">
+      Egal welcher SoundWhacker (oder Taste 1&ndash;5): <b>jeder Schlag spielt den n&auml;chsten Ton</b>. Jeder SW klingt mit seinem eigenen Instrument (einstellen unter &#9834; Soundwhackers einstellen).<br>
+      Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.
+    </div>
   </div>
 </div>
 
@@ -1298,9 +1348,38 @@ button.btn{font-size:13px;white-space:nowrap}
     if (id === 1 && S.activeSlot > 0 && S.chordRoot[1] >= 0) return stepToSemi(S.slots[S.activeSlot].ts);
     return stepToSemi(S.ts[id]);
   }
+  // ---------- Gemeinsame Melodie: alle SW spielen zusammen ein Lied – jeder Schlag (egal welcher SW) = nächster Ton ----------
+  // Jeder SW klingt mit seinem eigenen Instrument; am Liedende passiert nichts mehr, bis „Von vorne“ gedrückt wird.
+  const GM = { aktiv: false, toene: [], pos: 0, wer: 0, klingt: [0, 1, 2, 3, 4, 5].map(() => null), onChange: null };
+  const gmMeld = () => { if (GM.onChange) try { GM.onChange(); } catch (e) {} };
+  function gmLos(id) { if (GM.klingt[id]) { GM.klingt[id].forEach(n => off(id, n)); GM.klingt[id] = null; } }
+  function gmTouch(id, pressed) {
+    if (!pressed) { gmLos(id); gmMeld(); return; }
+    kick();
+    if (!A.synth) { status('🔊 Klang wird geladen – gleich nochmal'); return; }   // Ton nicht „verschenken“, solange noch nichts klingt
+    gmLos(id);
+    if (GM.pos >= GM.toene.length) { gmMeld(); return; }
+    const t = GM.toene[GM.pos++];
+    t.n.forEach(n => on(id, n, 127)); GM.klingt[id] = t.n; GM.wer = id;
+    gmMeld();
+  }
+  window.swGemein = {
+    start(toene) {   // toene: [{ n: [Midi …], s: 'Silbe' }]
+      for (let id = 1; id <= 5; id++) { if (R.touched[id]) touch(id, false); gmLos(id); }
+      GM.toene = toene || []; GM.pos = 0; GM.wer = 0; GM.aktiv = true; gmMeld();
+    },
+    stop() { for (let id = 1; id <= 5; id++) { gmLos(id); R.touched[id] = false; } GM.aktiv = false; gmMeld(); },
+    vonVorne() { for (let id = 1; id <= 5; id++) gmLos(id); GM.pos = 0; GM.wer = 0; gmMeld(); },
+    get aktiv() { return GM.aktiv; }, get pos() { return GM.pos; }, get anzahl() { return GM.toene.length; },
+    get toene() { return GM.toene; }, get wer() { return GM.wer; },
+    set onChange(f) { GM.onChange = f; }
+  };
+  window.swMelodie = id => (S.mel[id] || []).filter(st => st.n && st.n.length).map(st => ({ n: st.n.slice() }));   // eigene Melodie eines SW
+
   function touch(id, pressed) {
     if (R.touched[id] === pressed) return;
     R.touched[id] = pressed;
+    if (GM.aktiv) { gmTouch(id, pressed); return; }
     if (S.loopOn[id]) {   // Looper: SW schaltet seinen Kanal – halten oder an/aus wie bei der Melodie (👌 / 🔁; Live = halten)
       if (window.swLooper) window.swLooper.press((S.loopCh[id] || id) - 1, pressed, S.arpTgm[id] && !S.liveMode[id] ? 'toggle' : 'hold', 'sw' + id);
       return;
@@ -2115,6 +2194,61 @@ document.getElementById('hilfeopen').onclick=()=>{
 document.getElementById('hilfeback').onclick=()=>{
   document.getElementById('hilfearea').classList.remove('open');
 };
+
+// ===== Gemeinsame Melodie (Lieder aus der Tischharfe + eigene Melodien der SWs) =====
+(function(){
+  const $g=id=>document.getElementById(id);
+  const NAM=['c','cis','d','dis','e','f','fis','g','gis','a','b','h'];
+  const tonName=m=>{ if(window.HARFE&&HARFE.tonName) return HARFE.tonName(m); const o=Math.floor(m/12)-1,n=NAM[((m%12)+12)%12]; return o>=3?n+'′'.repeat(o-3):n[0].toUpperCase()+n.slice(1); };
+  const KEY='sw-gemein-lied';
+  let liederLaden=null;
+  function lieder(){   // Liedersammlung der Tischharfe (gleiche Seite, eigene Lieder inklusive)
+    if(window.HARFE) return Promise.resolve();
+    return liederLaden||(liederLaden=new Promise(ok=>{ const sc=document.createElement('script'); sc.src='../tischharfe/lieder.js?v=1'; sc.onload=ok; sc.onerror=()=>{ liederLaden=null; ok(); }; document.head.appendChild(sc); }));
+  }
+  function auswahlBauen(){
+    const sel=$g('gemlied'), alt=sel.value||localStorage.getItem(KEY)||'lied:entchen'; sel.innerHTML='';
+    const gruppe=name=>{ const g=document.createElement('optgroup'); g.label=name; sel.appendChild(g); return g; };
+    if(window.HARFE){
+      const gr={}; HARFE.LIEDER.forEach(l=>{ (gr[l.gruppe]||(gr[l.gruppe]=gruppe(l.gruppe))).appendChild(new Option(l.titel,'lied:'+l.id)); });
+    }
+    const g=gruppe('Melodien der Soundwhacker');
+    for(let i=1;i<=5;i++){ const m=window.swMelodie?swMelodie(i):[]; const o=new Option('Melodie von SW'+i+(m.length?' ('+m.length+' Töne)':' (leer)'),'sw:'+i); o.disabled=!m.length; g.appendChild(o); }
+    sel.value=alt; if(sel.selectedIndex<0||sel.options[sel.selectedIndex].disabled){ const erste=[...sel.options].find(o=>!o.disabled); if(erste) sel.value=erste.value; }
+  }
+  function toeneVon(wert){
+    if(wert.startsWith('sw:')){ const i=+wert.slice(3); return { titel:'Melodie von SW'+i, toene:swMelodie(i) }; }
+    const l=window.HARFE&&HARFE.LIEDER.find(x=>'lied:'+x.id===wert); if(!l) return { titel:'', toene:[] };
+    return { titel:l.titel, toene:HARFE.parse(l).noten.filter(n=>n.midi!==null).map(n=>({ n:[n.midi], s:n.silbe||'' })) };
+  }
+  let titel='', puls=0;
+  const tonText=t=>t?t.n.map(tonName).join(' '):'';
+  function zeigen(){
+    const G=window.swGemein; if(!G) return;
+    const T=G.toene, p=G.pos, fertig=T.length>0&&p>=T.length;
+    $g('gemtitel').textContent=titel||'Kein Lied gewählt';
+    const letzter=p>0?T[p-1]:null;
+    $g('gemjetzt').textContent=letzter?tonText(letzter):'♪';
+    $g('gemsilbe').textContent=letzter&&letzter.s?letzter.s:'';
+    $g('gemwer').textContent=p===0?(T.length?'Los geht’s – irgendeinen SoundWhacker drücken!':''):(G.wer?'gespielt von SW'+G.wer:'');
+    $g('gemfertig').hidden=!fertig;
+    $g('gemnaechst').textContent=!fertig&&T.length?('Nächster Ton: '+tonText(T[p])+'  ·  '+p+' von '+T.length):(fertig?T.length+' Töne gespielt':'');
+    $g('gemfort').firstElementChild.style.width=(T.length?100*p/T.length:0)+'%';
+    const band=$g('gemband'); if(band.childElementCount!==T.length){ band.innerHTML=T.map(t=>'<span>'+tonText(t)+'</span>').join(''); }
+    [...band.children].forEach((el,i)=>{ el.className=i<p-1?'war':i===p-1?'jetzt':''; });
+    const cur=band.children[Math.max(0,p-1)]; if(cur&&cur.scrollIntoView&&p>0) cur.scrollIntoView({block:'nearest',inline:'nearest'});
+    if(letzter&&p!==puls){ puls=p; const j=$g('gemjetzt'); j.classList.add('puls'); setTimeout(()=>j.classList.remove('puls'),120); }
+  }
+  function laden(){ const w=$g('gemlied').value; try{ localStorage.setItem(KEY,w); }catch(e){} const r=toeneVon(w); titel=r.titel; puls=0; $g('gemband').innerHTML=''; window.swGemein.start(r.toene); }
+  $g('gemopen').onclick=async()=>{
+    $g('gemarea').classList.add('open');
+    await lieder(); auswahlBauen();
+    window.swGemein.onChange=zeigen; laden();
+  };
+  $g('gemback').onclick=()=>{ window.swGemein.stop(); window.swGemein.onChange=null; $g('gemarea').classList.remove('open'); };
+  $g('gemlied').onchange=()=>{ $g('gemlied').blur(); laden(); };
+  $g('gemvorne').onclick=()=>{ $g('gemvorne').blur(); puls=0; window.swGemein.vonVorne(); };
+})();
 
 function renderInstrList(){
   const wrap=document.getElementById('instrlistwrap');
