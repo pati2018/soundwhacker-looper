@@ -328,6 +328,10 @@ button.btn{font-size:13px;white-space:nowrap}
 #gemvorne{font-size:22px;padding:14px 26px;border-radius:14px;font-weight:600}
 #gembuehne{width:100%;background:#111826;border:1px solid #1d2940;border-radius:20px;padding:16px 18px;text-align:center}
 #gemtitel{font-size:24px;font-weight:700;color:#FFD700;margin-bottom:10px}
+#arpSyncBtn{transition:background .15s,border-color .15s}
+#syncToast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:#2f9e55;color:#fff;font-size:18px;font-weight:700;padding:14px 22px;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:300;max-width:calc(100% - 32px);text-align:center}
+#syncToast.zeigen{opacity:1;transform:translate(-50%,0)}
+#arpSyncBtn.ok{background:#2f9e55;border-color:#2f9e55;color:#fff;transform:scale(1.08)}
 #gemvorrat{font-size:16px;color:#8aa0b3;margin:-4px 0 6px}
 #gemjetzt{font-size:clamp(64px,16vw,140px);font-weight:800;line-height:1.05;min-height:1.1em;transition:transform .08s}
 #gemjetzt.puls{transform:scale(1.08)}
@@ -3425,7 +3429,13 @@ async function setAllArp(on){
 }
 document.getElementById('allArpBtn').onclick=()=>setAllArp(!allArpRunning);
 document.getElementById('arpSyncBtn').onclick=async()=>{
+  const b=document.getElementById('arpSyncBtn');
   await fetch('/arp_sync',{method:'POST'}).catch(()=>{});
+  // Rückmeldung: Knopf leuchtet kurz grün mit Häkchen, dazu ein Hinweis oben
+  clearTimeout(b._t); b.blur(); b.classList.add('ok'); b.innerHTML='&#10003;';
+  let t=document.getElementById('syncToast'); if(!t){ t=document.createElement('div'); t.id='syncToast'; document.body.appendChild(t); }
+  t.textContent='\u21BB Zur\u00fcckgesetzt \u2013 Melodien wieder von vorne'; t.classList.add('zeigen');
+  b._t=setTimeout(()=>{ b.classList.remove('ok'); b.innerHTML='&#8635;'; t.classList.remove('zeigen'); },1800);
 };
 
 // ===== SW vorhören (Hauptseite): gedrückt halten = SW berühren – spielt, was der SW eingestellt hat =====
