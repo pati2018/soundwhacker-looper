@@ -893,6 +893,17 @@ button.btn{font-size:13px;white-space:nowrap}
       </div>
     </div>
 
+    <!-- ===== Klang schonen (ältere iPads) ===== -->
+    <div class="card" style="margin-top:10px">
+      <div class="set-hdr" data-sec="sec-schonen">
+        <span>&#128295; Klang schonen (&auml;ltere iPads)</span><span class="set-arr">&#9654;</span>
+      </div>
+      <div id="sec-schonen" style="display:none;margin-top:14px">
+        <div class="mut small" style="margin-bottom:12px">Knackt oder kratzt der Klang auf einem &auml;lteren iPad (z.&nbsp;B. iPad 6. Generation)? Dann hier einschalten: gr&ouml;&szlig;erer Audio-Puffer, sparsamere Klangberechnung, h&ouml;chstens 40 T&ouml;ne gleichzeitig und etwas leiser. Gilt nur f&uuml;r dieses Ger&auml;t. Nach dem Umschalten die Seite einmal <b>neu laden</b>.</div>
+        <label style="display:flex;gap:10px;align-items:center;font-size:17px;cursor:pointer"><input id="schonenCb" type="checkbox" style="width:24px;height:24px"> Klang schonen</label>
+        <div id="schonenStat" class="mut small" style="margin-top:8px"></div>
+      </div>
+    </div>
     <!-- ===== Melodie kopieren ===== -->
     <div class="card" style="margin-top:10px">
       <div class="set-hdr" data-sec="sec-melcopy">
@@ -1267,10 +1278,21 @@ button.btn{font-size:13px;white-space:nowrap}
     try { await sfDb('readwrite', s => s.put({ ver: SF_VER, bytes }, 'builtin')); } catch (e) {}
     return bytes;
   }
+  // „Klang schonen“ für ältere iPads (gilt nur für dieses Gerät): größerer Audio-Puffer, einfachere Klangberechnung,
+  // weniger gleichzeitige Stimmen und etwas leiser – gegen Knacken/Kratzen, wenn das Gerät an seine Grenze kommt
+  const schonend = () => { try { return localStorage.getItem('sw-klang-schonen') === '1'; } catch (e) { return false; } };
+  function schonenAnwenden() {
+    if (!A.synth) return;
+    const an = schonend();
+    try { A.synth.setSystemParameter('interpolationType', an ? 0 : 2); } catch (e) {}   // 0 = linear (sparsam), 2 = hermite (Standard)
+    try { A.synth.setSystemParameter('voiceCap', an ? 40 : 350); } catch (e) {}
+    if (A.out) A.out.gain.value = an ? 1.8 : 3;
+  }
+  window.swKlangSchonen = { get: schonend, set: v => { try { localStorage.setItem('sw-klang-schonen', v ? '1' : '0'); } catch (e) {} schonenAnwenden(); } };
   function audioCtx() {
     if (A.ctx) return A.ctx;
     try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
-    A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+    A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: schonend() ? 'playback' : 'interactive' });
     (window.swCtxs = window.swCtxs || []).push(A.ctx);   // Kopfsteuerung: Ton beim Kamerastart kurz anhalten können
     return A.ctx;
   }
@@ -1297,6 +1319,7 @@ button.btn{font-size:13px;white-space:nowrap}
         A.synth = synth;
         if (!S.instrList.length) { S.instrList = sfInstrList(); save(); if (window.swOnInstrList) window.swOnInstrList(); }   // beim ersten Start aus der SoundFont
         for (let id = 1; id <= 5; id++) applyChannel(id);
+        schonenAnwenden();
         if (window.swOnSynthReady) window.swOnSynthReady();
         status('');
         return synth;
@@ -2225,6 +2248,13 @@ document.querySelectorAll('.set-hdr').forEach(h=>{
   window.loadMidiChanUI();
 })();
 
+// ===== Klang schonen =====
+(function(){
+  const cb=document.getElementById('schonenCb'), st=document.getElementById('schonenStat');
+  if(!cb||!window.swKlangSchonen) return;
+  cb.checked=swKlangSchonen.get();
+  cb.onchange=()=>{ swKlangSchonen.set(cb.checked); st.textContent=(cb.checked?'Eingeschaltet':'Ausgeschaltet')+' – bitte die Seite einmal neu laden, damit alles wirkt.'; };
+})();
 // ===== Melodie kopieren =====
 (function(){
   const fromSel=document.getElementById('melCopyFrom');
