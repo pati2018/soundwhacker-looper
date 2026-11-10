@@ -1425,7 +1425,8 @@ button.btn{font-size:13px;white-space:nowrap}
       }
       gmMeld(); return;
     }
-    if (GM.pos >= GM.toene.length) { gmMeld(); return; }
+    if (!GM.toene.length) { gmMeld(); return; }
+    if (GM.pos >= GM.toene.length) GM.pos = 0;   // Reihum: nach dem letzten Ton geht es einfach wieder von vorn los
     const t = GM.toene[GM.pos++];
     t.n.forEach(n => on(id, n, 127)); GM.klingt[id] = t.n; GM.wer = id;
     gmMeld();
@@ -2350,8 +2351,8 @@ document.getElementById('hilfeback').onclick=()=>{
     $g('gemjetzt').textContent=letzter?tonText(letzter):'♪';
     $g('gemsilbe').textContent=letzter&&letzter.s?letzter.s:'';
     $g('gemwer').textContent=p===0?(T.length?'Los geht’s – irgendeinen SoundWhacker drücken!':''):(G.wer?'gespielt von SW'+G.wer:'');
-    $g('gemfertig').hidden=!fertig;
-    $g('gemnaechst').textContent=!fertig&&T.length?('Nächster Ton: '+tonText(T[p])+'  ·  '+p+' von '+T.length):(fertig?T.length+' Töne gespielt':'');
+    $g('gemfertig').hidden=true;   // Reihum: kein „Geschafft“ – das Lied läuft einfach weiter
+    $g('gemnaechst').textContent=T.length?('Nächster Ton: '+tonText(T[p%T.length])+'  ·  '+(fertig?'Lied zu Ende – weiter geht’s von vorn':p+' von '+T.length)):'';
     $g('gemfort').firstElementChild.style.width=(T.length?100*p/T.length:0)+'%';
     const band=$g('gemband'); if(band.childElementCount!==T.length){ band.innerHTML=T.map(t=>'<span>'+tonText(t)+'</span>').join(''); }
     [...band.children].forEach((el,i)=>{ el.className=i<p-1?'war':i===p-1?'jetzt':''; });
