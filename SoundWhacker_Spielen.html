@@ -983,7 +983,7 @@ button.btn{font-size:13px;white-space:nowrap}
         <li>Alles einstellen unter <b>&#9834; Soundwhackers einstellen</b>; Lautst&auml;rke mit den Reglern auf der Startseite</li>
         <li><b>Unterst&uuml;tzt Spielen</b>: Akkord-Slots f&uuml;r SW1 und das Akkord-Pad zum Antippen</li>
         <li><b>&#127926; Gemeinsame Melodie</b>: alle SWs spielen zusammen ein Lied &ndash; egal welcher SW gedr&uuml;ckt wird, es kommt immer der <b>n&auml;chste Ton</b>. Lieder aus der Tischharfe (auch dort eingespielte eigene Lieder) oder die Melodie eines SW; jeder SW klingt mit seinem Instrument</li>
-        <li><b>&#127929; Arpeggio-Maker</b>: erzeugt ein Arpeggio &uuml;ber 5 Akkorde mit einem Instrument der SoundFont und l&auml;dt es als 5 Loops in den Looper</li>
+        <li><b>&#127929; Arpeggio-Maker</b>: erzeugt ein Arpeggio oder eine Gitarren-Spielweise (Anschlagen: Folk, Pop, Rock, Reggae &hellip; &middot; Zupfen: Travis, Country, Ballade, Walzer &hellip;) &uuml;ber 5 Akkorde mit einem Instrument der SoundFont und l&auml;dt es als 5 Loops in den Looper</li>
         <li><b>&#128257; Looper</b>: 5 Loop-Kan&auml;le mit Loop-Generator. Steht ein SW auf <b>Looper EIN</b>, steuert SW&nbsp;1 Kanal&nbsp;1, SW&nbsp;2 Kanal&nbsp;2 &hellip;</li>
         <li>Am PC kannst du die SWs mit den Tasten 1&ndash;5 ausprobieren</li>
         <li>Eigene Kl&auml;nge: Einstellungen &rarr; Instrumente &rarr; <b>Eigene SoundFont laden (.sf2)</b> (am iPad m&ouml;glichst unter 30&ndash;40&nbsp;MB)</li>
@@ -1184,7 +1184,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <div class="row" style="margin-top:10px">
       <label class="small mut">Tempo <input id="sfBpm" type="number" min="40" max="220" step="1" style="width:72px" value="100"> BPM</label>
       <select id="sfBars" hidden><option value="2" selected>2</option></select>
-      <label class="small mut">Muster <select id="sfPattern"><option value="up">aufwärts</option><option value="down">abwärts</option><option value="updown" selected>auf und ab</option><option value="downup">ab und auf</option><option value="alberti">Alberti (1-5-3-5)</option><option value="outin">au&szlig;en nach innen</option></select></label>
+      <label class="small mut">Muster <select id="sfPattern"><optgroup label="Arpeggio"><option value="up">aufwärts</option><option value="down">abwärts</option><option value="updown" selected>auf und ab</option><option value="downup">ab und auf</option><option value="alberti">Alberti (1-5-3-5)</option><option value="outin">au&szlig;en nach innen</option></optgroup><optgroup label="Anschlagen (Gitarre)"><option value="g:folk">Folk</option><option value="g:pop">Pop</option><option value="g:rock">Rock</option><option value="g:reggae">Reggae</option><option value="g:shuffle">Shuffle</option><option value="g:bossa">Bossa Nova</option><option value="g:funk">Funk</option><option value="g:punk">Punk</option></optgroup><optgroup label="Zupfen (Gitarre)"><option value="g:travis">Travis</option><option value="g:country">Country</option><option value="g:arp">Arpeggio</option><option value="g:ballad">Ballade</option><option value="g:waltz">Walzer ¾</option><option value="g:pinch">Fingerpicking</option><option value="g:harp">Harfe</option><option value="g:six8">6/8</option></optgroup></select></label>
       <label class="small mut">Notenwert <select id="sfRate"><option value="2">Achtel</option><option value="4" selected>Sechzehntel</option></select></label>
       <label class="small mut">Oktaven <select id="sfOct"><option>1</option><option selected>2</option><option>3</option></select></label>
       <label class="small mut">Lage <select id="sfReg"><option value="36">tief</option><option value="48" selected>mittel</option><option value="60">hoch</option></select></label>
@@ -6145,6 +6145,60 @@ const GEN = (() => {
     return build(best);
   }
 
+  // Spielweisen aus der Gitarren-App (Smart Instruments): 16 Schritte = ein 4/4-Takt in Sechzehnteln (12 = ¾-Takt)
+  // Anschlagen: [Schritt, 'D'ab/'U'auf, Stärke, 'low'/'high' Saiten, gedämpft] · Zupfen: [Schritt, Saiten, Stärke] – B = Bass, A = Wechselbass, 1–3 = hohe Saiten
+  const GPAT = {
+    folk:   { kind: 'strum', len: 16, ev: [[0,'D',.95],[4,'D',.7],[6,'U',.55],[10,'U',.6],[12,'D',.75],[14,'U',.55]] },
+    pop:    { kind: 'strum', len: 16, ev: [[0,'D',.95],[3,'U',.5],[6,'U',.6],[8,'D',.85],[11,'U',.5],[14,'U',.6]] },
+    rock:   { kind: 'strum', len: 16, ev: [[0,'D',1,'low'],[2,'D',.6,'low',1],[4,'D',.6,'low',1],[6,'D',.95,'low'],[8,'D',.6,'low',1],[10,'D',.6,'low',1],[12,'D',.95,'low'],[14,'D',.65,'low',1]] },
+    reggae: { kind: 'strum', len: 16, ev: [[4,'U',.85,'high',1],[12,'U',.85,'high',1],[14,'D',.55,'high',1]] },
+    shuffle:{ kind: 'strum', len: 16, ev: [[0,'D',.95],[3,'U',.5],[4,'D',.75],[7,'U',.5],[8,'D',.85],[11,'U',.5],[12,'D',.75],[15,'U',.5]] },
+    bossa:  { kind: 'strum', len: 16, ev: [[0,'D',.8],[3,'U',.55,'high'],[6,'D',.7],[10,'U',.6,'high'],[12,'D',.7],[14,'U',.5,'high']] },
+    funk:   { kind: 'strum', len: 16, ev: [[0,'D',.95,'high'],[2,'D',.45,'high',1],[3,'U',.4,'high',1],[6,'U',.75,'high',1],[7,'D',.4,'high',1],[10,'D',.85,'high',1],[11,'U',.45,'high',1],[14,'U',.7,'high'],[15,'D',.4,'high',1]] },
+    punk:   { kind: 'strum', len: 16, ev: [[0,'D',1,'low'],[2,'D',.8,'low'],[4,'D',.9,'low'],[6,'D',.8,'low'],[8,'D',1,'low'],[10,'D',.8,'low'],[12,'D',.9,'low'],[14,'D',.8,'low']] },
+    travis: { kind: 'pick', len: 16, ev: [[0,'B1',.9],[2,'3',.6],[4,'A',.75],[6,'2',.6],[8,'B',.8],[10,'3',.6],[12,'A',.75],[14,'2',.6]] },
+    country:{ kind: 'pick', len: 16, ev: [[0,'B',.95],[4,'123',.7],[7,'3',.45],[8,'A',.85],[10,'2',.4],[12,'123',.7],[14,'23',.5]] },
+    arp:    { kind: 'pick', len: 16, ev: [[0,'B',.9],[2,'1',.6],[4,'2',.65],[6,'3',.7],[8,'A',.75],[10,'3',.65],[12,'2',.6],[14,'1',.6]] },
+    ballad: { kind: 'pick', len: 16, ev: [[0,'B',.9],[4,'123',.65],[6,'2',.5],[8,'A',.75],[12,'123',.65],[14,'1',.5]] },
+    waltz:  { kind: 'pick', len: 12, ev: [[0,'B',.9],[4,'123',.6],[8,'123',.6]] },
+    pinch:  { kind: 'pick', len: 16, ev: [[0,'B1',.9],[2,'2',.55],[4,'3',.6],[6,'2',.5],[8,'A1',.8],[10,'2',.55],[12,'3',.6],[14,'2',.5]] },
+    harp:   { kind: 'pick', len: 16, ev: [[0,'B',.9],[1,'1',.45],[2,'2',.5],[3,'3',.55],[4,'2',.45],[5,'1',.45],[6,'A',.7],[7,'1',.45],[8,'B',.8],[9,'1',.45],[10,'2',.5],[11,'3',.55],[12,'2',.45],[13,'1',.45],[14,'A',.7],[15,'1',.45]] },
+    six8:   { kind: 'pick', len: 12, ev: [[0,'B',.9],[2,'1',.55],[4,'2',.6],[6,'3',.65],[8,'2',.55],[10,'1',.5]] },
+  };
+  const gpat = p => (typeof p === 'string' && p.startsWith('g:')) ? GPAT[p.slice(2)] || null : null;
+  // Sechs „Saiten“ wie ein Barré-Griff (E-Form): Grundton, Quinte, Oktave, Terz, Quinte, Oktave – nah an der gewählten Lage
+  function gVoicing(ch, reg) {
+    const root = reg + ((ch.pc + 6) % 12) - 6, t = ch.m === 'minor' ? 15 : 16;
+    return [0, 7, 12, t, 19, 24].map(x => root + x);
+  }
+  // Noten-Ereignisse einer Gitarren-Spielweise über `takte` Takte; jede Saite klingt, bis sie wieder angeschlagen wird
+  function gEvents(pat, ch, reg, takte, stepLen) {
+    const v = gVoicing(ch, reg), ev = [], frei = [0, 0, 0, 0, 0, 0], last = [null, null, null, null, null, null];
+    const hit = (s, t, vel, kurz) => {
+      if (last[s] !== null) ev.push({ t: Math.max(last[s].t + 1, t - 1), on: false, n: v[s] });
+      ev.push({ t, on: true, n: v[s], v: Math.max(30, Math.min(127, Math.round(40 + vel * 87))) });
+      last[s] = { t };
+      if (kurz) { ev.push({ t: t + Math.round(stepLen * .9), on: false, n: v[s] }); last[s] = null; }
+    };
+    const dauer = takte * pat.len * stepLen;
+    for (let b = 0; b < takte; b++) for (const e of pat.ev) {
+      const t0 = Math.round((b * pat.len + e[0]) * stepLen);
+      if (pat.kind === 'strum') {
+        const [, dir, vel, range, kurz] = e;
+        let ss = [0, 1, 2, 3, 4, 5];
+        if (range === 'low') ss = ss.slice(0, 4);
+        if (range === 'high') ss = ss.slice(-3);
+        if (dir === 'U') ss.reverse();
+        ss.forEach((s, i) => hit(s, t0 + Math.round(i * gEvents.saitenAbstand), vel * (1 - i * .03), kurz));
+      } else {
+        [...e[1]].forEach(k => hit(k === 'B' ? 0 : k === 'A' ? 1 : 2 + +k, t0, e[2], false));
+      }
+    }
+    for (let s = 0; s < 6; s++) if (last[s] !== null) ev.push({ t: Math.round(dauer) - 1, on: false, n: v[s] });
+    return ev;
+  }
+  gEvents.saitenAbstand = 0;   // Abstand zwischen den Saiten beim Anschlagen (~9 ms, in Samples – wird beim Rendern gesetzt)
+
   async function sfRenderLoop(lib, patch, ch, o, sr) {
     const synth = new lib.SpessaSynthProcessor(sr, { eventsEnabled: false });
     synth.soundBankManager.addSoundBank(sfBank, 'main');
@@ -6154,12 +6208,14 @@ const GEN = (() => {
     synth.programChange(0, patch.program);
     synth.controllerChange(0, 91, Math.round(o.rev * 127));   // Hall-Anteil (Reverb Send)
     synth.controllerChange(0, 93, 0);                         // kein Chorus
-    const loopLen = Math.round(o.bars * 4 * 60 / o.bpm * sr);
-    const steps = o.bars * 4 * o.rate, stepLen = loopLen / steps;
-    const notes = arpNotes(ch, o.reg, o.oct, o.pattern, steps);
+    const gp = gpat(o.pattern), schlaege = gp ? gp.len / 4 : 4;   // ¾-Spielweisen: Takt mit 3 Schlägen
+    const loopLen = Math.round(o.bars * schlaege * 60 / o.bpm * sr);
+    const steps = gp ? o.bars * gp.len : o.bars * 4 * o.rate, stepLen = loopLen / steps;
+    const notes = gp ? [] : arpNotes(ch, o.reg, o.oct, o.pattern, steps);
     // Zwei Durchläufe rendern und den zweiten nehmen: dann ist das Ausklingen des Vorgängers schon drin (nahtloser Loop)
-    const ev = [];
-    for (let k = 0; k < 2 * steps; k++) {
+    let ev = [];
+    if (gp) { gEvents.saitenAbstand = 0.009 * sr; ev = gEvents(gp, ch, o.reg, 2 * o.bars, stepLen); }
+    else for (let k = 0; k < 2 * steps; k++) {
       // Jeder Loop-Durchlauf beginnt wieder auf dem Grundton, damit beide Durchläufe gleich sind
       const t = Math.round(k * stepLen), n = notes[(k % steps) % notes.length];
       const accent = k % (o.rate * 4) === 0 ? 100 : (k % o.rate === 0 ? 86 : 74);
@@ -6247,9 +6303,12 @@ const GEN = (() => {
     });
   }
   { const o = document.getElementById('arpmakeropen'), bk = document.getElementById('arpmakerback');
-    if (o) o.addEventListener('click', arpPrevRender);
+    if (o) o.addEventListener('click', () => { arpPrevRender(); if (window.sfMusterAnzeigen) window.sfMusterAnzeigen(); });
     if (bk) bk.addEventListener('click', arpPrevStop); }
   $('sfGenBtn').onclick = sfGenerate;
+  // Gitarren-Spielweisen bestimmen Rhythmus und Töne selbst: Notenwert und Oktaven dann ausgrauen
+  function sfMusterAnzeigen() { const g = !!gpat($('sfPattern').value); ['sfRate', 'sfOct'].forEach(id => { $(id).disabled = g; $(id).parentElement.style.opacity = g ? .45 : ''; }); }
+  $('sfPattern').addEventListener('change', sfMusterAnzeigen); setTimeout(sfMusterAnzeigen, 0); window.sfMusterAnzeigen = sfMusterAnzeigen;
   sfLoadSettings();
   if (!$('sfPattern').value) $('sfPattern').value = 'updown';
   renderSfChords();
