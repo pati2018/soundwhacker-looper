@@ -1301,23 +1301,10 @@ button.btn{font-size:13px;white-space:nowrap}
     try { await sfDb('readwrite', s => s.put({ ver: SF_VER, bytes }, 'builtin')); } catch (e) {}
     return bytes;
   }
-  // Ältere iPads (z. B. 5. Generation – höchstens iPadOS 16) schaffen die Klangberechnung bei 48 kHz nur knapp:
-  // dann knackt es, sobald zusätzlich der Bildschirm berührt wird. Für sie rechnet die App mit halber Abtastrate
-  // (24 kHz = halbe Rechenarbeit) und einem größeren Puffer. Zum Ausprobieren: ?klang=spar bzw. ?klang=normal
-  function klangSparsam() {
-    const q = new URLSearchParams(location.search).get('klang');
-    if (q === 'spar') return true; if (q === 'normal') return false;
-    const ua = navigator.userAgent, ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-    const v = /Version\/(\d+)/.exec(ua) || /OS (\d+)_/.exec(ua);
-    return ipad && !!v && +v[1] < 17;
-  }
-  window.swKlangSparsam = klangSparsam;
   function audioCtx() {
     if (A.ctx) return A.ctx;
     try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
-    const spar = klangSparsam();
-    try { A.ctx = new (window.AudioContext || window.webkitAudioContext)(spar ? { latencyHint: 'playback', sampleRate: 24000 } : { latencyHint: 'interactive' }); }
-    catch (e) { A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: spar ? 'playback' : 'interactive' }); }
+    A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     (window.swCtxs = window.swCtxs || []).push(A.ctx);   // Kopfsteuerung: Ton beim Kamerastart kurz anhalten können
     return A.ctx;
   }
