@@ -336,6 +336,11 @@ button.btn{font-size:13px;white-space:nowrap}
 #syncToast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:#2f9e55;color:#fff;font-size:18px;font-weight:700;padding:14px 22px;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:300;max-width:calc(100% - 32px);text-align:center}
 #syncToast.zeigen{opacity:1;transform:translate(-50%,0)}
 #arpSyncBtn.ok{background:#2f9e55;border-color:#2f9e55;color:#fff;transform:scale(1.08)}
+#gembanner{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;margin:0 0 12px;padding:12px 16px;border-radius:14px;border:2px solid #FFD700;background:#2a2410;color:#ffe9a8;font-size:17px}
+#gembanner[hidden]{display:none}
+#gembanner .gb-knoepfe{display:flex;gap:10px}
+#gembanner button{font-size:18px!important;padding:12px 20px!important;border-radius:12px;min-height:48px;font-weight:700}
+#gembannerStop{border-color:#ff8a8a;color:#ff8a8a}
 #gemvorrat{font-size:16px;color:#8aa0b3;margin:-4px 0 6px}
 #gemjetzt{font-size:clamp(64px,16vw,140px);font-weight:800;line-height:1.05;min-height:1.1em;transition:transform .08s}
 #gemjetzt.puls{transform:scale(1.08)}
@@ -543,6 +548,7 @@ button.btn{font-size:13px;white-space:nowrap}
 
 <div class="wrap">
   <div id="swStatus" class="mut" style="text-align:center;min-height:18px;margin:0 0 8px"></div>
+  <div id="gembanner" hidden><span>&#127926; <b>Gemeinsame Melodie l&auml;uft</b> &ndash; <span id="gembannerTxt"></span></span><span class="gb-knoepfe"><button id="gembannerOpen" class="btn">&Ouml;ffnen</button><button id="gembannerStop" class="btn">&#9209; Beenden</button></span></div>
   <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px">
     <button id="melopen"      class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;color:#FFD700;border-color:#FFD700">&#9834; Soundwhackers einstellen</button>
     <button id="liveopen"     class="btn" style="padding:22px 32px;font-size:22px;font-weight:600;border-radius:16px;border-color:#FFD700">Unterst&uuml;tzt Spielen</button>
@@ -982,7 +988,7 @@ button.btn{font-size:13px;white-space:nowrap}
         <li>Jeder SW (Taste 1&ndash;5) spielt je nach Einstellung einen <b>Akkord/Ton</b>, eine <b>Melodie</b> (Schritt f&uuml;r Schritt oder als Arpeggio) oder <b>improvisiert</b></li>
         <li>Alles einstellen unter <b>&#9834; Soundwhackers einstellen</b>; Lautst&auml;rke mit den Reglern auf der Startseite</li>
         <li><b>Unterst&uuml;tzt Spielen</b>: Akkord-Slots f&uuml;r SW1 und das Akkord-Pad zum Antippen</li>
-        <li><b>&#127926; Gemeinsame Melodie</b>: alle SWs spielen zusammen ein Lied &ndash; egal welcher SW gedr&uuml;ckt wird, es kommt immer der <b>n&auml;chste Ton</b>. Lieder aus der Tischharfe (auch dort eingespielte eigene Lieder) oder die Melodie eines SW; jeder SW klingt mit seinem Instrument</li>
+        <li><b>&#127926; Gemeinsame Melodie</b>: alle SWs spielen zusammen ein Lied &ndash; egal welcher SW gedr&uuml;ckt wird, es kommt immer der <b>n&auml;chste Ton</b>. Lieder aus der Tischharfe (auch dort eingespielte eigene Lieder) oder die Melodie eines SW; jeder SW klingt mit seinem Instrument. Sie l&auml;uft auch auf der Startseite weiter, bis man im gelben Hinweis auf <b>Beenden</b> tippt</li>
         <li><b>&#127929; Arpeggio-Maker</b>: erzeugt ein Arpeggio oder eine Gitarren-Spielweise (Anschlagen: Folk, Pop, Rock, Reggae &hellip; &middot; Zupfen: Travis, Country, Ballade, Walzer &hellip;) &uuml;ber 5 Akkorde mit einem Instrument der SoundFont und l&auml;dt es als 5 Loops in den Looper</li>
         <li><b>&#128257; Looper</b>: 5 Loop-Kan&auml;le mit Loop-Generator. Steht ein SW auf <b>Looper EIN</b>, steuert SW&nbsp;1 Kanal&nbsp;1, SW&nbsp;2 Kanal&nbsp;2 &hellip;</li>
         <li>Am PC kannst du die SWs mit den Tasten 1&ndash;5 ausprobieren</li>
@@ -1036,7 +1042,7 @@ button.btn{font-size:13px;white-space:nowrap}
     <div id="gemfest" hidden></div>
     <div class="mut" style="text-align:center;margin-top:16px;font-size:15px;line-height:1.6">
       <b>SW spielt Melodie:</b> egal welcher SoundWhacker (oder Taste 1&ndash;5 oder der Knopf &#9654; N&auml;chster Ton) &ndash; <b>jeder Schlag spielt den n&auml;chsten Ton</b>. <b>Feste SW-Reihenfolge:</b> wie ohne Reihenfolge, aber immer SW1 &rarr; SW2 &rarr; &hellip; &ndash; wer nicht dran ist, bleibt stumm. Jeder SW klingt mit seinem eigenen Instrument (einstellen unter &#9834; Soundwhackers einstellen).<br>
-      Gilt, solange dieser Bereich offen ist &ndash; mit &#127968; Home spielen die SWs wieder wie eingestellt.<br><b>Feste SW-T&ouml;ne</b> (nur &#11088;-Lieder): die T&ouml;ne des Lieds werden verteilt &ndash; SW1 der tiefste, SW5 der h&ouml;chste; jeder SW spielt immer seinen Ton. Mit <b>&#128064; Zeigen, wer dran ist</b> leuchtet der SW, der als N&auml;chstes dran ist &ndash; mit dem richtigen SW geht das Lied weiter.<br>Lied und Modus werden im &#128190; Preset mitgespeichert (auch beim Export/Import).
+      Mit &#127968; Home l&auml;uft die Gemeinsame Melodie weiter (z.&nbsp;B. um auf der Hauptseite die Lautst&auml;rke anzupassen) &ndash; erst mit &#9209; <b>Beenden</b> im gelben Hinweis spielen die SWs wieder wie eingestellt.<br><b>Feste SW-T&ouml;ne</b> (nur &#11088;-Lieder): die T&ouml;ne des Lieds werden verteilt &ndash; SW1 der tiefste, SW5 der h&ouml;chste; jeder SW spielt immer seinen Ton. Mit <b>&#128064; Zeigen, wer dran ist</b> leuchtet der SW, der als N&auml;chstes dran ist &ndash; mit dem richtigen SW geht das Lied weiter.<br>Lied und Modus werden im &#128190; Preset mitgespeichert (auch beim Export/Import).
     </div>
   </div>
 </div>
@@ -2416,12 +2422,20 @@ document.getElementById('hilfeback').onclick=()=>{
     $g('gemreihezeile').hidden=m!=='reihe'; $g('gemreihezeile').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.n===swGemLied.anzahl())); }
   $g('gemreihezeile').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; b.blur(); swGemLied.setAnzahl(b.dataset.n); modusZeigen(); laden(); });
   $g('gemmodus').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; b.blur(); swGemLied.setModus(b.dataset.m); modusZeigen(); laden(); });
+  // Hinweis auf der Hauptseite: die Gemeinsame Melodie läuft weiter (SWs spielen das Lied), bis „Beenden“ gedrückt wird
+  const MODUSNAME={reihum:'SW spielt Melodie',reihe:'Feste SW-Reihenfolge',fest:'Feste SW-Töne'};
+  function banner(){ const G=window.swGemein, an=!!(G&&G.aktiv)&&!$g('gemarea').classList.contains('open');
+    $g('gembanner').hidden=!an; if(an) $g('gembannerTxt').textContent=(titel||'')+' · '+(MODUSNAME[swGemLied.modus()]||'')+' · die SoundWhacker spielen das Lied'; }
   $g('gemopen').onclick=async()=>{
-    $g('gemarea').classList.add('open');
+    $g('gemarea').classList.add('open'); banner();
     await lieder(); auswahlBauen();
-    window.swGemein.onChange=zeigen; modusZeigen(); laden();
+    window.swGemein.onChange=zeigen; modusZeigen();
+    if(window.swGemein.aktiv) zeigen(); else laden();   // läuft schon (zurück von der Hauptseite): an derselben Stelle weiter
   };
-  $g('gemback').onclick=()=>{ window.swGemein.stop(); window.swGemein.onChange=null; $g('gemarea').classList.remove('open'); };
+  // Home: die Gemeinsame Melodie bleibt an – auf der Hauptseite z. B. die Lautstärke anpassen und weiterspielen
+  $g('gemback').onclick=()=>{ window.swGemein.onChange=null; $g('gemarea').classList.remove('open'); banner(); };
+  $g('gembannerOpen').onclick=()=>{ $g('gembannerOpen').blur(); $g('gemopen').click(); };
+  $g('gembannerStop').onclick=()=>{ $g('gembannerStop').blur(); window.swGemein.stop(); banner(); };
   $g('gemlied').onchange=()=>{ $g('gemlied').blur(); laden(); };
   // Ohne SoundWhacker: Knöpfe spielen wie ein SW (gedrückt halten = Ton klingt) – „Nächster Ton“ mit dem Klang von SW1, im Modus Feste Töne je ein Knopf für SW1–SW5
   // Am iPad über Touch-Ereignisse (wie ein SW: ein sauberes „an“ und ein „aus“), am PC über die Maus.
