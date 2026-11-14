@@ -1301,10 +1301,23 @@ button.btn{font-size:13px;white-space:nowrap}
     try { await sfDb('readwrite', s => s.put({ ver: SF_VER, bytes }, 'builtin')); } catch (e) {}
     return bytes;
   }
+  // Ältere iPads (z. B. 5. Generation – höchstens iPadOS 16) schaffen die Klangberechnung bei 48 kHz nur knapp:
+  // dann knackt es, sobald zusätzlich der Bildschirm berührt wird. Für sie rechnet die App mit halber Abtastrate
+  // (24 kHz = halbe Rechenarbeit) und einem größeren Puffer. Zum Ausprobieren: ?klang=spar bzw. ?klang=normal
+  function klangSparsam() {
+    const q = new URLSearchParams(location.search).get('klang');
+    if (q === 'spar') return true; if (q === 'normal') return false;
+    const ua = navigator.userAgent, ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    const v = /Version\/(\d+)/.exec(ua) || /OS (\d+)_/.exec(ua);
+    return ipad && !!v && +v[1] < 17;
+  }
+  window.swKlangSparsam = klangSparsam;
   function audioCtx() {
     if (A.ctx) return A.ctx;
     try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
-    A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+    const spar = klangSparsam();
+    try { A.ctx = new (window.AudioContext || window.webkitAudioContext)(spar ? { latencyHint: 'playback', sampleRate: 24000 } : { latencyHint: 'interactive' }); }
+    catch (e) { A.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: spar ? 'playback' : 'interactive' }); }
     (window.swCtxs = window.swCtxs || []).push(A.ctx);   // Kopfsteuerung: Ton beim Kamerastart kurz anhalten können
     return A.ctx;
   }
@@ -3460,13 +3473,22 @@ document.getElementById('arpSyncBtn').onclick=async()=>{
 const swTouchState=[false,false,false,false,false,false]; // bleibt für andere Stellen (immer „aus“)
 function updateSwTouchBtn(){}      // Anzeige folgt jetzt dem Drücken (siehe swPressBtn)
 function updateSwTouchAllBtn(){}
+// Am iPad über Touch-Ereignisse (sauberes „an“ und „aus“ wie ein SW), am PC mit der Maus; jeder Ton klingt mindestens 0,3 s
+// und die Anzeige ändert sich erst im nächsten Bildschirm-Takt – so bleibt älteren iPads mehr Zeit für den Klang.
 function swPressBtn(btn, ids, label){
-  let held=false;
-  btn.innerHTML=label; btn.style.touchAction='none';
-  const down=ev=>{ ev.preventDefault(); try{btn.setPointerCapture(ev.pointerId);}catch(e){} if(held) return; held=true;
-    ids.forEach(id=>{ if(window.swTouch) window.swTouch(id,true); }); btn.style.borderColor='var(--acc)'; btn.style.color='var(--acc)'; };
-  const up=()=>{ if(!held) return; held=false; ids.forEach(id=>{ if(window.swTouch) window.swTouch(id,false); }); btn.style.borderColor=''; btn.style.color=''; };
-  btn.onpointerdown=down; btn.onpointerup=up; btn.onpointercancel=up; btn.onlostpointercapture=up;
+  let held=false, t0=0, ausT=0, touchId=null;
+  btn.innerHTML=label; btn.style.touchAction='none'; btn.style.webkitTouchCallout='none'; btn.style.userSelect='none'; btn.style.webkitUserSelect='none';
+  const los=()=>ids.forEach(id=>{ if(window.swTouch) window.swTouch(id,false); });
+  const down=()=>{ if(held) return; held=true; if(ausT){ clearTimeout(ausT); ausT=0; los(); } t0=performance.now();
+    ids.forEach(id=>{ if(window.swTouch) window.swTouch(id,true); });
+    requestAnimationFrame(()=>{ if(held){ btn.style.borderColor='var(--acc)'; btn.style.color='var(--acc)'; } }); };
+  const up=()=>{ if(!held) return; held=false; requestAnimationFrame(()=>{ btn.style.borderColor=''; btn.style.color=''; });
+    clearTimeout(ausT); ausT=setTimeout(()=>{ ausT=0; if(!held) los(); }, Math.max(0,300-(performance.now()-t0))); };
+  btn.addEventListener('touchstart',e=>{ e.preventDefault(); if(touchId!==null) return; touchId=e.changedTouches[0].identifier; down(); },{passive:false});
+  const tEnde=e=>{ for(const t of e.changedTouches) if(t.identifier===touchId){ touchId=null; up(); } };
+  btn.addEventListener('touchend',tEnde,{passive:false}); btn.addEventListener('touchcancel',tEnde,{passive:false});
+  btn.addEventListener('mousedown',e=>{ e.preventDefault(); down(); }); window.addEventListener('mouseup',()=>{ if(touchId===null) up(); });
+  btn.addEventListener('contextmenu',e=>e.preventDefault());
 }
 for(let i=1;i<=5;i++){ const b=document.getElementById('swTouchBtn'+i); b.title='gedr\u00fcckt halten = SW'+i+' ber\u00fchren'; swPressBtn(b,[i],'\u25B6 SW'+i); }
 (function(){   // „Alle“: Melodien (im Takt) und Loops an/aus – Akkord, Ton und Impro bleiben unberührt
