@@ -1231,7 +1231,8 @@ button.btn{font-size:13px;white-space:nowrap}
   const IMPRO_SCALES = [[0, 2, 4, 5, 7, 9, 11], [0, 2, 4, 7, 9], [0, 3, 5, 7, 10], [0, 1, 4, 5, 7, 8, 10]];
   const stepToSemi = s => (s === -2 ? -24 : s === -1 ? -12 : s === 1 ? 12 : s === 2 ? 24 : 0);
   const clampMidi = v => Math.max(0, Math.min(127, v | 0));
-  const triad = (root, q) => [root, root + (q === 1 ? 3 : 4), root + 7].map(clampMidi);   // q: 0=Dur, 1=Moll
+  const triad = (root, q) => (q === 2 ? [root, root + 4, root + 7, root + 10] : [root, root + (q === 1 ? 3 : 4), root + 7]).map(clampMidi);   // q: 0=Dur, 1=Moll, 2=Dur7
+  const qNum = v => v === 'dom7' ? 2 : v === 'min' ? 1 : 0, qName = q => q === 2 ? 'dom7' : q === 1 ? 'min' : 'maj';
   const arr6 = v => [0, v, v, v, v, v];
 
   // ---------- Zustand (wird im Browser gespeichert) ----------
@@ -1680,7 +1681,7 @@ button.btn{font-size:13px;white-space:nowrap}
     for (let i = 1; i <= 5; i++) {
       const d = P.sw[i] || {};
       if (d.nt != null) S.note[i] = d.nt;
-      S.chordRoot[i] = d.rt == null || d.rt === 255 ? -1 : d.rt; S.chordQual[i] = d.qq ? 1 : 0; S.ts[i] = d.ts || 0;
+      S.chordRoot[i] = d.rt == null || d.rt === 255 ? -1 : d.rt; S.chordQual[i] = d.qq === 2 ? 2 : d.qq ? 1 : 0; S.ts[i] = d.ts || 0;
       S.instr[i] = { p: d.pp || 0, m: d.ms || 0, l: d.ls || 0 };
       S.melMode[i] = !!d.mm; S.akkordOff[i] = !!d.ao; R.melStep[i] = 0; R.melPlaying[i] = false;
       S.mel[i] = (P.mel && P.mel[i]) ? P.mel[i].map(s => ({ n: s.n.slice(0, 3), d: s.d || 0 })) : [];
@@ -1756,7 +1757,7 @@ button.btn{font-size:13px;white-space:nowrap}
     for (let n = 1; n <= 8; n++) {
       const p = arr[n];
       S.lpresets[n] = p && Array.isArray(p.slots) && p.slots.length === 5
-        ? { name: p.name || ('Preset ' + n), slots: p.slots.map(s => ({ root: +s.root, qual: s.qual ? 1 : 0, ts: [-2, -1, 0, 1, 2].includes(+s.ts) ? +s.ts : 0 })), active: +p.active || 0 }
+        ? { name: p.name || ('Preset ' + n), slots: p.slots.map(s => ({ root: +s.root, qual: s.qual === 2 ? 2 : s.qual ? 1 : 0, ts: [-2, -1, 0, 1, 2].includes(+s.ts) ? +s.ts : 0 })), active: +p.active || 0 }
         : null;
     }
     save();
@@ -1795,13 +1796,13 @@ button.btn{font-size:13px;white-space:nowrap}
       const id = idArg(q), s = parseInt(q.get('step')); S.ts[id] = [-2, -1, 0, 1, 2].includes(s) ? s : 0; save(); return ok('ok');
     },
     '/set': q => { const id = idArg(q), n = parseInt(q.get('note')); if (n < 60 || n > 71) return bad('range'); S.note[id] = n; if (q.get('keep') === '1') { save(); return ok('ok'); } S.chordRoot[id] = -1; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
-    '/chord': q => { const id = idArg(q), r = parseInt(q.get('root')); if (r < 60 || r > 71) return bad('range'); S.chordRoot[id] = r; S.chordQual[id] = q.get('qual') === 'min' ? 1 : 0; S.lastChord[id] = { r, q: S.chordQual[id] }; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
+    '/chord': q => { const id = idArg(q), r = parseInt(q.get('root')); if (r < 60 || r > 71) return bad('range'); S.chordRoot[id] = r; S.chordQual[id] = qNum(q.get('qual')); S.lastChord[id] = { r, q: S.chordQual[id] }; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
     '/chord_off': q => { const id = idArg(q); S.chordRoot[id] = -1; if (id === 1) S.activeSlot = 0; save(); return ok('ok'); },
-    '/slots': () => ok({ active: S.activeSlot, slots: [1, 2, 3, 4, 5].map(i => ({ root: S.slots[i].root, qual: S.slots[i].qual === 1 ? 'min' : 'maj', ts: S.slots[i].ts })) }),
+    '/slots': () => ok({ active: S.activeSlot, slots: [1, 2, 3, 4, 5].map(i => ({ root: S.slots[i].root, qual: qName(S.slots[i].qual), ts: S.slots[i].ts })) }),
     '/slot_set': q => {
       const s = Math.max(1, Math.min(5, +q.get('slot') || 1));
       if (q.get('root') === 'off') S.slots[s].root = -1;
-      else { const r = parseInt(q.get('root')); if (r < 60 || r > 71) return bad('range'); S.slots[s].root = r; S.slots[s].qual = q.get('qual') === 'min' ? 1 : 0; }
+      else { const r = parseInt(q.get('root')); if (r < 60 || r > 71) return bad('range'); S.slots[s].root = r; S.slots[s].qual = qNum(q.get('qual')); }
       save(); return ok('ok');
     },
     '/slot_activate': q => {
@@ -1938,7 +1939,7 @@ button.btn{font-size:13px;white-space:nowrap}
       applyPreset(P);
       if (P.lp && window.swLooper && window.swLooper.loadPresetNamed) window.swLooper.loadPresetNamed(P.lp);   // mitgesicherte Loops laden
       const ids = [];
-      for (let i = 1; i <= 5; i++) ids.push({ id: i, note: S.note[i], root: S.chordRoot[i], qual: S.chordQual[i] ? 'min' : 'maj', ts: S.ts[i], ch: i, prog: S.instr[i].p, msb: S.instr[i].m, lsb: S.instr[i].l, ao: S.akkordOff[i] ? 1 : 0, mm: S.melMode[i] ? 1 : 0 });
+      for (let i = 1; i <= 5; i++) ids.push({ id: i, note: S.note[i], root: S.chordRoot[i], qual: qName(S.chordQual[i]), ts: S.ts[i], ch: i, prog: S.instr[i].p, msb: S.instr[i].m, lsb: S.instr[i].l, ao: S.akkordOff[i] ? 1 : 0, mm: S.melMode[i] ? 1 : 0 });
       const im = { root: S.improRoot, scale: S.improScale, oct: S.improOct }; for (let i = 1; i <= 5; i++) im['e' + i] = S.improEn[i] ? 1 : 0;
       return ok({ ids, impro: im, arpDiv: S.arpDiv, arpEn: R.arpEn.map((v, i) => (i && v ? 1 : 0)), arpBpm: S.arpBpm, vol: S.vol, led: [] });
     },
@@ -2003,6 +2004,7 @@ function mkChordSelect(){
   for(let n=60;n<=71;n++){
     const oM=document.createElement('option'); oM.value='maj-'+n; oM.text=NAMES[n-60]+'-Dur';  s.appendChild(oM);
     const om=document.createElement('option'); om.value='min-'+n; om.text=NAMES[n-60]+'-Moll'; s.appendChild(om);
+    const o7=document.createElement('option'); o7.value='dom7-'+n; o7.text=NAMES[n-60]+'-Dur7'; s.appendChild(o7);
   }
   return s;
 }
@@ -3249,6 +3251,7 @@ function syncMelControls(id){
     for(let n=60;n<=71;n++){
       const oM=document.createElement('option');oM.value='maj-'+n;oM.text=NAMES[n-60]+'-Dur';ms.appendChild(oM);
       const om=document.createElement('option');om.value='min-'+n;om.text=NAMES[n-60]+'-Moll';ms.appendChild(om);
+      const o7=document.createElement('option');o7.value='dom7-'+n;o7.text=NAMES[n-60]+'-Dur7';ms.appendChild(o7);
     }
     ms.onchange=async()=>{
       const i=melID;
@@ -3590,7 +3593,7 @@ async function setMode(mode){
     } else {
       // Akkord EIN — Melodie, Impro und Looper ausschalten (aus „Ton“ kommend: zuletzt gewählten Akkord wieder setzen, sonst C-Dur)
       await melAus(); await improAus(); await loopAus();
-      if(root<0){ const l=(melData&&melData.last)||{r:60,q:0}; await fetch('/chord?id='+id+'&root='+l.r+'&qual='+(l.q?'min':'maj'),{method:'POST'}); syncChordSel((l.q?'min-':'maj-')+l.r); }
+      if(root<0){ const l=(melData&&melData.last)||{r:60,q:0}; const lq=l.q===2?'dom7':l.q?'min':'maj'; await fetch('/chord?id='+id+'&root='+l.r+'&qual='+lq,{method:'POST'}); syncChordSel(lq+'-'+l.r); }
       akkordOffState[id]=false;
       await fetch('/mel_mode?akkord=1&id='+id,{method:'POST'});
     }
@@ -3696,7 +3699,7 @@ async function enterLiveMode(){
     if(!slot||slot.root<0) continue;
     const num=i+1;
     const name=NAMES[slot.root-60];
-    const qual=slot.qual==='min'?'Moll':'Dur';
+    const qual=slot.qual==='min'?'Moll':slot.qual==='dom7'?'Dur7':'Dur';
     const semi=stepToSemiJS((slot.ts!=null?slot.ts:0));
     const transLabel=semi!==0?'<br><span style="font-size:11px;font-weight:400;opacity:.75">'+(semi>0?'+':'')+semi+' HT</span>':'';
     const b=document.createElement('button');
@@ -4025,7 +4028,7 @@ async function enterChordPad(){
     if(!slot||slot.root<0) continue;
     const num=i+1;
     const name=NAMES[slot.root-60];
-    const qual=slot.qual==='min'?'Moll':'Dur';
+    const qual=slot.qual==='min'?'Moll':slot.qual==='dom7'?'Dur7':'Dur';
     const semi=stepToSemiJS((slot.ts!=null?slot.ts:0));
     const transLabel=semi!==0?'<br><span style="font-size:11px;font-weight:400;opacity:.75">'+(semi>0?'+':'')+semi+' HT</span>':'';
     const b=document.createElement('button');
@@ -5975,7 +5978,7 @@ const GEN = (() => {
   const sfInfo = (m, err) => { $('sfInfo').textContent = m || ''; $('sfInfo').className = 'small ' + (err ? 'err' : 'mut'); };
   const NOTE_DE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
   const sfChords = [{ pc: 0, m: 'major' }, { pc: 5, m: 'major' }, { pc: 7, m: 'major' }, { pc: 9, m: 'minor' }, { pc: 2, m: 'minor' }];
-  const chordName = c => NOTE_DE[c.pc] + (c.m === 'minor' ? 'm' : '');
+  const chordName = c => NOTE_DE[c.pc] + (c.m === 'minor' ? 'm' : c.m === 'dom7' ? '7' : '');
 
   function sfDb(mode, fn) {
     return new Promise((res, rej) => {
@@ -6014,7 +6017,7 @@ const GEN = (() => {
       });
       if (typeof s.rev === 'number') $('sfRev').value = s.rev;
       $('sfRevVal').textContent = $('sfRev').value + ' %';
-      (s.chords || []).forEach((c, i) => { if (sfChords[i] && c && c.pc >= 0 && c.pc < 12) sfChords[i] = { pc: c.pc | 0, m: c.m === 'minor' ? 'minor' : 'major' }; });
+      (s.chords || []).forEach((c, i) => { if (sfChords[i] && c && c.pc >= 0 && c.pc < 12) sfChords[i] = { pc: c.pc | 0, m: ['minor', 'dom7'].includes(c.m) ? c.m : 'major' }; });
       return s;
     } catch (e) { return null; }
   }
@@ -6025,7 +6028,7 @@ const GEN = (() => {
     sfChords.forEach((c, i) => {
       const wrap = document.createElement('div');
       wrap.className = 'small mut'; wrap.style.cssText = 'display:flex;align-items:center;gap:8px';
-      wrap.innerHTML = '<span style="min-width:4.2em">Kanal ' + (i + 1) + '</span><select class="sfPc"></select> <select class="sfM"><option value="major">Dur</option><option value="minor">Moll</option></select>' +
+      wrap.innerHTML = '<span style="min-width:4.2em">Kanal ' + (i + 1) + '</span><select class="sfPc"></select> <select class="sfM"><option value="major">Dur</option><option value="minor">Moll</option><option value="dom7">Dur7</option></select>' +
         '<button class="sfPv" data-i="' + i + '" title="Erzeugten Loop vorhören" disabled>&#128266;</button>';
       const pv = wrap.querySelector('.sfPv'); pv.onclick = () => arpPrevPlay(i, pv);
       const pc = wrap.querySelector('.sfPc'), m = wrap.querySelector('.sfM');
@@ -6137,9 +6140,10 @@ const GEN = (() => {
   // Arpeggio-Töne eines Akkords: Grundton, Terz, Quinte über n Oktaven + oberster Grundton
   function arpNotes(ch, reg, octs, pattern, steps) {
     const root = reg + ((ch.pc + 6) % 12) - 6;           // Grundton nah an der gewählten Lage
-    const tri = [0, ch.m === 'minor' ? 3 : 4, 7];
-    const tones = n => { const a = []; for (let k = 0; k < n; k++) a.push(root + 12 * Math.floor(k / 3) + tri[k % 3]); return a; };   // n Akkordtöne aufwärts
-    const n0 = 3 * octs + 1;
+    const tri = ch.m === 'dom7' ? [0, 4, 7, 10] : [0, ch.m === 'minor' ? 3 : 4, 7];   // Dur7: mit kleiner Septime
+    const nt = tri.length;
+    const tones = n => { const a = []; for (let k = 0; k < n; k++) a.push(root + 12 * Math.floor(k / nt) + tri[k % nt]); return a; };   // n Akkordtöne aufwärts
+    const n0 = nt * octs + 1;
     // mehr Töne: weiter nach oben ergänzen; weniger Töne: gleichmäßig über den ganzen Tonumfang verteilen
     const pick = n => n >= n0 ? tones(n) : Array.from({ length: n }, (_, k) => tones(n0)[Math.round(k * (n0 - 1) / (n - 1))]);
     const build = n => {
@@ -6192,7 +6196,7 @@ const GEN = (() => {
   // Sechs „Saiten“ wie ein Barré-Griff (E-Form): Grundton, Quinte, Oktave, Terz, Quinte, Oktave – nah an der gewählten Lage
   function gVoicing(ch, reg) {
     const root = reg + ((ch.pc + 6) % 12) - 6, t = ch.m === 'minor' ? 15 : 16;
-    return [0, 7, 12, t, 19, 24].map(x => root + x);
+    return (ch.m === 'dom7' ? [0, 7, 12, 16, 22, 24] : [0, 7, 12, t, 19, 24]).map(x => root + x);   // Dur7: kleine Septime auf der 2. hohen Saite (auch beim Zupfen zu hören)
   }
   // Noten-Ereignisse einer Gitarren-Spielweise über `takte` Takte; jede Saite klingt, bis sie wieder angeschlagen wird
   function gEvents(pat, ch, reg, takte, stepLen) {
