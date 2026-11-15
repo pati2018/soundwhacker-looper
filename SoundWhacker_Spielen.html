@@ -2556,6 +2556,7 @@ function mkSlotChordSel(){
   for(let n=60;n<=71;n++){
     const oM=document.createElement('option'); oM.value='maj-'+n; oM.text=NAMES[n-60]+'-Dur';  s.appendChild(oM);
     const om=document.createElement('option'); om.value='min-'+n; om.text=NAMES[n-60]+'-Moll'; s.appendChild(om);
+    const o7=document.createElement('option'); o7.value='dom7-'+n; o7.text=NAMES[n-60]+'-Dur7'; s.appendChild(o7);
   }
   return s;
 }
